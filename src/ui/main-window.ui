@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.22.0 -->
+<interface>
+  <requires lib="gtk+" version="3.20"/>
+  <requires lib="libhandy" version="0.0"/>
+  <template class="CallsMainWindow" parent="GtkApplicationWindow">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Calls</property>
+    <property name="hide_titlebar_when_maximized">True</property>
+    <property name="show_menubar">False</property>
+    <signal name="delete-event" handler="gtk_widget_hide_on_delete"/>
+    <child>
+      <object class="GtkOverlay">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <child type="overlay">
+          <object class="CallsInAppNotification" id="in_app_notification">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="GtkRevealer" id="permanent_error_revealer">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="reveal_child">True</property>
+                <child>
+                  <object class="GtkLabel" id="permanent_error_label">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">No modem found</property>
+                    <style>
+                      <class name="error-state-message"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkStack" id="main_stack">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="expand">True</property>
+                <child>
+                  <object class="GtkBox" id="contacts">
+                    <property name="visible">False</property>
+                    <property name="can_focus">True</property>
+                  </object>
+                  <packing>
+                    <property name="name">contacts</property>
+                    <property name="title" translatable="yes">Contacts</property>
+                    <property name="icon_name">system-users-symbolic</property>
+                  </packing>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="HdyViewSwitcherBar" id="switcher_bar">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="stack">main_stack</property>
+                <property name="reveal">True</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child type="titlebar">
+      <object class="HdyHeaderBar">
+        <property name="visible">True</property>
+        <property name="centering_policy">strict</property>
+        <property name="can_focus">False</property>
+        <property name="show_close_button">True</property>
+        <property name="title">Calls</property>
+        <child type="title">
+          <object class="HdySqueezer" id="squeezer">
+            <property name="visible">True</property>
+            <property name="transition-type">crossfade</property>
+            <child>
+              <object class="HdyViewSwitcher" id="wide_switcher">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="policy">wide</property>
+                <property name="stack">main_stack</property>
+              </object>
+            </child>
+            <child>
+              <object class="HdyViewSwitcher" id="narrow_switcher">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="halign">center</property>
+                <property name="policy">narrow</property>
+                <property name="stack">main_stack</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="title_label">
+                <property name="visible">True</property>
+                <property name="halign">center</property>
+                <property name="label">Calls</property>
+                <style>
+                  <class name="title"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

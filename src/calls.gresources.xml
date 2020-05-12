@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/sm/puri/calls/ui">
+    <file preprocess="xml-stripblanks">main-window.ui</file>
+    <file preprocess="xml-stripblanks">call-display.ui</file>
+    <file preprocess="xml-stripblanks">call-selector-item.ui</file>
+    <file preprocess="xml-stripblanks">call-window.ui</file>
+    <file preprocess="xml-stripblanks">encryption-indicator.ui</file>
+    <file preprocess="xml-stripblanks">history-box.ui</file>
+    <file preprocess="xml-stripblanks">history-header-bar.ui</file>
+    <file preprocess="xml-stripblanks">new-call-box.ui</file>
+    <file preprocess="xml-stripblanks">new-call-header-bar.ui</file>
+    <file preprocess="xml-stripblanks">call-record-row.ui</file>
+    <file preprocess="xml-stripblanks">in-app-notification.ui</file>
+  </gresource>
+  <gresource prefix="/sm/puri/calls/">
+    <file>style.css</file>
+    <file>new-call-symbolic.svg</file>
+    <file>call-arrow-incoming-symbolic.svg</file>
+    <file>call-arrow-incoming-missed-symbolic.svg</file>
+    <file>call-arrow-outgoing-symbolic.svg</file>
+    <file>call-arrow-outgoing-missed-symbolic.svg</file>
+  </gresource>
+</gresources>

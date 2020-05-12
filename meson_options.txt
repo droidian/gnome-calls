@@ -1,0 +1,11 @@
+option('gtk_doc',
+       type: 'boolean', value: false,
+       description: 'Whether to generate the API reference for Calls')
+
+option('tests',
+       type: 'boolean', value: true,
+       description: 'Whether to compile unit tests')
+
+option('wayland',
+       type: 'feature', value: 'enabled',
+       description: 'Whether to support Wayland lockscreen interaction')
