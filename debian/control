@@ -2,7 +2,7 @@ Source: gnome-calls
 Section: comm
 Priority: optional
 Maintainer: DebianOnMobile Maintainers <debian-on-mobile-maintainers@alioth-lists.debian.net>
-Uploaders: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+Uploaders: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 Build-Depends: debhelper-compat (= 13),
                libebook-contacts1.2-dev,
                libfolks-dev,

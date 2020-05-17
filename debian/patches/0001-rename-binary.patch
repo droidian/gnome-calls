@@ -1,5 +1,5 @@
 Subject: Rename binary from 'calls' to 'gnome-calls'
-From: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 
 * src/meson.build: Renamed executable
 * data/sm.puri.Calls.desktop: Changed Exec and TryExec to reflect the new name

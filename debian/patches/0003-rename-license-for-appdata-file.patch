@@ -1,4 +1,4 @@
-From: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 Subject: Rename CC0 to CC0-1.0 in appdata.xml file
 --- a/data/sm.puri.Calls.appdata.xml
 +++ b/data/sm.puri.Calls.appdata.xml

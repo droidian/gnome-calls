@@ -1,5 +1,5 @@
 Subject: Remove hacky code
-From: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 
 * src/calls-call-window.c: Put ugly code behind a define
 --- a/src/calls-call-display.c
