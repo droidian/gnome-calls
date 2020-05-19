@@ -2,22 +2,24 @@ Source: gnome-calls
 Section: comm
 Priority: optional
 Maintainer: DebianOnMobile Maintainers <debian-on-mobile-maintainers@alioth-lists.debian.net>
-Uploaders: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
-Build-Depends: debhelper-compat (= 13),
-               libebook-contacts1.2-dev,
-               libfolks-dev,
-               libgom-1.0-dev,
-               libgsound-dev,
-               libgtk-3-dev,
-               libhandy-0.0-dev (>= 0.0.12),
-               libmm-glib-dev (>= 1.12.0),
-               libpeas-dev,
-               meson,
-               modemmanager-dev,
-               pkg-config,
-               valac,
-               xauth,
-               xvfb
+Uploaders:
+ Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>,
+Build-Depends:
+ debhelper-compat (= 13),
+ libebook-contacts1.2-dev,
+ libfolks-dev,
+ libgom-1.0-dev,
+ libgsound-dev,
+ libgtk-3-dev,
+ libhandy-0.0-dev (>= 0.0.12),
+ libmm-glib-dev (>= 1.12.0),
+ libpeas-dev,
+ meson,
+ modemmanager-dev,
+ pkg-config,
+ valac,
+ xauth,
+ xvfb,
 Standards-Version: 4.5.0
 Homepage: https://gitlab.gnome.org/Community/Purism/calls
 Vcs-Browser: https://salsa.debian.org/DebianOnMobile-team/gnome-calls
@@ -26,7 +28,10 @@ Rules-Requires-Root: no
 
 Package: gnome-calls
 Architecture: any
-Depends: modemmanager, ${misc:Depends}, ${shlibs:Depends}
+Depends:
+ modemmanager,
+ ${misc:Depends},
+ ${shlibs:Depends},
 Description: Make and receive PSTN phone calls
  A GTK+ user interface for PSTN phone calls using ModemManager.
  Telephone calls can be made and received. This package is mostly useful
