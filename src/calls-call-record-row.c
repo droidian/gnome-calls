@@ -24,6 +24,7 @@
 
 #include "calls-call-record-row.h"
 #include "calls-best-match.h"
+#include "calls-contacts.h"
 #include "contrib/hdy-avatar.h"
 #include "util.h"
 
@@ -35,6 +36,9 @@
 #include <errno.h>
 
 
+#define ANONYMOUS_CALLER _("Anonymous caller")
+
+
 struct _CallsCallRecordRow
 {
   GtkListBoxRow parent_instance;
@@ -44,13 +48,19 @@ struct _CallsCallRecordRow
   GtkLabel *target;
   GtkLabel *time;
   GtkButton *button;
+  GtkPopover *popover;
+  GtkGesture *gesture;
+  GtkEventBox *event_box;
+
+  GMenu *context_menu;
+
+  GActionMap *action_map;
 
   CallsCallRecord *record;
   gulong answered_notify_handler_id;
   gulong end_notify_handler_id;
   guint date_change_timeout;
 
-  CallsContacts *contacts;
   CallsBestMatch *contact;
 };
 
@@ -60,7 +70,6 @@ G_DEFINE_TYPE (CallsCallRecordRow, calls_call_record_row, GTK_TYPE_LIST_BOX_ROW)
 enum {
   PROP_0,
   PROP_RECORD,
-  PROP_CONTACTS,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -333,15 +342,22 @@ contact_name_cb (CallsCallRecordRow *self)
     }
   else
     {
-      gchar *target;
+      g_autofree gchar *target = NULL;
 
       g_object_get (G_OBJECT (self->record),
                     "target", &target,
                     NULL);
 
-      gtk_label_set_text (self->target, target);
-
-      g_free (target);
+      if (!g_strcmp0 (target, ""))
+        {
+          gtk_label_set_text (self->target, ANONYMOUS_CALLER);
+          gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), NULL);
+        }
+      else
+        {
+          gtk_label_set_text (self->target, target);
+          gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), "app.dial");
+        }
     }
 }
 
@@ -349,7 +365,16 @@ static void
 avatar_text_changed_cb (HdyAvatar *avatar)
 {
   const gchar *text = hdy_avatar_get_text (avatar);
-  hdy_avatar_set_show_initials (avatar, !g_ascii_isdigit (*text) && !strchr("#*+", *text));
+  gboolean show_initials = TRUE;
+
+  if (strchr("#*+", *text)
+      || g_ascii_isdigit (*text)
+      || !g_strcmp0 (text, ANONYMOUS_CALLER))
+    {
+      show_initials = FALSE;
+    }
+
+  hdy_avatar_set_show_initials (avatar, show_initials);
 }
 
 
@@ -379,15 +404,54 @@ setup_contact (CallsCallRecordRow *self)
 
   // Look up the best match object
   self->contact = calls_contacts_lookup_phone_number
-    (self->contacts, phone_number);
+    (calls_contacts_get_default (), phone_number);
   g_assert (self->contact != NULL);
-  g_clear_object (&self->contacts);
+  g_object_ref (self->contact);
   e_phone_number_free (phone_number);
 
   g_signal_connect_swapped (self->contact,
                             "notify::name",
                             G_CALLBACK (contact_name_cb),
                             self);
+}
+
+
+static void
+context_menu (GtkWidget *self,
+              GdkEvent  *event)
+{
+  gtk_popover_popup (CALLS_CALL_RECORD_ROW (self)->popover);
+}
+
+
+static gboolean
+calls_call_record_row_popup_menu (GtkWidget *self)
+{
+  context_menu (self, NULL);
+  return TRUE;
+}
+
+
+static void
+long_pressed (GtkGestureLongPress *gesture,
+              gdouble              x,
+              gdouble              y,
+              GtkWidget           *self)
+{
+  context_menu (self, NULL);
+}
+
+
+static gboolean
+calls_call_record_row_button_press_event (GtkWidget      *self,
+                                          GdkEventButton *event)
+{
+  if (gdk_event_triggers_context_menu ((GdkEvent *) event))
+    {
+      context_menu (self, (GdkEvent *) event);
+      return TRUE;
+    }
+  return GTK_WIDGET_CLASS (calls_call_record_row_parent_class)->button_press_event (self, event);
 }
 
 
@@ -403,11 +467,6 @@ set_property (GObject      *object,
   case PROP_RECORD:
     g_set_object (&self->record,
                   CALLS_CALL_RECORD (g_value_get_object (value)));
-    break;
-
-  case PROP_CONTACTS:
-    g_set_object (&self->contacts,
-                  CALLS_CONTACTS (g_value_get_object (value)));
     break;
 
   default:
@@ -478,7 +537,8 @@ dispose (GObject *object)
   CallsCallRecordRow *self = CALLS_CALL_RECORD_ROW (object);
 
   g_clear_object (&self->contact);
-  g_clear_object (&self->contacts);
+  g_clear_object (&self->action_map);
+  g_clear_object (&self->gesture);
 
   calls_clear_source (&self->date_change_timeout);
   calls_clear_signal (self->record, &self->answered_notify_handler_id);
@@ -500,19 +560,15 @@ calls_call_record_row_class_init (CallsCallRecordRowClass *klass)
   object_class->get_property = get_property;
   object_class->dispose = dispose;
 
+  widget_class->popup_menu = calls_call_record_row_popup_menu;
+  widget_class->button_press_event = calls_call_record_row_button_press_event;
+
   props[PROP_RECORD] =
     g_param_spec_object ("record",
-                         _("Record"),
-                         _("The call record for this row"),
+                         "Record",
+                         "The call record for this row",
                          CALLS_TYPE_CALL_RECORD,
                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-
-  props[PROP_CONTACTS] =
-    g_param_spec_object ("contacts",
-                         _("Contacts"),
-                         _("Interface for libfolks"),
-                         CALLS_TYPE_CONTACTS,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
@@ -523,28 +579,67 @@ calls_call_record_row_class_init (CallsCallRecordRowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, CallsCallRecordRow, target);
   gtk_widget_class_bind_template_child (widget_class, CallsCallRecordRow, time);
   gtk_widget_class_bind_template_child (widget_class, CallsCallRecordRow, button);
+
+  gtk_widget_class_bind_template_child (widget_class, CallsCallRecordRow, event_box);
+  gtk_widget_class_bind_template_child (widget_class, CallsCallRecordRow, popover);
+  gtk_widget_class_bind_template_child (widget_class, CallsCallRecordRow, context_menu);
 }
+
+
+static void
+delete_call_activated (GSimpleAction *action,
+                       GVariant      *parameter,
+                       gpointer       data)
+{
+  GtkWidget *self = GTK_WIDGET (data);
+  g_signal_emit_by_name (CALLS_CALL_RECORD_ROW (self)->record, "call-delete");
+}
+
+
+static GActionEntry entries[] =
+{
+ { "delete-call", delete_call_activated, NULL, NULL, NULL},
+};
 
 
 static void
 calls_call_record_row_init (CallsCallRecordRow *self)
 {
+  GAction *act;
   gtk_widget_init_template (GTK_WIDGET (self));
 
   g_signal_connect (self->avatar,
                     "notify::text",
                     G_CALLBACK (avatar_text_changed_cb),
                     NULL);
+
+  self->action_map = G_ACTION_MAP (g_simple_action_group_new ());
+  g_action_map_add_action_entries (self->action_map,
+                                   entries,
+                                   G_N_ELEMENTS (entries),
+                                   self);
+  gtk_widget_insert_action_group (GTK_WIDGET (self),
+                                  "row-history",
+                                  G_ACTION_GROUP (self->action_map));
+
+  act = g_action_map_lookup_action (self->action_map, "delete-call");
+  g_simple_action_set_enabled (G_SIMPLE_ACTION (act), TRUE);
+
+  self->gesture = gtk_gesture_long_press_new (GTK_WIDGET (self->event_box));
+  gtk_gesture_single_set_touch_only (GTK_GESTURE_SINGLE (self->gesture), TRUE);
+  g_signal_connect (self->gesture, "pressed", G_CALLBACK (long_pressed), self);
+
+  gtk_popover_bind_model (self->popover,
+                          G_MENU_MODEL (self->context_menu),
+                          "row-history");
 }
 
 
 CallsCallRecordRow *
-calls_call_record_row_new (CallsCallRecord *record,
-                           CallsContacts   *contacts)
+calls_call_record_row_new (CallsCallRecord *record)
 {
   return g_object_new (CALLS_TYPE_CALL_RECORD_ROW,
                        "record", record,
-                       "contacts", contacts,
                        NULL);
 }
 

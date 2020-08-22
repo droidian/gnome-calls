@@ -28,10 +28,10 @@ gnome = import('gnome')
 src_include = include_directories('.')
 calls_includes = [ top_include, src_include ]
 
-calls_deps = [ dependency('gobject-2.0'),
+calls_deps = [ dependency('gobject-2.0', version: '>= 2.58'),
                dependency('gtk+-3.0'),
                dependency('libhandy-0.0', version: '>= 0.0.12'),
-               dependency('gsound'),
+               dependency('libfeedback-0.0'),
                dependency('libpeas-1.0'),
                dependency('gom-1.0'),
                dependency('libebook-contacts-1.2'),
@@ -88,12 +88,16 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-best-match.c', 'calls-best-match.h',
                        'calls-in-app-notification.c', 'calls-in-app-notification.h',
                        'calls-manager.c', 'calls-manager.h',
+                       'calls-notifier.c', 'calls-notifier.h',
                        'contrib/hdy-avatar.c', 'contrib/hdy-avatar.h',
                       ])
 
 calls_config_data = config_data
 calls_config_data.set_quoted('VCS_TAG', '@VCS_TAG@')
 calls_config_data.set10('WL_SCANNER_FOUND', wl_scanner.found())
+
+use_l5_hacks = get_option('librem5-hack')
+calls_config_data.set('CALLS_USE_UGLY_CODE', use_l5_hacks)
 
 config_h_in = configure_file(
   output: 'config.h.in',

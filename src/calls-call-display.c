@@ -22,6 +22,7 @@
  *
  */
 
+#include "config.h"
 #include "calls-call-display.h"
 #include "calls-call-data.h"
 #include "util.h"
@@ -242,7 +243,7 @@ call_state_changed_cb (CallsCallDisplay *self,
 
     case CALLS_CALL_STATE_DIALING:
     case CALLS_CALL_STATE_ALERTING:
-      gtk_label_set_text (self->status, _("Calling..."));
+      gtk_label_set_text (self->status, _("Calling…"));
       break;
 
     case CALLS_CALL_STATE_ACTIVE:
@@ -330,6 +331,7 @@ set_property (GObject      *object,
   }
 }
 
+#ifdef CALLS_USE_UGLY_CODE
 
 //#define UGLY_SOURCE "alsa_input.platform-sound.VoiceCall__hw_CARD_sgtl5000__source"
 //#define UGLY_SINK   "alsa_output.platform-sound.VoiceCall__hw_CARD_sgtl5000__sink"
@@ -509,6 +511,7 @@ ugly_hacks (CallsCallDisplay *self)
                             self);
 }
 
+#endif
 
 static void
 constructed (GObject *object)
@@ -519,7 +522,9 @@ constructed (GObject *object)
 
   call_state_changed_cb (self, calls_call_get_state (self->call));
 
+#ifdef CALLS_USE_UGLY_CODE
   ugly_hacks (self);
+#endif
 
   G_OBJECT_CLASS (calls_call_display_parent_class)->constructed (object);
 }
@@ -595,8 +600,8 @@ calls_call_display_class_init (CallsCallDisplayClass *klass)
 
   props[PROP_CALL_DATA] =
     g_param_spec_object ("call-data",
-                         _("Call data"),
-                         _("Data for the call this display will be associated with"),
+                         "Call data",
+                         "Data for the call this display will be associated with",
                          CALLS_TYPE_CALL_DATA,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
    

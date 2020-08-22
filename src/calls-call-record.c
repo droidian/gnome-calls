@@ -55,6 +55,12 @@ enum {
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
+enum {
+      SIGNAL_CALL_DELETE,
+      SIGNAL_LAST_SIGNAL,
+};
+static guint signals [SIGNAL_LAST_SIGNAL];
+
 
 static void
 get_property (GObject      *object,
@@ -167,6 +173,15 @@ calls_call_record_class_init (CallsCallRecordClass *klass)
   object_class->get_property = get_property;
   object_class->set_property = set_property;
 
+  signals[SIGNAL_CALL_DELETE] =
+    g_signal_new ("call-delete",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_FIRST,
+                  0,
+                  NULL, NULL, NULL,
+                  G_TYPE_NONE,
+                  0, NULL);
+
   gom_resource_class_set_table (resource_class, "calls");
 
 
@@ -186,8 +201,8 @@ calls_call_record_class_init (CallsCallRecordClass *klass)
 
   props[PROP_ID] =
     g_param_spec_uint ("id",
-                       _("ID"),
-                       _("The row ID"),
+                       "ID",
+                       "The row ID",
                        0, G_MAXUINT, 0,
                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
   install (ID);
@@ -195,40 +210,40 @@ calls_call_record_class_init (CallsCallRecordClass *klass)
 
   props[PROP_TARGET] =
     g_param_spec_string ("target",
-                         _("Target"),
-                         _("The PTSN phone number or other address of the call"),
+                         "Target",
+                         "The PTSN phone number or other address of the call",
                          NULL,
                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
   install (TARGET);
 
   props[PROP_INBOUND] =
     g_param_spec_boolean ("inbound",
-                          _("Inbound"),
-                          _("Whether the call was an inbound call"),
+                          "Inbound",
+                          "Whether the call was an inbound call",
                           FALSE,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
   install (INBOUND);
 
   props[PROP_START] =
     g_param_spec_boxed ("start",
-                        _("Start"),
-                        _("Time stamp of the start of the call"),
+                        "Start",
+                        "Time stamp of the start of the call",
                         G_TYPE_DATE_TIME,
                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
   install (START);
 
   props[PROP_ANSWERED] =
     g_param_spec_boxed ("answered",
-                        _("Answered"),
-                        _("Time stamp of when the call was answered"),
+                        "Answered",
+                        "Time stamp of when the call was answered",
                         G_TYPE_DATE_TIME,
                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
   install (ANSWERED);
 
   props[PROP_END] =
     g_param_spec_boxed ("end",
-                        _("End"),
-                        _("Time stamp of the end of the call"),
+                        "End",
+                        "Time stamp of the end of the call",
                         G_TYPE_DATE_TIME,
                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
   install (END);

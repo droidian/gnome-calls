@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '0.1.2',
+  version: '0.1.7',
   license: 'GPLv3+',
   meson_version: '>= 0.47.0',
   default_options: [
@@ -57,6 +57,11 @@ config_data.set_quoted('PLUGIN_LIBDIR', full_calls_plugin_libdir)
 config_data.set_quoted('PACKAGE_URL', calls_homepage)
 config_data.set_quoted('PACKAGE_VERSION', calls_version)
 config_data.set('PACKAGE_URL_RAW', calls_homepage)
+
+add_project_arguments([
+ '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_58',
+ '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_60',
+], language: 'c')
 
 subdir('po')
 subdir('src')

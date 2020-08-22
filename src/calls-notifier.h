@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Purism SPC
+ * Copyright (C) 2020 Purism SPC
  *
  * This file is part of Calls.
  *
@@ -16,28 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Author: Bob Ham <bob.ham@puri.sm>
+ * Author: Guido Günther <agx@sigxcpu.org>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  */
 
-#ifndef CALLS_MAIN_WINDOW_H__
-#define CALLS_MAIN_WINDOW_H__
+#ifndef CALLS_NOTIFIER_H__
+#define CALLS_NOTIFIER_H__
 
-#include <gtk/gtk.h>
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define CALLS_TYPE_MAIN_WINDOW (calls_main_window_get_type ())
+#define CALLS_TYPE_NOTIFIER (calls_notifier_get_type ())
 
-G_DECLARE_FINAL_TYPE (CallsMainWindow, calls_main_window, CALLS, MAIN_WINDOW, GtkApplicationWindow);
+G_DECLARE_FINAL_TYPE (CallsNotifier, calls_notifier, CALLS, NOTIFIER, GObject);
 
-CallsMainWindow *calls_main_window_new  (GtkApplication  *application,
-                                         GListModel      *record_store);
-void             calls_main_window_dial (CallsMainWindow *self,
-                                         const gchar     *target);
+CallsNotifier *calls_notifier_new ();
 
 G_END_DECLS
 
-#endif /* CALLS_MAIN_WINDOW_H__ */
+#endif /* CALLS_NOTIFIER_H__ */

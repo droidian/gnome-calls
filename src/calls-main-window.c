@@ -45,7 +45,6 @@ struct _CallsMainWindow
   GtkApplicationWindow parent_instance;
 
   GListModel *record_store;
-  CallsContacts *contacts;
 
   CallsInAppNotification *in_app_notification;
 
@@ -67,7 +66,6 @@ G_DEFINE_TYPE (CallsMainWindow, calls_main_window, GTK_TYPE_APPLICATION_WINDOW);
 enum {
   PROP_0,
   PROP_RECORD_STORE,
-  PROP_CONTACTS,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -102,6 +100,11 @@ about_action (GSimpleAction *action,
   version = g_str_equal (VCS_TAG, "") ? PACKAGE_VERSION:
                                         PACKAGE_VERSION "-" VCS_TAG;
 
+  /*
+   * “program-name” defaults to g_get_application_name().
+   * Don’t set it explicitly so that there is one less
+   * string to translate.
+   */
   gtk_show_about_dialog (GTK_WINDOW (self),
                          "artists", artists,
                          "authors", authors,
@@ -109,7 +112,6 @@ about_action (GSimpleAction *action,
                          "documenters", documenters,
                          "license-type", GTK_LICENSE_GPL_3_0,
                          "logo-icon-name", APP_ID,
-                         "program-name", _("Calls"),
                          "translator-credits", _("translator-credits"),
                          "version", version,
                          "website", PACKAGE_URL,
@@ -147,11 +149,6 @@ set_property (GObject      *object,
   case PROP_RECORD_STORE:
     g_set_object (&self->record_store,
                   G_LIST_MODEL (g_value_get_object (value)));
-    break;
-
-  case PROP_CONTACTS:
-    g_set_object (&self->contacts,
-                  CALLS_CONTACTS (g_value_get_object (value)));
     break;
 
   default:
@@ -216,8 +213,7 @@ constructed (GObject *object)
                            NULL);
 
   // Add call records
-  history = calls_history_box_new (self->record_store,
-                                   self->contacts);
+  history = calls_history_box_new (self->record_store);
   widget = GTK_WIDGET (history);
   gtk_stack_add_titled (self->main_stack, widget,
                         "recent", _("Recent"));
@@ -268,7 +264,6 @@ dispose (GObject *object)
 {
   CallsMainWindow *self = CALLS_MAIN_WINDOW (object);
 
-  g_clear_object (&self->contacts);
   g_clear_object (&self->record_store);
 
   G_OBJECT_CLASS (calls_main_window_parent_class)->dispose (object);
@@ -304,16 +299,9 @@ calls_main_window_class_init (CallsMainWindowClass *klass)
 
   props[PROP_RECORD_STORE] =
     g_param_spec_object ("record-store",
-                         _("Record store"),
-                         _("The store of call records"),
+                         "Record store",
+                         "The store of call records",
                          G_TYPE_LIST_MODEL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
-
-  props[PROP_CONTACTS] =
-    g_param_spec_object ("contacts",
-                         _("Contacts"),
-                         _("Interface for libfolks"),
-                         CALLS_TYPE_CONTACTS,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
@@ -343,17 +331,14 @@ calls_main_window_init (CallsMainWindow *self)
 
 CallsMainWindow *
 calls_main_window_new (GtkApplication *application,
-                       GListModel     *record_store,
-                       CallsContacts  *contacts)
+                       GListModel     *record_store)
 {
   g_return_val_if_fail (GTK_IS_APPLICATION (application), NULL);
   g_return_val_if_fail (G_IS_LIST_MODEL (record_store), NULL);
-  g_return_val_if_fail (CALLS_IS_CONTACTS (contacts), NULL);
 
   return g_object_new (CALLS_TYPE_MAIN_WINDOW,
                        "application", application,
                        "record-store", record_store,
-                       "contacts", contacts,
                        NULL);
 }
 

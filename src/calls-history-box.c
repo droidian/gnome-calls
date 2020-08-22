@@ -43,7 +43,6 @@ struct _CallsHistoryBox
   GListModel *model;
   gulong model_changed_handler_id;
 
-  CallsContacts *contacts;
 };
 
 G_DEFINE_TYPE (CallsHistoryBox, calls_history_box, GTK_TYPE_STACK);
@@ -52,7 +51,6 @@ G_DEFINE_TYPE (CallsHistoryBox, calls_history_box, GTK_TYPE_STACK);
 enum {
   PROP_0,
   PROP_MODEL,
-  PROP_CONTACTS,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -102,13 +100,50 @@ header_cb (GtkListBoxRow   *row,
     }
 }
 
+static void
+delete_call_cb (CallsCallRecord    *record,
+                CallsHistoryBox    *self)
+{
+  guint position;
+  guint id;
+  gboolean ok;
+
+  g_return_if_fail (CALLS_IS_CALL_RECORD (record));
+
+  ok = calls_find_in_store (self->model,
+                      record,
+                      &position);
+
+  g_object_get (G_OBJECT (record),
+                "id",
+                &id,
+                NULL);
+
+  if (!ok)
+    {
+      g_warning ("Could not find record with id %u in model",
+                 id);
+      return;
+    }
+
+  g_list_store_remove ((GListStore *) self->model, position);
+
+  update(self);
+}
+
 
 static GtkWidget *
 create_row_cb (CallsCallRecord *record,
                CallsHistoryBox *self)
 {
-  return GTK_WIDGET (calls_call_record_row_new (record,
-                                                self->contacts));
+  GtkWidget *row_widget;
+  row_widget = GTK_WIDGET (calls_call_record_row_new (record));
+
+  g_signal_connect (record,
+                    "call-delete",
+                    G_CALLBACK (delete_call_cb),
+                    self);
+  return row_widget;
 }
 
 
@@ -125,11 +160,6 @@ set_property (GObject      *object,
       case PROP_MODEL:
         g_set_object (&self->model,
                       G_LIST_MODEL (g_value_get_object (value)));
-        break;
-
-      case PROP_CONTACTS:
-        g_set_object (&self->contacts,
-                      CALLS_CONTACTS (g_value_get_object (value)));
         break;
 
       default:
@@ -173,7 +203,6 @@ dispose (GObject *object)
 {
   CallsHistoryBox *self = CALLS_HISTORY_BOX (object);
 
-  g_clear_object (&self->contacts);
   g_clear_object (&self->model);
 
   G_OBJECT_CLASS (calls_history_box_parent_class)->dispose (object);
@@ -192,16 +221,9 @@ calls_history_box_class_init (CallsHistoryBoxClass *klass)
 
   props[PROP_MODEL] =
     g_param_spec_object ("model",
-                         _("model"),
-                         _("The data store containing call records"),
+                         "model",
+                         "The data store containing call records",
                          G_TYPE_LIST_MODEL,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
-
-  props[PROP_CONTACTS] =
-    g_param_spec_object ("contacts",
-                         _("Contacts"),
-                         _("Interface for libfolks"),
-                         CALLS_TYPE_CONTACTS,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
@@ -220,11 +242,9 @@ calls_history_box_init (CallsHistoryBox *self)
 
 
 CallsHistoryBox *
-calls_history_box_new (GListModel      *model,
-                       CallsContacts   *contacts)
+calls_history_box_new (GListModel      *model)
 {
   return g_object_new (CALLS_TYPE_HISTORY_BOX,
                        "model", model,
-                       "contacts", contacts,
                        NULL);
 }

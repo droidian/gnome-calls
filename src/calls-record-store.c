@@ -82,12 +82,62 @@ G_DEFINE_TYPE (CallsRecordStore, calls_record_store, G_TYPE_LIST_STORE);
 
 
 static void
+delete_record_cb (GomResource      *resource,
+                  GAsyncResult     *res,
+                  CallsRecordStore *self)
+{
+  g_autoptr (GError) error = NULL;
+  gboolean ok;
+  guint id;
+
+  ok = gom_resource_delete_finish (resource,
+                                   res,
+                                   &error);
+
+  g_object_get (G_OBJECT (resource),
+                "id",
+                &id,
+                NULL);
+
+  if (!ok)
+    {
+      if (error)
+        {
+          g_warning ("Error deleting call record with id %u from database %s",
+                     id, error->message);
+          return;
+        }
+      else
+        {
+          g_warning ("Unknown error deleting call record with id %u from database",
+                     id);
+        }
+    }
+  else {
+    g_debug ("Successfully deleted call record with id %u from database",
+             id);
+  }
+
+}
+
+
+static void
+delete_call_cb (CallsCallRecord    *record,
+                CallsRecordStore   *self)
+{
+  gom_resource_delete_async (GOM_RESOURCE (record),
+                             (GAsyncReadyCallback) delete_record_cb,
+                             self);
+}
+
+
+static void
 load_calls_fetch_cb (GomResourceGroup *group,
                      GAsyncResult     *res,
                      CallsRecordStore *self)
 {
   gboolean ok;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   guint count, i;
   gpointer *records;
 
@@ -98,7 +148,6 @@ load_calls_fetch_cb (GomResourceGroup *group,
     {
       g_debug ("Error fetching call records: %s",
                error->message);
-      g_error_free (error);
       return;
     }
   g_assert (ok);
@@ -128,6 +177,11 @@ load_calls_fetch_cb (GomResourceGroup *group,
         {
           g_date_time_unref (end);
         }
+
+      g_signal_connect (record,
+                        "call-delete",
+                        G_CALLBACK (delete_call_cb),
+                        self);
     }
 
   g_list_store_splice (G_LIST_STORE (self),
@@ -147,7 +201,7 @@ load_calls_find_cb (GomRepository    *repository,
                     CallsRecordStore *self)
 {
   GomResourceGroup *group;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   guint count;
 
   group = gom_repository_find_finish (repository,
@@ -157,7 +211,6 @@ load_calls_find_cb (GomRepository    *repository,
     {
       g_debug ("Error finding call records in database `%s': %s",
                self->filename, error->message);
-      g_error_free (error);
       return;
     }
   g_assert (group != NULL);
@@ -213,7 +266,7 @@ set_up_repo_migrate_cb (GomRepository *repo,
                         GAsyncResult *res,
                         CallsRecordStore *self)
 {
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ok;
 
   ok = gom_repository_automatic_migrate_finish (repo, res, &error);
@@ -223,7 +276,6 @@ set_up_repo_migrate_cb (GomRepository *repo,
         {
           g_warning ("Error migrating call record database `%s': %s",
                      self->filename, error->message);
-          g_error_free (error);
         }
       else
         {
@@ -277,7 +329,7 @@ set_up_repo (CallsRecordStore *self)
 static void
 close_adapter (CallsRecordStore *self)
 {
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ok;
 
   if (!self->adapter)
@@ -292,7 +344,6 @@ close_adapter (CallsRecordStore *self)
         {
           g_warning ("Error closing call record database `%s': %s",
                      self->filename, error->message);
-          g_error_free (error);
         }
       else
         {
@@ -310,7 +361,7 @@ open_repo_adapter_open_cb (GomAdapter *adapter,
                            GAsyncResult *res,
                            CallsRecordStore *self)
 {
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ok;
 
   ok = gom_adapter_open_finish (adapter, res, &error);
@@ -320,7 +371,6 @@ open_repo_adapter_open_cb (GomAdapter *adapter,
         {
           g_warning ("Error opening call record database `%s': %s",
                      self->filename, error->message);
-          g_error_free (error);
         }
       else
         {
@@ -388,7 +438,7 @@ record_call_save_cb (GomResource                *resource,
                      struct CallsRecordCallData *data)
 {
   GObject * const call_obj = G_OBJECT (data->call);
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ok;
 
   ok = gom_resource_save_finish (resource, res, &error);
@@ -398,7 +448,6 @@ record_call_save_cb (GomResource                *resource,
         {
           g_warning ("Error saving call record to database: %s",
                      error->message);
-          g_error_free (error);
         }
       else
         {
@@ -463,7 +512,7 @@ update_cb (GomResource  *resource,
            GAsyncResult *res,
            gpointer     *unused)
 {
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ok;
 
   ok = gom_resource_save_finish (resource, res, &error);
@@ -473,7 +522,6 @@ update_cb (GomResource  *resource,
         {
           g_warning ("Error updating call record in database: %s",
                      error->message);
-          g_error_free (error);
         }
       else
         {
