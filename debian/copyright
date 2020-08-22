@@ -18,13 +18,13 @@ Files: src/wayland/wlr-layer-shell-unstable-v1.xml
 Copyright: Copyright © 2017 Drew DeVault
 License: X11
 
-Files: data/sm.puri.Calls.appdata.xml
+Files: data/sm.puri.Calls.metainfo.xml
 Copyright: 2018 Purism SPC
 License: CC0-1.0
 
 Files: data/call-arrow*
  data/new-call-symbolic.svg
- sm.puri.Calls*
+ sm.puri.Calls*svg
 Copyright: 2018 Purism SPC
 License: CC-BY-SA-4.0
 
