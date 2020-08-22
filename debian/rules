@@ -9,3 +9,8 @@ override_dh_auto_test:
 ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
 	xvfb-run ninja -C _build test
 endif
+
+# generate the manpages from the scripts using help2man
+execute_before_dh_installman:
+	help2man --version-option='-h' --no-info --name="A GTK+ user interface for PSTN phone calls" \
+		debian/gnome-calls/usr/bin/gnome-calls > debian/gnome-calls.1

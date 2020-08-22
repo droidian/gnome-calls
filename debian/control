@@ -7,6 +7,7 @@ Uploaders:
 Build-Depends:
  cmake,
  debhelper-compat (= 13),
+ help2man,
  libebook-contacts1.2-dev,
  libfeedback-dev,
  libfolks-dev,
