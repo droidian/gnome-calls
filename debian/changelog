@@ -1,5 +1,8 @@
-gnome-calls (0.1.4-1) unstable; urgency=medium
+gnome-calls (0.1.7-1) unstable; urgency=medium
 
+  [ Henry-Nicolas Tourneur ]
+  * Team upload.
+  [ Evangelos Ribeiro Tzaras ]
   * Initial Debian release (Closes: #960228)
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 22 Aug 2020 10:21:44 +0000
+ -- Henry-Nicolas Tourneur <debian@nilux.be>  Sat, 22 Aug 2020 10:33:08 +0000
