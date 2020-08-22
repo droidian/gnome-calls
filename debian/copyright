@@ -25,7 +25,8 @@ License: CC0-1.0
 Files: data/call-arrow*
  data/new-call-symbolic.svg
  data/sm.puri.Calls*svg
-Copyright: 2018 Purism SPC
+Copyright: 2019 Purism SPC
+           2019 GNOME Design Team
 License: CC-BY-SA-4.0
 
 Files: debian/*
