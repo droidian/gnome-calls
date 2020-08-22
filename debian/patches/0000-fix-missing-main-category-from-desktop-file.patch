@@ -4,7 +4,7 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 * data/sm.puri.Calls.desktop: Added Network main category
 --- a/data/sm.puri.Calls.desktop
 +++ b/data/sm.puri.Calls.desktop
-@@ -11,5 +11,5 @@
+@@ -11,5 +11,5 @@ Exec=calls %u
  Type=Application
  StartupNotify=true
  Terminal=false
@@ -13,7 +13,7 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
  MimeType=x-scheme-handler/tel
 --- a/data/sm.puri.Calls-daemon.desktop
 +++ b/data/sm.puri.Calls-daemon.desktop
-@@ -12,5 +12,5 @@
+@@ -12,5 +12,5 @@ Type=Application
  StartupNotify=true
  NoDisplay=true
  Terminal=false
