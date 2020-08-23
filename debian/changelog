@@ -1,6 +1,13 @@
 gnome-calls (0.1.7-1) unstable; urgency=medium
 
   [ Henry-Nicolas Tourneur ]
+  * Removed unused cmake build dependency.
+
+ -- Henry-Nicolas Tourneur <debian@nilux.be>  Sun, 23 Aug 2020 08:37:10 +0000
+
+gnome-calls (0.1.7-1) unstable; urgency=medium
+
+  [ Henry-Nicolas Tourneur ]
   * Team upload.
   [ Evangelos Ribeiro Tzaras ]
   * Initial Debian release (Closes: #960228)

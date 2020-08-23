@@ -5,7 +5,6 @@ Maintainer: DebianOnMobile Maintainers <debian-on-mobile-maintainers@alioth-list
 Uploaders:
  Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>,
 Build-Depends:
- cmake,
  debhelper-compat (= 13),
  help2man,
  libebook-contacts1.2-dev,
