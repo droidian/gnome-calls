@@ -1,11 +1,15 @@
-gnome-calls (0.1.8-1) UNRELEASED; urgency=medium
+gnome-calls (0.1.8-1) unstable; urgency=medium
 
   [ Evangelos Ribeiro Tzaras ]
   * Updated to latest 0.1.8 release
+  * d/control: Add Henry as co-maintainer
+  * remove unnecessary d/calls.docs
+  * d/gbp.conf: Remove standard debian-tag field
+
   [ Henry-Nicolas Tourneur ]
   * Removed unused cmake build dependency.
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 10 Oct 2020 18:43:38 +0200
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 10 Oct 2020 19:34:32 +0200
 
 gnome-calls (0.1.7-1) unstable; urgency=medium
 
