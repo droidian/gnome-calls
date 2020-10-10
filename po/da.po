@@ -1,55 +1,57 @@
-# French translations for calls package.
-# Copyright (C) 2020 THE calls'S COPYRIGHT HOLDER
+# Danish translation for calls.
+# Copyright (C) 2020 calls's COPYRIGHT HOLDER
 # This file is distributed under the same license as the calls package.
-# Valery Febvre <vfebvre@easter-eggs.com>, 2020.
-# Thibault Martin <mail@thibaultmart.in>, 2020.
+# scootergrisen, 2020.
+#
+# scootergrisen: oversættelsen mangler at blive testet
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: calls\n"
+"Project-Id-Version: calls master\n"
 "Report-Msgid-Bugs-To: https://source.puri.sm/Librem5/calls/issues\n"
-"POT-Creation-Date: 2020-07-15 03:25+0000\n"
-"PO-Revision-Date: 2020-07-15 12:29+0200\n"
-"Last-Translator: Thibault Martin <mail@thibaultmart.in>\n"
-"Language-Team: French <gnomefr@traduc.org>\n"
-"Language: fr\n"
+"POT-Creation-Date: 2020-09-10 15:42+0000\n"
+"PO-Revision-Date: 2020-09-15 00:00+0200\n"
+"Last-Translator: scootergrisen\n"
+"Language-Team: Danish <dansk@dansk-gruppen.dk>\n"
+"Language: da\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n > 1)\n"
-"X-Generator: Gtranslator 3.36.0\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: src/calls-application.c:310 src/ui/call-window.ui:11 src/ui/main-window.ui:8
 msgid "Calls"
-msgstr "Appels"
+msgstr "Opkald"
 
 #: src/calls-application.c:519
 msgid "The name of the plugin to use for the call Provider"
-msgstr "Le nom du greffon à utiliser pour le fournisseur d’appel"
+msgstr "Navnet på det plugin som skal bruges til opkaldsudbyderen"
 
 #: src/calls-application.c:520
 msgid "PLUGIN"
-msgstr "GREFFON"
+msgstr "PLUGIN"
 
 #: src/calls-application.c:525
 msgid "Whether to present the main window on startup"
-msgstr "Indique si la fenêtre principale doit être affichée au démarrage"
+msgstr "Om hovedvinduet skal vises ved opstart"
 
 #: src/calls-application.c:531
 msgid "Dial a number"
-msgstr "Composer un numéro"
+msgstr "Ring til et nummer"
 
 #: src/calls-application.c:532
 msgid "NUMBER"
-msgstr "NUMÉRO"
+msgstr "NUMMER"
 
 #: src/calls-call-display.c:246
+#| msgid "Calling..."
 msgid "Calling…"
-msgstr "Appel…"
+msgstr "Ringer op …"
 
+# scootergrisen: tjek oversættelsen af "caller"
 #: src/calls-call-record-row.c:39 src/calls-manager.c:547
 msgid "Anonymous caller"
-msgstr "Appelant anonyme"
+msgstr "Anonymt opkald"
 
 #: src/calls-call-record-row.c:112
 #, c-format
@@ -58,101 +60,101 @@ msgid ""
 "yesterday"
 msgstr ""
 "%s\n"
-"hier"
+"i går"
 
 #: src/calls-main-window.c:115
 msgid "translator-credits"
-msgstr ""
-"Valéry Febvre <vfebvre@easter-eggs.com>\n"
-"Thibault Martin"
+msgstr "scootergrisen"
 
 #: src/calls-main-window.c:173
-msgid "Can't place calls: No SIM card"
-msgstr "Impossible d’appeler : pas de carte SIM"
+#| msgid "Can't place calls: No backend service"
+msgid "Can't place calls: No voice-capable modem available"
+msgstr "Kan ikke foretage opkald: Intet modem med stemmefunktion tilgængeligt"
 
 #: src/calls-main-window.c:178
 msgid "Can't place calls: No backend service"
-msgstr "Impossible d’appeler : pas de service applicatif"
+msgstr "Kan ikke foretage opkald: Ingen backendtjeneste"
 
 #: src/calls-main-window.c:182
 msgid "Can't place calls: No plugin"
-msgstr "Impossible d’appeler : pas de greffon"
+msgstr "Kan ikke foretage opkald: Intet plugin"
 
 #: src/calls-main-window.c:210 src/ui/call-display.ui:280
 msgid "Dial Pad"
-msgstr "Pavé numérique"
+msgstr "Tastatur"
 
 #: src/calls-main-window.c:219
 msgid "Recent"
-msgstr "Récents"
+msgstr "Seneste"
 
 #: src/ui/call-display.ui:33
 msgid "Incoming phone call"
-msgstr "Appel téléphonique entrant"
+msgstr "Indgående telefonopkald"
 
 #: src/ui/call-display.ui:126
 msgid "Mute"
-msgstr "Muet"
+msgstr "Lydløs"
 
 #: src/ui/call-display.ui:163
 msgid "Speaker"
-msgstr "Haut-parleur"
+msgstr "Højttaler"
 
 #: src/ui/call-display.ui:199
 msgid "Add call"
-msgstr "Ajouter un appel"
+msgstr "Tilføj opkald"
 
 #: src/ui/call-display.ui:244
 msgid "Hold"
-msgstr "Mettre en attente"
+msgstr "Sæt på hold"
 
 #: src/ui/call-display.ui:336
 msgid "Hang up"
-msgstr "Raccrocher"
+msgstr "Læg på"
 
 #: src/ui/call-display.ui:367
 msgid "Answer"
-msgstr "Répondre"
+msgstr "Besvar"
 
 #: src/ui/call-display.ui:449
 msgid "Hide the dial pad"
-msgstr "Masquer le pavé numérique"
+msgstr "Skjul tastaturet"
 
 #: src/ui/call-record-row.ui:68
 msgid "Call the party"
-msgstr "Appeler le correspondant"
+msgstr "Ring til parten"
 
 #: src/ui/call-record-row.ui:112
+#| msgid "Recent Calls"
 msgid "_Delete Call"
-msgstr "_Supprimer l’appel"
+msgstr "_Slet opkald"
 
 #: src/ui/call-selector-item.ui:31
 msgid "+441234567890"
-msgstr "+331234567890"
+msgstr "+451234567890"
 
 #: src/ui/call-selector-item.ui:44
 msgid "On hold"
-msgstr "En attente"
+msgstr "På hold"
 
 #: src/ui/encryption-indicator.ui:23
 msgid "This call is not encrypted"
-msgstr "Cet appel n’est pas chiffré"
+msgstr "Opkaldet er ikke krypteret"
 
 #: src/ui/encryption-indicator.ui:45
 msgid "This call is encrypted"
-msgstr "Cet appel est chiffré"
+msgstr "Opkaldet er krypteret"
 
 #: src/ui/history-box.ui:23
 msgid "No Recent Calls"
-msgstr "Aucun appel récent"
+msgstr "Ingen seneste opkald"
 
 #: src/ui/history-header-bar.ui:8
 msgid "Recent Calls"
-msgstr "Appels récents"
+msgstr "Seneste opkald"
 
 #: src/ui/history-header-bar.ui:21
 msgid "New call…"
-msgstr "Nouvel appel…"
+msgstr "Nyt opkald …"
 
 #. Translators: tooltip for the application menu button
 #: src/ui/history-header-bar.ui:40
@@ -161,29 +163,28 @@ msgstr "Menu"
 
 #: src/ui/history-header-bar.ui:71
 msgid "About Calls"
-msgstr "À propos d’Appels"
+msgstr "Om Opkald"
 
-#: src/ui/main-window.ui:36
+#: src/ui/main-window.ui:38
 msgid "No modem found"
-msgstr "Pas de modem détecté"
+msgstr "Fandt ikke noget modem"
 
-#: src/ui/main-window.ui:56
+#: src/ui/main-window.ui:58
 msgid "Contacts"
-msgstr "Contacts"
+msgstr "Kontakter"
 
 #: src/ui/new-call-box.ui:101
 msgid "Dial"
-msgstr "Composer"
+msgstr "Ring op"
 
 #: src/ui/new-call-box.ui:129
 msgid "Backspace through number"
-msgstr "Effacer un chiffre du numéro"
+msgstr "Slet baglæns"
 
 #: src/ui/new-call-header-bar.ui:8
 msgid "New Call"
-msgstr "Nouvel appel"
+msgstr "Nyt opkald"
 
 #: src/ui/new-call-header-bar.ui:21
 msgid "Back"
-msgstr "Retour"
-
+msgstr "Tilbage"
