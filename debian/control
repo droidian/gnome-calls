@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: DebianOnMobile Maintainers <debian-on-mobile-maintainers@alioth-lists.debian.net>
 Uploaders:
  Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>,
+ Henry-Nicolas Tourneur <debian@nilux.be>,
 Build-Depends:
  debhelper-compat (= 13),
  help2man,
