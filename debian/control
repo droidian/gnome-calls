@@ -15,7 +15,7 @@ Build-Depends:
  libgom-1.0-dev,
  libgsound-dev,
  libgtk-3-dev,
- libhandy-0.0-dev (>= 0.0.12),
+ libhandy-1-dev,
  libmm-glib-dev (>= 1.12.0),
  libpeas-dev,
  meson,
