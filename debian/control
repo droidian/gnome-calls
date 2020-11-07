@@ -8,6 +8,7 @@ Uploaders:
 Build-Depends:
  debhelper-compat (= 13),
  help2man,
+ libcallaudio-dev,
  libebook-contacts1.2-dev,
  libfeedback-dev,
  libfolks-dev,
@@ -32,6 +33,7 @@ Rules-Requires-Root: no
 Package: gnome-calls
 Architecture: any
 Depends:
+ callaudiod,
  modemmanager,
  ${misc:Depends},
  ${shlibs:Depends},
