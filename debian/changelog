@@ -3,9 +3,10 @@ gnome-calls (0.1.9-1) unstable; urgency=medium
   * New upstream version 0.1.9
   * d/gbp.conf: default enable pristine-tar
   * d/control: add callaudio dependency
+  * d/control: updated libhandy build dep
   * d/patches: updates for new upstream release
 
- -- Henry-Nicolas Tourneur <debian@nilux.be>  Sat, 07 Nov 2020 21:21:56 +0000
+ -- Henry-Nicolas Tourneur <debian@nilux.be>  Sat, 07 Nov 2020 21:50:58 +0000
 
 gnome-calls (0.1.8-1) unstable; urgency=medium
 
