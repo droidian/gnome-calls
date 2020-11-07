@@ -2,7 +2,7 @@
 <!-- Generated with glade 3.22.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <requires lib="libhandy" version="0.0"/>
+  <requires lib="libhandy" version="1.0"/>
   <template class="CallsMainWindow" parent="GtkApplicationWindow">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">Calls</property>
@@ -31,6 +31,8 @@
                 <property name="reveal_child">True</property>
                 <child>
                   <object class="GtkLabel" id="permanent_error_label">
+                    <property name="justify">center</property>
+                    <property name="wrap">True</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">No modem found</property>
@@ -64,7 +66,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="stack">main_stack</property>
-                <property name="reveal">True</property>
+                <property name="reveal" bind-source="title_switcher" bind-property="title-visible" bind-flags="sync-create"/>
               </object>
             </child>
           </object>
@@ -77,42 +79,126 @@
         <property name="centering_policy">strict</property>
         <property name="can_focus">False</property>
         <property name="show_close_button">True</property>
-        <property name="title">Calls</property>
+        <property name="title" bind-source="CallsMainWindow" bind-property="title" bind-flags="sync-create"/>
         <child type="title">
-          <object class="HdySqueezer" id="squeezer">
+          <object class="HdyViewSwitcherTitle" id="title_switcher">
             <property name="visible">True</property>
-            <property name="transition-type">crossfade</property>
-            <child>
-              <object class="HdyViewSwitcher" id="wide_switcher">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">center</property>
-                <property name="policy">wide</property>
-                <property name="stack">main_stack</property>
-              </object>
-            </child>
-            <child>
-              <object class="HdyViewSwitcher" id="narrow_switcher">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="halign">center</property>
-                <property name="policy">narrow</property>
-                <property name="stack">main_stack</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel" id="title_label">
-                <property name="visible">True</property>
-                <property name="halign">center</property>
-                <property name="label">Calls</property>
-                <style>
-                  <class name="title"/>
-                </style>
-              </object>
-            </child>
+            <property name="can_focus">False</property>
+            <property name="stack">main_stack</property>
+            <property name="title" bind-source="CallsMainWindow" bind-property="title" bind-flags="sync-create"/>
           </object>
         </child>
       </object>
     </child>
   </template>
+
+  <object class="GtkDialog" id="ussd_dialog">
+    <property name="can-focus">False</property>
+    <property name="modal">True</property>
+    <property name="default-width">240</property>
+    <property name="default-height">200</property>
+    <signal name="delete-event" handler="gtk_widget_hide_on_delete" object="ussd_dialog" swapped="yes"/>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <property name="visible">True</property>
+        <property name="show-close-button">False</property>
+        <property name="title" translatable="yes">USSD</property>
+
+        <child>
+          <object class="GtkButton" id="ussd_cancel_button">
+            <property name="visible">True</property>
+            <property name="sensitive">True</property>
+            <property name="has-default">True</property>
+            <property name="can-default">True</property>
+            <property name="use-underline">True</property>
+            <property name="label" translatable="yes">_Cancel</property>
+            <signal name="clicked" handler="window_ussd_cancel_clicked_cb" swapped="yes"/>
+          </object>
+          <packing>
+            <property name="pack_type">start</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkButton" id="ussd_close_button">
+            <property name="visible" bind-source="ussd_cancel_button" bind-property="visible"
+                      bind-flags="sync-create|invert-boolean|bidirectional"/>
+            <property name="visible">True</property>
+            <property name="sensitive">True</property>
+            <property name="has-default">True</property>
+            <property name="can-default">True</property>
+            <property name="use-underline">True</property>
+            <property name="label" translatable="yes">_Close</property>
+            <signal name="clicked" handler="gtk_window_close" object="ussd_dialog" swapped="yes"/>
+          </object>
+          <packing>
+            <property name="pack_type">start</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkButton" id="ussd_reply_button">
+            <property name="label" translatable="yes">_Send</property>
+            <property name="visible">True</property>
+            <property name="sensitive">False</property>
+            <property name="use-underline">True</property>
+            <signal name="clicked" handler="window_ussd_reply_clicked_cb" swapped="yes"/>
+            <style>
+              <class name="suggested-action"/>
+            </style>
+          </object>
+          <packing>
+            <property name="pack-type">end</property>
+          </packing>
+        </child>
+
+      </object>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="expand">True</property>
+        <property name="border-width">0</property>
+        <property name="margin">12</property>
+
+        <child>
+          <object class="GtkStack" id="ussd_stack">
+            <property name="visible">True</property>
+
+            <child>
+              <object class="GtkBox" id="ussd_content">
+                <property name="visible">True</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">12</property>
+                <child>
+                  <object class="GtkLabel" id="ussd_label">
+                    <property name="visible">True</property>
+                    <property name="wrap">True</property>
+                    <property name="xalign">0</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="ussd_entry">
+                    <property name="visible">False</property>
+                    <signal name="changed" handler="window_ussd_entry_changed_cb" swapped="yes"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
+              <object class="GtkSpinner" id="ussd_spinner">
+                <property name="valign">center</property>
+                <property name="vexpand">True</property>
+                <property name="visible">True</property>
+              </object>
+            </child>
+
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+
 </interface>

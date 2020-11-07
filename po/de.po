@@ -1,43 +1,43 @@
-# Swedish messages for Calls.
-# Copyright © 2020 Purism
-# This file is distributed under the same license as the Calls package.
-# Sebastian Rasmussen <sebras@gmail.com>, 2020.
-# Anders Jonsson <anders.jonsson@norsjovallen.se>, 2020.
+# German translation for calls.
+# Copyright (C) 2020 calls's COPYRIGHT HOLDER
+# This file is distributed under the same license as the calls package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# heiko123abc <heiko1234aaa@gmail.com>, 2020.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: \n"
+"Project-Id-Version: calls master\n"
 "Report-Msgid-Bugs-To: https://source.puri.sm/Librem5/calls/issues\n"
-"POT-Creation-Date: 2020-09-10 15:42+0000\n"
-"PO-Revision-Date: 2020-09-14 22:01+0200\n"
-"Last-Translator: Anders Jonsson <anders.jonsson@norsjovallen.se>\n"
-"Language-Team: Swedish <tp-sv@listor.tp-sv.se>\n"
-"Language: sv\n"
+"POT-Creation-Date: 2020-07-13 15:25+0000\n"
+"PO-Revision-Date: 2020-07-18 10:51+0200\n"
+"Last-Translator: Tim Sabsch <tim@sabsch.com>\n"
+"Language-Team: German <gnome-de@SPAMFREEgnome.org>\n"
+"Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 2.4.1\n"
+"X-Generator: Poedit 2.3\n"
 
 #: src/calls-application.c:310 src/ui/call-window.ui:11 src/ui/main-window.ui:8
 msgid "Calls"
-msgstr "Samtal"
+msgstr "Telefon"
 
 #: src/calls-application.c:519
 msgid "The name of the plugin to use for the call Provider"
-msgstr "Namnet på insticket att använda för samtalsleverantören"
+msgstr "Der Name des Plugins, das für den Telefonanbieter verwendet werden soll"
 
 #: src/calls-application.c:520
 msgid "PLUGIN"
-msgstr "INSTICK"
+msgstr "PLUGIN"
 
 #: src/calls-application.c:525
 msgid "Whether to present the main window on startup"
-msgstr "Huruvida huvudfönstret ska visas vid uppstart"
+msgstr "Legt fest, ob beim Start das Hauptfenster angezeigt werden soll"
 
 #: src/calls-application.c:531
 msgid "Dial a number"
-msgstr "Slå ett nummer"
+msgstr "Eine Nummer wählen"
 
 #: src/calls-application.c:532
 msgid "NUMBER"
@@ -45,11 +45,11 @@ msgstr "NUMMER"
 
 #: src/calls-call-display.c:246
 msgid "Calling…"
-msgstr "Ringer…"
+msgstr "Anrufen …"
 
 #: src/calls-call-record-row.c:39 src/calls-manager.c:547
 msgid "Anonymous caller"
-msgstr "Anonym uppringare"
+msgstr "Anonymer Anrufer"
 
 #: src/calls-call-record-row.c:112
 #, c-format
@@ -58,75 +58,74 @@ msgid ""
 "yesterday"
 msgstr ""
 "%s\n"
-"igår"
+"Gestern"
 
 #: src/calls-main-window.c:115
 msgid "translator-credits"
 msgstr ""
-"Sebastian Rasmussen <sebras@gmail.com>\n"
-"\n"
-"Skicka synpunkter på översättningen till\n"
-"<tp-sv@listor.tp-sv.se>."
+"heiko123abc <heiko1234aaa@gmail.com>, 2020\n"
+"Christian Kirbach <christian.kirbach@gmail.com>, 2020\n"
+"Tim Sabsch <tim@sabsch.com>, 2020"
 
 #: src/calls-main-window.c:173
-msgid "Can't place calls: No voice-capable modem available"
-msgstr "Kan inte ringa: Inget röstkapabelt modem tillgängligt"
+msgid "Can't place calls: No SIM card"
+msgstr "Anrufe nicht möglich: Keine SIM Karte"
 
 #: src/calls-main-window.c:178
 msgid "Can't place calls: No backend service"
-msgstr "Kan inte ringa: Ingen bakändestjänst"
+msgstr "Anrufe nicht möglich: Kein Backend Service"
 
 #: src/calls-main-window.c:182
 msgid "Can't place calls: No plugin"
-msgstr "Kan inte ringa: Inget instick"
+msgstr "Anrufe nicht möglich: Kein Plugin"
 
 #: src/calls-main-window.c:210 src/ui/call-display.ui:280
 msgid "Dial Pad"
-msgstr "Knappsats"
+msgstr "Ziffernblock"
 
 #: src/calls-main-window.c:219
 msgid "Recent"
-msgstr "Senaste"
+msgstr "Letzte"
 
 #: src/ui/call-display.ui:33
 msgid "Incoming phone call"
-msgstr "Inkommande telefonsamtal"
+msgstr "Eingehender Anruf"
 
 #: src/ui/call-display.ui:126
 msgid "Mute"
-msgstr "Tyst"
+msgstr "Stumm schalten"
 
 #: src/ui/call-display.ui:163
 msgid "Speaker"
-msgstr "Högtalare"
+msgstr "Lautsprecher"
 
 #: src/ui/call-display.ui:199
 msgid "Add call"
-msgstr "Lägg till samtal"
+msgstr "Anruf hinzufügen"
 
 #: src/ui/call-display.ui:244
 msgid "Hold"
-msgstr "Håll"
+msgstr "Halten"
 
 #: src/ui/call-display.ui:336
 msgid "Hang up"
-msgstr "Lägg på"
+msgstr "Auflegen"
 
 #: src/ui/call-display.ui:367
 msgid "Answer"
-msgstr "Svara"
+msgstr "Annehmen"
 
 #: src/ui/call-display.ui:449
 msgid "Hide the dial pad"
-msgstr "Göm knappsatsen"
+msgstr "Den Ziffernblock verbergen"
 
 #: src/ui/call-record-row.ui:68
 msgid "Call the party"
-msgstr "Ring parten"
+msgstr "Telefonkonferenz anrufen"
 
 #: src/ui/call-record-row.ui:112
 msgid "_Delete Call"
-msgstr "_Ta bort samtal"
+msgstr "Anruf _löschen"
 
 #: src/ui/call-selector-item.ui:31
 msgid "+441234567890"
@@ -134,192 +133,189 @@ msgstr "+441234567890"
 
 #: src/ui/call-selector-item.ui:44
 msgid "On hold"
-msgstr "Samtal väntar"
+msgstr "Wird gehalten"
 
 #: src/ui/encryption-indicator.ui:23
 msgid "This call is not encrypted"
-msgstr "Detta samtal är inte krypterat"
+msgstr "Dieser Anruf ist nicht verschlüsselt"
 
 #: src/ui/encryption-indicator.ui:45
 msgid "This call is encrypted"
-msgstr "Detta samtal är krypterat"
+msgstr "Dieser Anruf ist verschlüsselt"
 
 #: src/ui/history-box.ui:23
 msgid "No Recent Calls"
-msgstr "Inga senaste samtal"
+msgstr "Keine kürzlichen Anrufe"
 
 #: src/ui/history-header-bar.ui:8
 msgid "Recent Calls"
-msgstr "Senaste samtal"
+msgstr "Letzte Anrufe"
 
 #: src/ui/history-header-bar.ui:21
 msgid "New call…"
-msgstr "Nytt samtal…"
+msgstr "Neuer Anruf …"
 
 #. Translators: tooltip for the application menu button
 #: src/ui/history-header-bar.ui:40
 msgid "Menu"
-msgstr "Meny"
+msgstr "Menü"
 
 #: src/ui/history-header-bar.ui:71
 msgid "About Calls"
-msgstr "Om Samtal"
+msgstr "Über Telefon"
 
-#: src/ui/main-window.ui:38
+#: src/ui/main-window.ui:36
 msgid "No modem found"
-msgstr "Inget modem hittades"
+msgstr "Kein Modem gefunden"
 
-#: src/ui/main-window.ui:58
+#: src/ui/main-window.ui:56
 msgid "Contacts"
-msgstr "Kontakter"
+msgstr "Kontakte"
 
 #: src/ui/new-call-box.ui:101
 msgid "Dial"
-msgstr "Ring"
+msgstr "Wählen"
 
 #: src/ui/new-call-box.ui:129
 msgid "Backspace through number"
-msgstr "Radera siffra från nummer"
+msgstr "Rücktaste"
 
 #: src/ui/new-call-header-bar.ui:8
 msgid "New Call"
-msgstr "Nytt samtal"
+msgstr "Neuer Anruf"
 
 #: src/ui/new-call-header-bar.ui:21
 msgid "Back"
-msgstr "Tillbaka"
+msgstr "Zurück"
 
 #~ msgid "View"
-#~ msgstr "Visa"
+#~ msgstr "Ansicht"
 
 #~ msgid "The CallsBestMatchView to monitor"
-#~ msgstr "Vilken CallsBestMatchView som ska övervakas"
+#~ msgstr "Das zu überwachende CallsBestMatchView"
 
 #~ msgid "Name"
-#~ msgstr "Namn"
+#~ msgstr "Name"
 
 #~ msgid "The display name of the best match"
-#~ msgstr "Skärmnamnet för den bästa matchningen"
+#~ msgstr "Der Anzeigenamen des besten Treffers"
 
 #~ msgid "Inbound"
-#~ msgstr "Inkommande"
+#~ msgstr "Eingehend"
 
 #~ msgid "Whether the call is inbound"
-#~ msgstr "Huruvida samtalet är inkommande"
+#~ msgstr "Gibt an, ob der Anruf eingehend ist"
 
 #~ msgid "Number"
 #~ msgstr "Nummer"
 
 #~ msgid "The number the call is connected to if known"
-#~ msgstr "Numret som samtalet är anslutet till, om känt"
+#~ msgstr "Die Zielrufnummer des Gesprächs, falls bekannt"
 
 #~ msgid "The name of the party the call is connected to, if the network provides it"
-#~ msgstr "Namnet på parten som samtalet är anslutet till, om nätverket tillhandahåller det"
+#~ msgstr "Der Name des Teilnehmers, mit dem der Anruf verbunden ist, sofern vom Telefonanbieter geliefert"
 
 #~ msgid "State"
-#~ msgstr "Tillstånd:"
+#~ msgstr "Status"
 
 #~ msgid "The current state of the call"
-#~ msgstr "Aktuellt tillstånd för samtalet"
+#~ msgstr "Der derzeitige Status des Anrufs"
 
 #~ msgid "Call"
-#~ msgstr "Samtal"
+#~ msgstr "Anruf"
 
 #~ msgid "The call"
-#~ msgstr "Samtalet"
+#~ msgstr "Der Anruf"
 
 #~ msgid "Party"
-#~ msgstr "Part"
+#~ msgstr "Teilnehmer"
 
 #~ msgid "The party participating in the call"
-#~ msgstr "Parten som deltar i samtalet"
+#~ msgstr "Der Teilnehmer des Anrufs"
 
 #~ msgid "Call data"
-#~ msgstr "Samtalsdata"
+#~ msgstr "Anrufdaten"
 
 #~ msgid "Data for the call this display will be associated with"
-#~ msgstr "Data för samtalet som denna skärm kommer att associeras med"
+#~ msgstr "Daten für den Anruf , mit dem der Anzeigename verknüpft wird"
 
 #~ msgid "The call to hold"
-#~ msgstr "Samtalet som ska vänta"
+#~ msgstr "Der zu haltende Anruf"
 
 #~ msgid "ID"
-#~ msgstr "ID"
+#~ msgstr "Kennung"
 
 #~ msgid "The row ID"
-#~ msgstr "Rad-ID"
+#~ msgstr "Die Zeilen-Kennung"
 
 #~ msgid "Target"
-#~ msgstr "Mål"
+#~ msgstr "Ziel"
 
 #~ msgid "The PTSN phone number or other address of the call"
-#~ msgstr "Telefonnumret eller annan adress för samtalet"
+#~ msgstr "Die herkömmliche Rufnummer oder andere Adresse des Anrufs"
 
 #~ msgid "Whether the call was an inbound call"
-#~ msgstr "Huruvida samtalet var ett inkommande samtal"
+#~ msgstr "Gibt an, ob der Anruf eingehend war"
 
 #~ msgid "Start"
 #~ msgstr "Start"
 
 #~ msgid "Time stamp of the start of the call"
-#~ msgstr "Tidsstämpel för samtalets start"
+#~ msgstr "Zeitstempel beim Start des Anrufs"
 
 #~ msgid "Answered"
-#~ msgstr "Besvarat"
+#~ msgstr "Angenommen"
 
 #~ msgid "Time stamp of when the call was answered"
-#~ msgstr "Tidsstämpel när samtalet besvarades"
+#~ msgstr "Zeitstempel beim Annehmen des Anrufs"
 
 #~ msgid "End"
-#~ msgstr "Slut"
+#~ msgstr "Ende"
 
 #~ msgid "Time stamp of the end of the call"
-#~ msgstr "Tidsstämpel för samtalets slut"
+#~ msgstr "Zeitstempel beim Ende des Anrufs"
 
 #~ msgid "Record"
-#~ msgstr "Logg"
+#~ msgstr "Eintrag"
 
 #~ msgid "The call record for this row"
-#~ msgstr "Samtalsloggen för denna rad"
+#~ msgstr "Der Gesprächseintrag für diese Zeile"
 
 #~ msgid "Interface for libfolks"
-#~ msgstr "Gränssnitt för libfolks"
+#~ msgstr "Interface für libfolks"
 
 #~ msgid "Call holder"
-#~ msgstr "Samtalshållare"
+#~ msgstr "Anrufinhaber"
 
 #~ msgid "The holder for this call"
-#~ msgstr "Hållaren för detta samtal"
+#~ msgstr "Der Inhaber des Anrufs"
 
 #~ msgid "Encrypted"
-#~ msgstr "Krypterat"
+#~ msgstr "Verschlüsselt"
 
 #~ msgid "model"
-#~ msgstr "modell"
+#~ msgstr "Modell"
 
 #~ msgid "The data store containing call records"
-#~ msgstr "Datalagringen innehåller samtalsloggar"
-
-#~ msgid "Can't place calls: No SIM card"
-#~ msgstr "Kan inte ringa: Inget SIM-kort"
+#~ msgstr "Der Datenspeicher mit den Anruflisten"
 
 #~ msgid "Record store"
-#~ msgstr "Samtalslogg"
+#~ msgstr "Anrufspeicher"
 
 #~ msgid "The store of call records"
-#~ msgstr "Lagringen över samtalsloggar"
+#~ msgstr "Der Speichern der Anruflisten"
 
 #~ msgid "The party's name"
-#~ msgstr "Partens namn"
+#~ msgstr "Name des Teilnehmers"
 
 #~ msgid "The party's telephone number"
-#~ msgstr "Partens telefonnummer"
+#~ msgstr "Nummer des Teilnehmers"
 
 #~ msgid "Status"
 #~ msgstr "Status"
 
 #~ msgid "A text string describing the status for display to the user"
-#~ msgstr "En textsträng som beskriver status för visning för användaren"
+#~ msgstr "Ein Text der den Status, der für den User bestimmt ist, anzeigt"
 
 #~ msgid "Incoming call"
-#~ msgstr "Inkommande samtal"
+#~ msgstr "Eingehender Anruf"

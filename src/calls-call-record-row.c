@@ -25,12 +25,12 @@
 #include "calls-call-record-row.h"
 #include "calls-best-match.h"
 #include "calls-contacts.h"
-#include "contrib/hdy-avatar.h"
 #include "util.h"
 
 #include <glib/gi18n.h>
 #include <glib-object.h>
 #include <glib.h>
+#include <handy.h>
 
 #include <sys/time.h>
 #include <errno.h>
@@ -382,14 +382,17 @@ static void
 setup_contact (CallsCallRecordRow *self)
 {
   g_autofree gchar *target = NULL;
+  g_autoptr(GError) error = NULL;
   EPhoneNumber *phone_number;
-  GError *error = NULL;
 
   // Get the target number
   g_object_get (G_OBJECT (self->record),
                 "target", &target,
                 NULL);
   g_assert (target != NULL);
+
+  if (!target[0])
+    return;
 
   // Parse it
   phone_number = e_phone_number_from_string
@@ -398,7 +401,6 @@ setup_contact (CallsCallRecordRow *self)
     {
       g_warning ("Error parsing phone number `%s': %s",
                  target, error->message);
-      g_error_free (error);
       return;
     }
 

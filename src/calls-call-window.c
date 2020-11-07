@@ -36,8 +36,6 @@
 
 #include <glib/gi18n.h>
 #include <glib-object.h>
-
-#define HANDY_USE_UNSTABLE_API
 #include <handy.h>
 
 #ifdef CALLS_WAYLAND
@@ -59,6 +57,8 @@ struct _CallsCallWindow
   GtkButton *show_calls;
   GtkStack *call_stack;
   GtkFlowBox *call_selector;
+
+  guint inhibit_cookie;
 
 #ifdef CALLS_WAYLAND
   gboolean screensaver_active;
@@ -165,6 +165,28 @@ update_layer_surface (CallsCallWindow *self,
 
 
 static void
+session_inhibit (CallsCallWindow *self, gboolean inhibit)
+{
+  if (inhibit)
+    {
+      if (self->inhibit_cookie == 0)
+        self->inhibit_cookie =
+          gtk_application_inhibit (gtk_window_get_application (GTK_WINDOW (self)),
+                                   GTK_WINDOW (self),
+                                   GTK_APPLICATION_INHIBIT_SUSPEND,
+                                   "call active");
+    }
+  else
+    {
+      gtk_application_uninhibit (gtk_window_get_application (GTK_WINDOW (self)),
+                                 self->inhibit_cookie);
+      self->inhibit_cookie = 0;
+    }
+
+}
+
+
+static void
 update_visibility (CallsCallWindow *self)
 {
   guint calls = g_list_model_get_n_items (G_LIST_MODEL (self->call_holders));
@@ -184,6 +206,8 @@ update_visibility (CallsCallWindow *self)
     {
       gtk_stack_set_visible_child_name (self->main_stack, "active-call");
     }
+
+  session_inhibit (self, !!calls);
 }
 
 
