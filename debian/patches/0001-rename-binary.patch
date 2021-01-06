@@ -5,7 +5,7 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 * data/sm.puri.Calls.desktop: Changed Exec and TryExec to reflect the new name
 --- a/src/meson.build
 +++ b/src/meson.build
-@@ -122,7 +122,7 @@ calls_resources = gnome.compile_resource
+@@ -120,7 +120,7 @@
  )
  
  executable (
@@ -14,10 +14,10 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
    calls_sources, calls_enum_sources, calls_resources,
    wl_proto_sources, wayland_sources, 'main.c',
    dependencies : calls_deps,
---- a/data/sm.puri.Calls.desktop
-+++ b/data/sm.puri.Calls.desktop
-@@ -6,8 +6,8 @@ Comment=A phone dialer and call handler
- Keywords=Telephone;Call;Phone;Dial;Dialer;PTSN;
+--- a/data/sm.puri.Calls.desktop.in
++++ b/data/sm.puri.Calls.desktop.in
+@@ -6,8 +6,8 @@
+ Keywords=Telephone;Call;Phone;Dial;Dialer;PSTN;
  # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
  Icon=sm.puri.Calls
 -TryExec=calls
@@ -27,10 +27,10 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
  Type=Application
  StartupNotify=true
  Terminal=false
---- a/data/sm.puri.Calls-daemon.desktop
-+++ b/data/sm.puri.Calls-daemon.desktop
-@@ -6,8 +6,8 @@ Comment=A phone dialer and call handler
- Keywords=Telephone;Call;Phone;Dial;Dialer;PTSN;
+--- a/data/sm.puri.Calls-daemon.desktop.in
++++ b/data/sm.puri.Calls-daemon.desktop.in
+@@ -6,8 +6,8 @@
+ Keywords=Telephone;Call;Phone;Dial;Dialer;PSTN;
  # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
  Icon=sm.puri.Calls
 -TryExec=calls
@@ -40,3 +40,14 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
  Type=Application
  StartupNotify=true
  NoDisplay=true
+--- a/doc/meson.build
++++ b/doc/meson.build
+@@ -41,7 +41,7 @@
+                        '--extra-dir=@0@'.format(join_paths(glib_docpath, 'gi')),
+                        '--extra-dir=@0@'.format(join_paths(glib_docpath, 'gtk3')),
+                      ],
+-        install_dir: 'calls',
++        install_dir: 'gnome-calls',
+             install: true)
+ 
+ endif

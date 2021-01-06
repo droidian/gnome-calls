@@ -1,3 +1,10 @@
+gnome-calls (0.2.0-1) unstable; urgency=medium
+
+  [ Evangelos Ribeiro Tzaras ]
+  * New upstream version 0.2.0
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Wed, 06 Jan 2021 18:47:28 +0100
+
 gnome-calls (0.1.9-1) unstable; urgency=medium
 
   * New upstream version 0.1.9

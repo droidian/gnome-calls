@@ -2,9 +2,18 @@ Subject: Fix missing main category from desktop file
 From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 
 * data/sm.puri.Calls.desktop: Added Network main category
---- a/data/sm.puri.Calls.desktop
-+++ b/data/sm.puri.Calls.desktop
-@@ -11,6 +11,6 @@ Exec=calls %u
+--- a/data/sm.puri.Calls-daemon.desktop.in
++++ b/data/sm.puri.Calls-daemon.desktop.in
+@@ -12,5 +12,5 @@
+ StartupNotify=true
+ NoDisplay=true
+ Terminal=false
+-Categories=GNOME;GTK;Telephony;
++Categories=Network;GNOME;GTK;Telephony;
+ X-GNOME-AutoRestart=true
+--- a/data/sm.puri.Calls.desktop.in
++++ b/data/sm.puri.Calls.desktop.in
+@@ -11,6 +11,6 @@
  Type=Application
  StartupNotify=true
  Terminal=false
@@ -12,12 +21,3 @@ From: Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>
 +Categories=Network;GNOME;GTK;Telephony;
  MimeType=x-scheme-handler/tel
  X-Purism-FormFactor=Workstation;Mobile;
---- a/data/sm.puri.Calls-daemon.desktop
-+++ b/data/sm.puri.Calls-daemon.desktop
-@@ -12,5 +12,5 @@ Type=Application
- StartupNotify=true
- NoDisplay=true
- Terminal=false
--Categories=GNOME;GTK;Telephony;
-+Categories=Network;GNOME;GTK;Telephony;
- X-GNOME-AutoRestart=true
