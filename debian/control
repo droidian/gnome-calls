@@ -51,6 +51,7 @@ Description: Make and receive PSTN phone calls
 Package: gnome-calls-doc
 Section: doc
 Architecture: all
+Multi-Arch: foreign
 Build-Profiles: <!nodoc>
 Depends:
  ${misc:Depends},
