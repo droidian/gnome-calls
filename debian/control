@@ -10,7 +10,7 @@ Build-Depends:
  desktop-file-utils,
  gtk-doc-tools <!nodoc>,
  help2man,
- libcallaudio-dev,
+ libcallaudio-dev (>= 0.0.5),
  libebook-contacts1.2-dev,
  libfeedback-dev,
  libfolks-dev,
