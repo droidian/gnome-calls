@@ -1,3 +1,11 @@
+gnome-calls (0.2.0-2) unstable; urgency=medium
+
+  [ Arnaud Ferraris ]
+  * d/patches: switch to the new callaudio API
+  * d/control: add a minimum version requirement on libcallaudio dependency
+
+ -- Henry-Nicolas Tourneur <debian@nilux.be>  Fri, 15 Jan 2021 17:16:51 +0000
+
 gnome-calls (0.2.0-1) unstable; urgency=medium
 
   [ Evangelos Ribeiro Tzaras ]
