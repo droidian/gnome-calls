@@ -25,8 +25,6 @@
 #ifndef CALLS_BEST_MATCH_H__
 #define CALLS_BEST_MATCH_H__
 
-#include "calls-vala.h"
-
 #include <gdk/gdk.h>
 
 G_BEGIN_DECLS
@@ -35,10 +33,13 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (CallsBestMatch, calls_best_match, CALLS, BEST_MATCH, GObject);
 
-CallsBestMatch  *calls_best_match_new            (CallsBestMatchView *view);
-const gchar *    calls_best_match_get_name       (CallsBestMatch     *self);
-GdkPixbuf *      calls_best_match_request_avatar (CallsBestMatch     *self,
-                                                  gint                size);
+CallsBestMatch  *calls_best_match_new                (const gchar        *phone_number);
+gboolean         calls_best_match_has_individual     (CallsBestMatch     *self);
+const gchar *    calls_best_match_get_phone_number   (CallsBestMatch     *self);
+void             calls_best_match_set_phone_number   (CallsBestMatch     *self,
+                                                      const gchar        *phone_number);
+const gchar *    calls_best_match_get_name           (CallsBestMatch     *self);
+GLoadableIcon   *calls_best_match_get_avatar         (CallsBestMatch     *self);
 
 G_END_DECLS
 

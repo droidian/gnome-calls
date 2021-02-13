@@ -36,7 +36,7 @@ calls_deps = [ dependency('gobject-2.0', version: '>= 2.58'),
                dependency('gom-1.0'),
                dependency('libebook-contacts-1.2'),
                dependency('folks'),
-               dependency('libcallaudio-0'),
+               dependency('libcallaudio-0.1'),
              ]
 
 if wl_scanner.found()
@@ -53,7 +53,6 @@ calls_vala_deps = [
 calls_vala_sources = files (
   [
     'calls-phone-number-query.vala',
-    'calls-best-match-view.vala',
   ]
 )
 
@@ -70,9 +69,6 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-ussd.c',
                        'calls-origin.c', 'calls-origin.h',
                        'calls-provider.c', 'calls-provider.h',
-                       'calls-party.c', 'calls-party.h',
-                       'calls-call-data.c', 'calls-call-data.h',
-                       'calls-call-holder.c', 'calls-call-holder.h',
                        'calls-call-display.c', 'calls-call-display.h',
                        'calls-call-selector-item.c', 'calls-call-selector-item.h',
                        'calls-call-window.c', 'calls-call-window.h',
@@ -86,11 +82,13 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-call-record.c', 'calls-call-record.h',
                        'calls-record-store.c', 'calls-record-store.h',
                        'calls-call-record-row.c', 'calls-call-record-row.h',
-                       'calls-contacts.c', 'calls-contacts.h',
+                       'calls-contacts-provider.c', 'calls-contacts-provider.h',
                        'calls-best-match.c', 'calls-best-match.h',
                        'calls-in-app-notification.c', 'calls-in-app-notification.h',
                        'calls-manager.c', 'calls-manager.h',
                        'calls-notifier.c', 'calls-notifier.h',
+                       'calls-contacts-box.c', 'calls-contacts-box.h',
+                       'calls-contacts-row.c', 'calls-contacts-row.h',
                       ])
 
 calls_config_data = config_data
@@ -120,7 +118,7 @@ calls_resources = gnome.compile_resources(
 )
 
 executable (
-  'calls',
+  'gnome-calls',
   calls_sources, calls_enum_sources, calls_resources,
   wl_proto_sources, wayland_sources, 'main.c',
   dependencies : calls_deps,
