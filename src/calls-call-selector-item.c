@@ -23,7 +23,7 @@
  */
 
 #include "calls-call-selector-item.h"
-#include "calls-call-holder.h"
+#include "calls-call-display.h"
 #include "util.h"
 
 #include <glib/gi18n.h>
@@ -36,6 +36,7 @@ struct _CallsCallSelectorItem
   GtkEventBox parent_instance;
 
   CallsCallDisplay *display;
+  CallsBestMatch *contact;
 
   GtkBox *main_box;
   GtkLabel *name;
@@ -46,7 +47,7 @@ G_DEFINE_TYPE (CallsCallSelectorItem, calls_call_selector_item, GTK_TYPE_EVENT_B
 
 enum {
   PROP_0,
-  PROP_HOLDER,
+  PROP_DISPLAY,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -64,12 +65,12 @@ call_state_changed_cb (CallsCallSelectorItem *self,
 
 
 CallsCallSelectorItem *
-calls_call_selector_item_new (CallsCallHolder *holder)
+calls_call_selector_item_new (CallsCallDisplay *display)
 {
-  g_return_val_if_fail (CALLS_IS_CALL_HOLDER (holder), NULL);
+  g_return_val_if_fail (CALLS_IS_CALL_DISPLAY (display), NULL);
 
   return g_object_new (CALLS_TYPE_CALL_SELECTOR_ITEM,
-                       "holder", holder,
+                       "display", display,
                        NULL);
 }
 
@@ -81,41 +82,41 @@ calls_call_selector_item_get_display (CallsCallSelectorItem *item)
   return item->display;
 }
 
+static void
+set_party (CallsCallSelectorItem *self)
+{
+  // FIXME: use HdyAvatar and the contact avatar
+  GtkWidget *image = gtk_image_new_from_icon_name ("avatar-default-symbolic", GTK_ICON_SIZE_DIALOG);
+
+  gtk_box_pack_start (self->main_box, image, TRUE, TRUE, 0);
+  gtk_widget_show (image);
+
+  self->contact = calls_call_get_contact (calls_call_display_get_call (self->display));
+
+  g_object_bind_property (self->contact, "name",
+                          self->name, "label",
+                          G_BINDING_SYNC_CREATE);
+}
+
 
 static void
-set_call (CallsCallSelectorItem *self, CallsCall *call)
+set_call_display (CallsCallSelectorItem *self, CallsCallDisplay *display)
 {
+  CallsCall *call = NULL;
+
+  g_return_if_fail (CALLS_IS_CALL_SELECTOR_ITEM (self));
+  g_return_if_fail (CALLS_IS_CALL_DISPLAY (display));
+
+  call = calls_call_display_get_call (display);
   g_signal_connect_object (call, "state-changed",
                            G_CALLBACK (call_state_changed_cb),
                            self,
                            G_CONNECT_SWAPPED);
-}
 
-
-static void
-set_party (CallsCallSelectorItem *self, CallsParty *party)
-{
-  GtkWidget *image;
-
-  image = calls_party_create_image (party);
-  gtk_box_pack_start (self->main_box, image, TRUE, TRUE, 0);
-  gtk_widget_show (image);
-
-  gtk_label_set_text (self->name, calls_party_get_label (party));
-}
-
-
-static void
-set_call_holder (CallsCallSelectorItem *self, CallsCallHolder *holder)
-{
-  CallsCallData *data = calls_call_holder_get_data (holder);
-  CallsCall *call = calls_call_data_get_call (data);
-
-  set_call (self, call);
-  set_party (self, calls_call_data_get_party (data));
   call_state_changed_cb (self, calls_call_get_state (call));
 
-  g_set_object (&self->display, calls_call_holder_get_display (holder));
+  g_set_object (&self->display, display);
+  set_party (self);
 }
 
 
@@ -128,9 +129,9 @@ set_property (GObject      *object,
   CallsCallSelectorItem *self = CALLS_CALL_SELECTOR_ITEM (object);
 
   switch (property_id) {
-  case PROP_HOLDER:
-    set_call_holder
-      (self, CALLS_CALL_HOLDER (g_value_get_object (value)));
+  case PROP_DISPLAY:
+    set_call_display
+      (self, CALLS_CALL_DISPLAY (g_value_get_object (value)));
     break;
 
   default:
@@ -153,6 +154,7 @@ dispose (GObject *object)
   CallsCallSelectorItem *self = CALLS_CALL_SELECTOR_ITEM (object);
 
   g_clear_object (&self->display);
+  g_clear_object (&self->contact);
 
   G_OBJECT_CLASS (calls_call_selector_item_parent_class)->dispose (object);
 }
@@ -167,11 +169,11 @@ calls_call_selector_item_class_init (CallsCallSelectorItemClass *klass)
   object_class->set_property = set_property;
   object_class->dispose = dispose;
 
-  props[PROP_HOLDER] =
-    g_param_spec_object ("holder",
-                         "Call holder",
-                         "The holder for this call",
-                         CALLS_TYPE_CALL_HOLDER,
+  props[PROP_DISPLAY] =
+    g_param_spec_object ("display",
+                         "Call display",
+                         "The display for this call",
+                         CALLS_TYPE_CALL_DISPLAY,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
    
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
