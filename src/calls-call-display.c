@@ -23,13 +23,14 @@
  */
 
 #include "config.h"
+#include "calls-manager.h"
 #include "calls-call-display.h"
-#include "calls-call-data.h"
 #include "util.h"
 
 #include <glib/gi18n.h>
 #include <glib-object.h>
 #include <glib.h>
+#include <handy.h>
 
 #include <libcallaudio.h>
 
@@ -37,12 +38,13 @@ struct _CallsCallDisplay
 {
   GtkOverlay parent_instance;
 
+  CallsBestMatch *contact;
   CallsCall *call;
   GTimer *timer;
   guint timeout;
 
   GtkLabel *incoming_phone_call;
-  GtkBox *party_box;
+  HdyAvatar *avatar;
   GtkLabel *primary_contact_info;
   GtkLabel *secondary_contact_info;
   GtkLabel *status;
@@ -62,7 +64,7 @@ G_DEFINE_TYPE (CallsCallDisplay, calls_call_display, GTK_TYPE_OVERLAY);
 
 enum {
   PROP_0,
-  PROP_CALL_DATA,
+  PROP_CALL,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -102,7 +104,7 @@ mute_toggled_cb (GtkToggleButton  *togglebutton,
                  CallsCallDisplay *self)
 {
   gboolean want_mute, ret;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   want_mute = gtk_toggle_button_get_active (togglebutton);
   ret = call_audio_mute_mic (want_mute, &error);
@@ -119,7 +121,7 @@ speaker_toggled_cb (GtkToggleButton  *togglebutton,
                     CallsCallDisplay *self)
 {
   gboolean want_speaker, ret;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   want_speaker = gtk_toggle_button_get_active (togglebutton);
   ret = call_audio_enable_speaker (want_speaker, &error);
@@ -211,7 +213,7 @@ stop_timeout (CallsCallDisplay *self)
 
 
 static void
-select_mode_complete (gboolean success, GError *error)
+select_mode_complete (gboolean success, GError *error, gpointer data)
 {
   if (error)
     {
@@ -226,6 +228,7 @@ call_state_changed_cb (CallsCallDisplay *self,
                        CallsCallState    state)
 {
   GtkStyleContext *hang_up_style;
+  g_autoptr (GList) calls_list = NULL;
 
   g_return_if_fail (CALLS_IS_CALL_DISPLAY (self));
 
@@ -261,11 +264,20 @@ call_state_changed_cb (CallsCallDisplay *self,
          state != CALLS_CALL_STATE_DIALING
          && state != CALLS_CALL_STATE_ALERTING);
 
-      call_audio_select_mode_async (CALL_AUDIO_MODE_CALL, select_mode_complete);
+      call_audio_select_mode_async (CALL_AUDIO_MODE_CALL,
+                                    select_mode_complete,
+                                    NULL);
       break;
 
     case CALLS_CALL_STATE_DISCONNECTED:
-      call_audio_select_mode_async (CALL_AUDIO_MODE_DEFAULT, select_mode_complete);
+      calls_list = calls_manager_get_calls (calls_manager_get_default ());
+      /* Switch to default mode only if there's no other ongoing call */
+      if (!calls_list || (calls_list->data == self->call && !calls_list->next))
+        {
+          call_audio_select_mode_async (CALL_AUDIO_MODE_DEFAULT,
+                                        select_mode_complete,
+                                        NULL);
+        }
       break;
     }
 
@@ -299,11 +311,38 @@ call_state_changed_cb (CallsCallDisplay *self,
 
 
 CallsCallDisplay *
-calls_call_display_new (CallsCallData *data)
+calls_call_display_new (CallsCall *call)
 {
   return g_object_new (CALLS_TYPE_CALL_DISPLAY,
-                       "call-data", data,
+                       "call", call,
                        NULL);
+}
+
+
+static void
+set_party (CallsCallDisplay *self)
+{
+  self->contact = calls_call_get_contact (self->call);
+
+  g_object_bind_property (self->contact, "name",
+                          self->primary_contact_info, "label",
+                          G_BINDING_SYNC_CREATE);
+
+  g_object_bind_property (self->contact, "phone-number",
+                          self->secondary_contact_info, "label",
+                          G_BINDING_SYNC_CREATE);
+
+  g_object_bind_property (self->contact, "has-individual",
+                          self->secondary_contact_info, "visible",
+                          G_BINDING_INVERT_BOOLEAN | G_BINDING_SYNC_CREATE);
+
+  g_object_bind_property (self->contact, "name",
+                          self->avatar, "text",
+                          G_BINDING_SYNC_CREATE);
+
+  g_object_bind_property (self->contact, "has-individual",
+                          self->avatar, "show-initials",
+                          G_BINDING_SYNC_CREATE);
 }
 
 
@@ -314,37 +353,30 @@ set_call (CallsCallDisplay *self, CallsCall *call)
                            G_CALLBACK (call_state_changed_cb),
                            self,
                            G_CONNECT_SWAPPED);
-  self->call = call;
-  g_object_ref (G_OBJECT (call));
+
+  g_set_object (&self->call, call);
+  set_party (self);
 }
 
 
 static void
-set_party (CallsCallDisplay *self, CallsParty *party)
+get_property (GObject    *object,
+              guint       property_id,
+              GValue     *value,
+              GParamSpec *pspec)
 {
-  GtkWidget *image;
-  const gchar *name, *number;
+  CallsCallDisplay *self = CALLS_CALL_DISPLAY (object);
 
-  image = calls_party_create_image (party);
-  gtk_box_pack_end (self->party_box, image, TRUE, TRUE, 0);
-  gtk_image_set_pixel_size (GTK_IMAGE (image), 100);
-  gtk_widget_show (image);
+  switch (property_id) {
+  case PROP_CALL:
+    g_value_set_object (value, calls_call_display_get_call (self));
+    break;
 
-  name = calls_party_get_name (party);
-  number = calls_party_get_number (party);
-
-  gtk_label_set_text (self->primary_contact_info, name != NULL ? name : number);
-  gtk_label_set_text (self->secondary_contact_info, name != NULL ? number : NULL);
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
 }
-
-
-static void
-set_call_data (CallsCallDisplay *self, CallsCallData *data)
-{
-  set_call (self, calls_call_data_get_call (data));
-  set_party (self, calls_call_data_get_party (data));
-}
-
 
 static void
 set_property (GObject      *object,
@@ -355,8 +387,8 @@ set_property (GObject      *object,
   CallsCallDisplay *self = CALLS_CALL_DISPLAY (object);
 
   switch (property_id) {
-  case PROP_CALL_DATA:
-    set_call_data (self, CALLS_CALL_DATA (g_value_get_object (value)));
+  case PROP_CALL:
+    set_call (self, CALLS_CALL (g_value_get_object (value)));
     break;
 
   default:
@@ -412,13 +444,11 @@ insert_text_cb (GtkEditable      *editable,
 static void
 calls_call_display_init (CallsCallDisplay *self)
 {
-  g_autoptr(GError) err = NULL;
-
   gtk_widget_init_template (GTK_WIDGET (self));
 
   if (!call_audio_is_inited ())
     {
-      g_critical ("libcallaudio not initialized: %s", err->message);
+      g_critical ("libcallaudio not initialized");
       gtk_widget_set_sensitive (GTK_WIDGET (self->speaker), FALSE);
       gtk_widget_set_sensitive (GTK_WIDGET (self->mute), FALSE);
     }
@@ -431,6 +461,7 @@ dispose (GObject *object)
 
   stop_timeout (self);
   g_clear_object (&self->call);
+  g_clear_object (&self->contact);
 
   G_OBJECT_CLASS (calls_call_display_parent_class)->dispose (object);
 }
@@ -452,25 +483,26 @@ calls_call_display_class_init (CallsCallDisplayClass *klass)
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
   object_class->constructed = constructed;
+  object_class->get_property = get_property;
   object_class->set_property = set_property;
   object_class->dispose = dispose;
   object_class->finalize = finalize;
 
-  props[PROP_CALL_DATA] =
-    g_param_spec_object ("call-data",
-                         "Call data",
-                         "Data for the call this display will be associated with",
-                         CALLS_TYPE_CALL_DATA,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+  props[PROP_CALL] =
+    g_param_spec_object ("call",
+                         "Call",
+                         "The CallsCall which this display rapresents",
+                         CALLS_TYPE_CALL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
 
   gtk_widget_class_set_template_from_resource (widget_class, "/sm/puri/calls/ui/call-display.ui");
   gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, incoming_phone_call);
-  gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, party_box);
   gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, primary_contact_info);
   gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, secondary_contact_info);
+  gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, avatar);
   gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, status);
   gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, controls);
   gtk_widget_class_bind_template_child (widget_class, CallsCallDisplay, gsm_controls);
@@ -489,4 +521,12 @@ calls_call_display_class_init (CallsCallDisplayClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, hide_dial_pad_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, block_delete_cb);
   gtk_widget_class_bind_template_callback (widget_class, insert_text_cb);
+}
+
+CallsCall *
+calls_call_display_get_call (CallsCallDisplay *self)
+{
+  g_return_val_if_fail (CALLS_IS_CALL_DISPLAY (self), NULL);
+
+  return self->call;
 }

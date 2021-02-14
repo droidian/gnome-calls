@@ -1,3 +1,11 @@
+gnome-calls (0.3.0-1) experimental; urgency=medium
+
+  * d/gbp.conf: Use default upstream tag format
+  * d/patches: Remove upstreamed patches
+  * d: Adjust doc installation directory
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 13 Feb 2021 10:54:04 +0100
+
 gnome-calls (0.2.0-2) unstable; urgency=medium
 
   [ Arnaud Ferraris ]

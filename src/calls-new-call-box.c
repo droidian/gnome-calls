@@ -40,6 +40,7 @@ struct _CallsNewCallBox
   GtkButton *backspace;
   HdyKeypad *keypad;
   GtkButton *dial;
+  GtkGestureLongPress *long_press_back_gesture;
 
   GList *dial_queue;
 };
@@ -77,6 +78,13 @@ get_origin (CallsNewCallBox *self)
 
 
 static void
+long_press_back_cb (CallsNewCallBox *self)
+{
+  GtkEntry *entry = hdy_keypad_get_entry (self->keypad);
+  gtk_editable_delete_text (GTK_EDITABLE (entry), 0, -1);
+}
+
+static void
 backspace_clicked_cb (CallsNewCallBox *self)
 {
   GtkEntry *entry = hdy_keypad_get_entry (self->keypad);
@@ -90,7 +98,7 @@ ussd_send_cb (GObject      *object,
 {
   CallsNewCallBox *self;
   CallsUssd *ussd = (CallsUssd *)object;
-  g_autoptr(GTask) task = user_data;
+  g_autoptr (GTask) task = user_data;
   GError *error = NULL;
   char *response;
 
@@ -291,6 +299,9 @@ dispose (GObject *object)
       remove_origins (self);
     }
 
+  if (self->long_press_back_gesture != NULL)
+    g_object_unref (self->long_press_back_gesture);
+
   G_OBJECT_CLASS (calls_new_call_box_parent_class)->dispose (object);
 }
 
@@ -307,10 +318,12 @@ calls_new_call_box_class_init (CallsNewCallBoxClass *klass)
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_store);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_box);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, backspace);
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, long_press_back_gesture);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, keypad);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, dial);
   gtk_widget_class_bind_template_callback (widget_class, dial_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, backspace_clicked_cb);
+  gtk_widget_class_bind_template_callback (widget_class, long_press_back_cb);
 }
 
 
@@ -351,8 +364,8 @@ calls_new_call_box_send_ussd_async (CallsNewCallBox     *self,
                                     GAsyncReadyCallback  callback,
                                     gpointer             user_data)
 {
-  g_autoptr(CallsOrigin) origin = NULL;
-  g_autoptr(GTask) task = NULL;
+  g_autoptr (CallsOrigin) origin = NULL;
+  g_autoptr (GTask) task = NULL;
   GtkEntry *entry;
 
   g_return_if_fail (CALLS_IS_NEW_CALL_BOX (self));
