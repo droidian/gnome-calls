@@ -1,0 +1,27 @@
+From d75a08b9b7e45d22b75772848d83a9ef8ee9e5fe Mon Sep 17 00:00:00 2001
+From: Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>
+Date: Tue, 16 Feb 2021 02:59:24 +0100
+Subject: [PATCH] application: Fix double free
+
+The double free was introduced in 46e4422.
+This fixes #225
+---
+ src/calls-application.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/src/calls-application.c b/src/calls-application.c
+index 05eaef5..f8cfdf7 100644
+--- a/src/calls-application.c
++++ b/src/calls-application.c
+@@ -188,8 +188,6 @@ check_dial_number (const gchar *number)
+ 
+   matches = g_regex_match (reject, number, 0, NULL);
+ 
+-  g_regex_unref (reject);
+-
+   return !matches;
+ }
+ 
+-- 
+2.30.0
+
