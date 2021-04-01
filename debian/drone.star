@@ -15,9 +15,10 @@ BUILD_ON = [
 # Extra Debian repositories to add. These can be used to pull packages
 # from other feature branches.
 # Note that builds with EXTRA_REPOS won't start on production or staging.
-EXTRA_REPOS = [
-       "deb http://droidian-callaudiod.repo.droidian.org/bullseye-droid/ bullseye main",
-]
+#EXTRA_REPOS = [
+#       "deb http://droidian-callaudiod.repo.droidian.org/bullseye-droid/ bullseye main",
+#]
+EXTRA_REPOS = []
 
 # Host architecture. This can be used to instruct the buildd to
 # assume the packages are built (host -> should be executed on) for the
@@ -150,6 +151,7 @@ def debian_package_build(suite, architecture, full_build=True, extra_repos=[], h
 					},
 				],
 				"commands" : [
+					"rm /etc/apt/sources.list.d/phone.list",
 					"releng-build-package",
 					"find /drone -type f -maxdepth 1 -exec mv {} /buildd \\\;",
 				],

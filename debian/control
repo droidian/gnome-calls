@@ -22,6 +22,7 @@ Build-Depends:
  libfolks-dev,
  meson,
  pkg-config,
+ help2man,
 # to run the tests
  xvfb,
  xauth,
