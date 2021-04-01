@@ -1,39 +1,520 @@
-gnome-calls (0.2.0-1) unstable; urgency=medium
+gnome-calls (0.3.1) byzantium; urgency=medium
+
+  * application: Fix double free
+
+ -- Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>  Tue, 16 Feb 2021 11:48:14 +0100
+
+gnome-calls (0.3.0) byzantium; urgency=medium
+
+  [ Timo Jyrinki ]
+  * po: Add Finnish translation from JRfi, refined by me.
 
   [ Evangelos Ribeiro Tzaras ]
-  * New upstream version 0.2.0
+  * desktop: Add Network main category
+  * manager: remove trailing whitespace
+  * manager: add has_active_call() and hang_up_all_calls()
+  * application: Hang up calls when closing the UI
+  * application: add copy-number action
+  * record-row: Allow copying number from context menu
+  * record-row: hide copy number menu item
+  * new-call-box: clear entry on longpress
+  * application: chain up to parents finalize
+  * application: Use g_autoptr and g_autofree
+  * application: Notify when opening URI/files fails
+  * ci: Build flatpak in packaging stage
+  * call-display: fix whitespace
+  * project: rename to gnome-calls
+  * record-store: Handle old and new database locations gracefully
+  * display: fix null pointer dereference
+  * code style: consistent whitespaces for g_autoptr
+  * application: use g_autoptr
+  * project: rename back to calls
+  * d/control: Add myself as maintainer
+  * Document changes and release 0.3.0
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Wed, 06 Jan 2021 18:47:28 +0100
+  [ Eugenio Paolantonio (g7) ]
+  * ofono: call: ensure signals get disconnected on voice_call object destruction
 
-gnome-calls (0.1.9-1) unstable; urgency=medium
+  [ Sebastian Krzyszkowiak ]
+  * gitlab-ci: Don't use global before_script for package jobs
 
-  * New upstream version 0.1.9
-  * d/gbp.conf: default enable pristine-tar
-  * d/copyright: remove unused file paragraph
-  * d/control: add callaudio dependency
-  * d/control: updated libhandy build dep
-  * d/patches: updates for new upstream release
+  [ Guido Günther ]
+  * gitlab-ci: Use byzantium instead of Debian bullseye
 
- -- Henry-Nicolas Tourneur <debian@nilux.be>  Sat, 07 Nov 2020 22:18:01 +0000
+  [ Mohammed Sadiq ]
+  * application: Simplify loading css
+  * application: Remove unused code
+  * resources: Use standard icon path
+  * Let calls-provider be an abstract class
 
-gnome-calls (0.1.8-1) unstable; urgency=medium
+  [ Yuri Chornoivan ]
+  * po: Update Ukrainian translation
+  * po: Update Ukrainian translation
+
+  [ Julian Sparber ]
+  * application: disable dial action when making calls isn't possible
+  * ci: build packages only for byzantium
+  * ci: don't use global variables and definitions
+  * ci: drop bullseyeci packages
+  * flatpak: use master runtime
+  * flatpak: add libcanberra
+  * ci: build flatpak
+  * ci: write STDOUT for flatpak build to file
+  * Revert "ci: write STDOUT for flatpak build to file"
+  * remove CallsCallHolder and CallsCallData
+  * ContactsProvider: Add contacts provider
+  * Contacts: replace CallsContacts with CallsContactsProvider
+  * Revert "ui/main-window: Hide contacts pane"
+  * Contacts: Add contacts list
+  * BestMatch: Turn avatar into a property
+  * BestMatch: Move SearchView creation inside the class
+  * BestMatch: Allways return a name
+  * BestMatch: Simplify code for updating new best matching individual
+  * BestMatch: remove BestMatchView to reduce vala code
+  * BestMatch: add has-individual property
+  * CallsCall: Add method to optain matching contact
+  * CallsCallDisplay: Make sure that the contact infomation is updated
+  * CallsCallSelectorItem: Make sure that the contact infomation is updated
+  * CallManager: drop calls_manager_get_contact_name ()
+  * Remove unused CallsParty
+  * CallsCallRecordRow: Cleanup contact setup
+  * CallsCallDisplay: use HdyAvatar
+
+  [ Arnaud Ferraris ]
+  * call-display: update libcallaudio API calls
+  * src: meson.build: update libcallaudio dependency
+  * d/control: add version requirement on libcallaudio build dependency
+  * flatpak: update callaudiod version
+  * call-display: switch to default audio profile only if no other call
+
+  [ Sebastian Rasmussen ]
+  * po: Update Swedish translation
+
+ -- Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>  Fri, 12 Feb 2021 10:24:38 +0100
+
+gnome-calls (0.3.0~rc1) byzantium; urgency=medium
+  * UNRELEASED
+
+  [ Evangelos Ribeiro Tzaras]
+  * rename project files to gnome-calls to be in sync
+    with Debian packaging
+
+ -- Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>  Thu, 28 Jan 2021 13:59:33 +0100
+
+calls (0.2.0) amber-phone; urgency=medium
+
+  [ Adrien Plazas ]
+  * style: Fix the CSS path to the HdyKeypad buttons
+
+  [ Yuri Chornoivan ]
+  * po: Update Ukrainian translation
 
   [ Evangelos Ribeiro Tzaras ]
-  * Updated to latest 0.1.8 release
-  * d/control: Add Henry as co-maintainer
-  * remove unnecessary d/calls.docs
-  * d/gbp.conf: Remove standard debian-tag field
+  * meson: bump calls to 0.1.9
+  * meson: allow internationalization of desktop files
+  * doc: meson: fix ofono path
+  * doc: meson: Use shared library for gtk-doc
+  * debian: Add dependencies and rules for building docs
+  * CI: build documentation
+  * debian: Move documentation to own package calls-doc
+  * data: Fix typo in desktop files
+  * call-window: inhibit idle during active call
 
-  [ Henry-Nicolas Tourneur ]
-  * Removed unused cmake build dependency.
+  [ Guido Günther ]
+  * po: Add calls-notifier.c
+  * gitlab-ci: Fail when C files are missing from POTFILES.in
+  * debian: Add desktop-file-utils
+  * data: Check desktop file in build dir
+  * d/control: Update description
+  * gitlab-template: Add Librem 5
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 10 Oct 2020 19:34:32 +0200
+  [ Matthias Klumpp ]
+  * trivial: metainfo: style
+  * metainfo: Mark app as touch-input compatible
 
-gnome-calls (0.1.7-1) unstable; urgency=medium
+  [ James Westman ]
+  * flatpak: Add callaudiod to flatpak
 
-  [ Henry-Nicolas Tourneur ]
-  * Team upload.
+  [ Daniel Abrecht ]
+  * Replace CallsOrigin getters with properties and add calls_origin_foreach_call method
+  * Don't localise property descriptions in calls-call and calls-origin properties
+
+  [ Andika Triwidada ]
+  * Added Indonesian translation
+
+  [ Sebastian Krzyszkowiak ]
+  * debian: Add maintscript to rename xdg autostart file
+
+ -- Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>  Wed, 06 Jan 2021 01:33:54 +0100
+
+calls (0.1.9) amber-phone; urgency=medium
+
+  [ Juliano de Souza Camargo ]
+  * po: Add Portuguese translation
+
+  [ Fabio Tomat ]
+  * po: Just fur for friulian locale
+
+  [ Adrien Plazas ]
+  * Port to libhandy 1
+  * main-window: Use HdyViewSwitcherTitle
+  * data: List compatible form-factors
+
   [ Evangelos Ribeiro Tzaras ]
-  * Initial Debian release (Closes: #960228)
+  * docs: update URLs to source.puri.sm
+  * po: fix duplicate language teams
 
- -- Henry-Nicolas Tourneur <debian@nilux.be>  Sat, 22 Aug 2020 10:33:08 +0000
+  [ Sebastian Krzyszkowiak ]
+  * gitlab-ci: Use bullseye CI repo
+
+  [ Anders Jonsson ]
+  * po: Update Swedish translation
+
+  [ Arnaud Ferraris ]
+  * call-display: replace ugly hacks with libcallaudio calls
+  * application: initialize libcallaudio on startup
+  * ui: call-display: set speaker and mute buttons sensitive by default
+  * src: meson.build: remove librem5-hack option and depend on libcallaudio
+  * d/control: depend on callaudiod
+
+  [ Mohammed Sadiq ]
+  * Add calls-ussd interface
+  * mm-origin: Implement CallsUssd interface
+  * util: Add API to test for USSD command
+  * manager: Hook to ussd signals from provider
+  * main-window: Add dialog to handle USSD
+  * new-call-box: Handle USSD commands
+
+  [ Evangelos Ribeiro Tzaras ]
+  * Bump max allowed glib version to 2.64
+
+ -- Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>  Wed, 04 Nov 2020 18:07:48 +0100
+
+calls (0.1.8) amber-phone; urgency=medium
+
+  [ Arnaud Ferraris ]
+  * ui: call-display: wrap toggle buttons' labels.
+    For some locales, the buttons' labels can be quite long, making the
+    window wider than the display.
+
+  [ Evangelos Ribeiro Tzaras ]
+  * src/calls-notifier.c: Add call-back button
+  * src/calls-call-window.c: Inhibit suspend during active call
+
+  [ Guido Günther ]
+  * po: Add Hungarian to LINGUAS
+  * call-record-row: Use g_autoptr for the GError
+  * calls-call-record-row: Ignore anonymous callsers.
+    These have an empty string which leads to
+        Error parsing phone number `': Keine Telefonnumme
+  * po: Add Spanish to LINGUAS
+  * gitlab-ci: Allow to only build a package
+  * main-window: Allow the in app notification to wrap.
+    Othewise we overflow the window. Center it too.
+  * calls-main-window: Bring back old error string when no modem is present.
+    Calls can't tell the difference between no SIM and no modem
+    atm. (Closes: #159, #152)
+  * doap: Add devrtz to list of maintainers.
+    He's been the most active contributor recently.
+  * doap: Fix sytnax.
+    Wrap each person within <maintainer/>
+
+  [ James Westman ]
+  * flatpak: Add feedbackd, dependencies to flatpak.
+    Added feedbackd to the Flatpak manifest, so that Calls builds again.
+    Fixes #164.
+
+  [ Daniel Șerbănescu ]
+  * po: Update Romanian translation
+
+  [ Tim Sabsch ]
+  * po: Add German translation
+
+  [ Marc Riera Irigoyen ]
+  * po: Add Catalan translation
+
+  [ scootergrisen ]
+  * po: Add Danish translation
+
+  [ Balázs Meskó ]
+  * po: Add Hungarian translation
+
+  [ Emin Tufan Çetin ]
+  * po: Update Turkish translation
+
+  [ Valéry Febvre ]
+  * po: Update French translation
+
+  [ Daniel Mustieles ]
+  * po: Add Spanish translation
+
+  [ Efstathios Iosifidis ]
+  * po: Add Greek translation
+
+  [ Thibault Martin ]
+  * po: Update French translation
+
+  [ Fabio Tomat ]
+  * po: Add friulian translations
+
+  [ Марко М. Костић (Marko M. Kostić) ]
+  * po: Add Serbian translation
+
+  [ Yuri Chornoivan ]
+  * po: Update Ukrainian translation
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 18 Sep 2020 12:52:43 +0200
+
+calls (0.1.7) amber-phone; urgency=medium
+
+  [ Yuri Chornoivan ]
+  * po: Update Ukrainian translation
+
+  [ Evangelos Ribeiro Tzaras ]
+  * Make CallsContacts a singleton.
+  * Implement contact name lookup for call display
+
+  [ Emin Tufan Çetin ]
+  * po: Add Turkish translation
+
+  [ Guido Günther ]
+  * calls-call-record-row: Print 'Anonymous caller' on empty numbers.
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 02 Jul 2020 12:25:23 +0200
+
+calls (0.1.6) amber-phone; urgency=medium
+
+  [ Guido Günther ]
+  * debian: Add gbp.conf.
+    This makes correct taging so much simpler
+  * po: Add plugins to POTFILES.skip.  They're not meant to be translated
+  * Drop translations from property names and descriptions.
+    They're never used anywhere. (Closes: #155, #121)
+  * po: Update pot file.
+  * calls-contacts: Document lookup_phone_number.
+    This makes sure we have clear ownership rules
+  * calls-call-record-row: Ref the returned contact
+    calls_contacts_lookup_phone_number is transfer-none
+  * build: Specifify glib versions.
+    This avoids deprecation warnings due to GTimeVal used in
+    libebook-contacts.h
+  * ringer: Make more functions static
+  * ringer: Use libfeedback.
+    This triggers e.g. haptic feeback as well and can later on be used
+    for LED feedback.
+    We can drop the audio theme setting completely since feedbackd picks up
+    the global GNOME setting.
+  * tests: Disable atk bridge.
+    Otherwise this can trigger test failures. Similar to what we
+    did in libhandy.
+  * Show notification on missed calls (Closes: #153)
+
+  [ Zander Brown ]
+  * po: Add British English translation
+
+  [ Antonio Pandolfo ]
+  * po: Add Italian translation
+
+  [ Daniel Șerbănescu ]
+  * po: Add Romanian translation
+
+  [ Valéry Febvre ]
+  * po: Add French translation
+
+  [ Mohammed Sadiq ]
+  * main-window: Don’t set program-name in about dialog
+    program-name will be retrieved with g_get_application_name().
+    Let’s not do it explicitly so that there is one less string
+    to translate
+  * call-display: Use real ellipsis.
+    See https://wiki.gnome.org/Design/OS/Typography
+
+  [ Rafael Fontenelle ]
+  * Add Brazilian Portuguese translation
+
+  [ Scott Anecito ]
+  * po: Add Japanese translation
+  * po: Add ja.po to LINGUAS
+
+  [ Yuri Chornoivan ]
+  * Use an ellipsis in translation for Ukrainian
+
+  [ Evangelos Ribeiro Tzaras ]
+  * record-store: Use g_autoptr(GError) to avoid having to g_error_free
+  * Implement delete call with context menu on longpress
+    (Closes: #154)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 11 Jun 2020 09:06:40 +0200
+
+calls (0.1.5) amber-phone; urgency=medium
+
+  [ Guido Günther ]
+  * Update POTFILES.in.  See: #146
+  * Build against Debian bullseye
+
+  [ Danial Behzadi ]
+  * Add Persian
+  * po: fa: Update some strings
+
+  [ David Heidelberg ]
+  * data: rename appdata to metainfo.  Appstream nowadays prefers
+    `.metainfo.xml`
+
+  [ Evangelos Ribeiro Tzaras ]
+  * data: Clarify metainfo copyright to be CC0-1.0.
+    Adust debian/copyright accordingly.
+  * Build L5 specific code in calls-call-display conditionally
+
+  [ Sebastian Rasmussen ]
+  * po: Add Swedish translation
+
+  [ Yuri Chornoivan ]
+  * po: Add Ukrainian translation
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 18 May 2020 11:00:52 +0200
+
+calls (0.1.4) amber-phone; urgency=medium
+
+  [ Julian Sparber ]
+  * DummyPlugin: fix events emits for call-removed, origin-*
+  * MMPlugin: emit *-removed after removing object
+  * Add a CallsManager and move Provider handling to it
+  * Manager: add test
+  * Use CallsManager in MainWindow and NewCallBox
+  * CallWindow: use Manager
+  * Ringer: fix parent instance
+  * Ringer: Use Manager
+  * RecordStore: Use Manager
+  * Remove Enumerate and EnumerateParams class
+  * HistoryBox: remove new-call property
+  * MainWindow: show error message when making calls isn't possible
+  * Add HdyAvatar
+  * History: use HdyAvatar
+  * History: Make avatars 48px big
+
+ -- Julian Sparber <julian.sparber@puri.sm>  Tue, 31 Mar 2020 17:36:42 +0200
+
+calls (0.1.3) amber-phone; urgency=medium
+
+  [ Julian Sparber ]
+  * NewCallBox+CallDisplay: UI facelift
+  * Use correct parent class when chaining up overridden functions
+  * Flatpak: use always a space before :
+  * Flatpak: Fix flatpak manifest, remove java dep and update deps
+  * Add class for in-app notification
+  * MainWindow: use in-app notification for messages
+  * CallWindow: use in-app notification
+  * CallHistory: Use dial action for recall button
+  * CallHistory: Don't pass the CallsNewCallBox to the CallsHistory
+  * CallHistory: Add a frame to the call history
+  * CallHistory: Disable selecting/activating rows and ellipzise
+  * Add .gitignore
+  * Set Julian Sparber as maintainer
+
+  [ Bob Ham ]
+  * application: Add "--dial" command-line option
+
+  [ Daniel Abrecht ]
+  * Fix some lintian warnings regarding the debian/copyright file.
+  * Convert calls call getters to readonly properties
+  * Notify if number changes in mm plugin
+  * Reintroduce GParamSpec props arrays & replace g_object_notify with g_object_notify_by_pspec
+
+  [ tor sorensen ]
+  * Add license COPYING file for appropriate packaging.
+
+ -- Julian Sparber <julian.sparber@puri.sm>  Thu, 26 Mar 2020 10:25:00 +0100
+
+calls (0.1.2) amber-phone; urgency=medium
+
+  [ Guido Günther ]
+  * debian: Add superficial autopkgtest
+  * gitlab-ci: Specify stages
+  * gitlab-ci: Build package and run autopkgtest / lintian
+  * po: Update pofiles.in (Closes: #76)
+  * Add potfile
+
+  [ Mohammed Sadiq ]
+  * mm-provider: Fix a check to remove device
+
+  [ Bob Ham ]
+  * call-display: Only mute the microphone with the Mute button
+  * mm-call: Sanitise disconnect messages
+
+  [ Julian Sparber ]
+  * Replace HdyDialer with HdyKeypad and bump libhandy to 0.0.12
+
+ -- Bob Ham <bob.ham@puri.sm>  Mon, 27 Jan 2020 14:55:08 +0000
+
+calls (0.1.1) amber-phone; urgency=medium
+
+  [ Bob Ham ]
+  * ringer: Use the GTK sound theme
+  * Add phone number lookup using libfolks
+  * Use libfolks phone number lookup in call record display
+  * Add -Wno-error=deprecated-declarations to build arguments
+  * call-display: Add ugly, ugly hacks to enable speakerphone/mute buttons
+  * Add initial avatar support
+
+  [ Lubomir Rintel ]
+  * appdata.xml: fix a validation error
+
+ -- Bob Ham <bob.ham@puri.sm>  Tue, 10 Dec 2019 14:51:21 +0000
+
+calls (0.1.0) purple; urgency=medium
+
+  [ David Cordero ]
+  * sm.puri.Calls.json: Fix libhandy config option type
+
+  [ Mohammed Sadiq ]
+  * window: hide windows on delete
+  * new-call-box: Use null-terminated string to set as buffer text
+
+  [ Christopher Davis ]
+  * history-header-bar: Change "About" to "About Calls"
+
+  [ Tobias Bernard ]
+  * Minor: Change recent calls empty state label
+  * Switcher: symbolic icons, label capitalization
+
+  [ Bob Ham ]
+  * calls-call: Add inbound property
+  * plugins/mm: Implement inbound property
+  * plugins/dummy: Implement inbound property
+  * calls-dummy-provider: Create an inbound call on SIGUSR1
+  * Update UI to better reflect the design
+  * calls-call: Fix crash with null call state
+  * calls-main-window: Use HdyViewSwitcher and friends
+  * src: Remove extraneous classes, Calls{History,NewCall}HeaderBar
+  * Specify minimum libhandy version in meson and Debian packaging
+  * calls-call-display: Add a display of dial pad digits
+  * util: Fix off-by-one in calls_entry_append
+  * calls-mm-call: Map MM_CALL_STATE_UNKNOWN to CALLS_CALL_STATE_DIALING instead of 0
+  * calls-call: Add calls_call_get_inbound function
+  * calls-dummy-origin: Fix ordering of state change and call removal callbacks
+  * Record calls to an SQLite database via libgom
+  * Hook up Recent Calls list to database
+  * appdata: Fix application ID
+  * Support opening of tel: URIs
+  * calls-application: Add --daemon option to not display main window
+  * Start up in daemon mode when GNOME starts
+  * calls-new-call-box: Allow entering of "+" symbol
+  * Use GtkApplication::register-session property to register
+  * Display call window over the phosh lockscreen
+  * ui/main-window: Hide contacts pane
+  * Release calls 0.1.0
+
+  [ Julian Sparber ]
+  * flatpak: fix ModemManager
+  * docs: update depedencies instructions
+
+  [ David Boddie ]
+  * Override the input method for entry widgets
+
+ -- Bob Ham <bob.ham@puri.sm>  Wed, 18 Sep 2019 15:13:00 +0100
+
+calls (0.0.1) purple; urgency=low
+
+  * Initial release.
+
+ -- Bob Ham <rah@settrans.net>  Tue, 04 Dec 2018 11:42:21 +0100

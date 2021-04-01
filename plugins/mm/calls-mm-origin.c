@@ -303,7 +303,7 @@ dial_cb (MMModemVoice  *voice,
          CallsMMOrigin *self)
 {
   MMCall *call;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   call = mm_modem_voice_create_call_finish (voice, res, &error);
   if (!call)
@@ -370,7 +370,7 @@ delete_call_cb (MMModemVoice                       *voice,
                 struct CallsMMOriginDeleteCallData *data)
 {
   gboolean ok;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   ok = mm_modem_voice_delete_call_finish (voice, res, &error);
   if (!ok)
@@ -463,7 +463,7 @@ call_added_list_calls_cb (MMModemVoice                      *voice,
                           struct CallsMMOriginCallAddedData *data)
 {
   GList *calls;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   calls = mm_modem_voice_list_calls_finish (voice, res, &error);
   if (!calls)
@@ -585,7 +585,7 @@ list_calls_cb (MMModemVoice  *voice,
                CallsMMOrigin *self)
 {
   GList *calls, *node;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   calls = mm_modem_voice_list_calls_finish (voice, res, &error);
   if (!calls)
@@ -869,3 +869,18 @@ calls_mm_origin_new (MMObject *mm_obj)
                        "mm-object", mm_obj,
                        NULL);
 }
+
+gboolean
+calls_mm_origin_matches (CallsMMOrigin *self,
+                         MMObject      *mm_obj)
+{
+  g_return_val_if_fail (CALLS_IS_MM_ORIGIN (self), FALSE);
+  g_return_val_if_fail (MM_IS_OBJECT (mm_obj), FALSE);
+
+  if (self->mm_obj)
+    return g_strcmp0 (mm_object_get_path (mm_obj),
+                      mm_object_get_path (self->mm_obj)) == 0;
+
+  return FALSE;
+}
+

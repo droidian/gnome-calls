@@ -33,71 +33,67 @@
 
 struct _CallsDummyProvider
 {
-  GObject parent_instance;
+  CallsProvider parent_instance;
 
-  GList *origins;
+  GListStore *origins;
 };
 
-static void calls_dummy_provider_message_source_interface_init (CallsProviderInterface *iface);
-static void calls_dummy_provider_provider_interface_init (CallsProviderInterface *iface);
+static void calls_dummy_provider_message_source_interface_init (CallsMessageSourceInterface *iface);
 
 
 #ifdef FOR_TESTING
 
 G_DEFINE_TYPE_WITH_CODE
-(CallsDummyProvider, calls_dummy_provider, G_TYPE_OBJECT,
+(CallsDummyProvider, calls_dummy_provider, CALLS_TYPE_PROVIDER,
  G_IMPLEMENT_INTERFACE (CALLS_TYPE_MESSAGE_SOURCE,
-                        calls_dummy_provider_message_source_interface_init)
- G_IMPLEMENT_INTERFACE (CALLS_TYPE_PROVIDER,
-                        calls_dummy_provider_provider_interface_init))
+                        calls_dummy_provider_message_source_interface_init))
 
 #else
 
 G_DEFINE_DYNAMIC_TYPE_EXTENDED
-(CallsDummyProvider, calls_dummy_provider, G_TYPE_OBJECT, 0,
+(CallsDummyProvider, calls_dummy_provider, CALLS_TYPE_PROVIDER, 0,
  G_IMPLEMENT_INTERFACE_DYNAMIC (CALLS_TYPE_MESSAGE_SOURCE,
-                                calls_dummy_provider_message_source_interface_init)
- G_IMPLEMENT_INTERFACE_DYNAMIC (CALLS_TYPE_PROVIDER,
-                                calls_dummy_provider_provider_interface_init))
+                                calls_dummy_provider_message_source_interface_init))
 
 #endif /* FOR_TESTING */
-
-enum {
-  PROP_0,
-  PROP_STATUS,
-  PROP_LAST_PROP,
-};
-
-static const gchar *
-get_name (CallsProvider *iface)
-{
-  return "Dummy provider";
-}
-
-
-static GList *
-get_origins (CallsProvider *iface)
-{
-  CallsDummyProvider *self = CALLS_DUMMY_PROVIDER (iface);
-  return g_list_copy (self->origins);
-}
 
 
 static gboolean
 usr1_handler (CallsDummyProvider *self)
 {
-  CallsDummyOrigin *origin;
+  GListModel *model;
+  g_autoptr(CallsDummyOrigin) origin = NULL;
 
-  g_return_val_if_fail (self->origins != NULL, FALSE);
+  model = G_LIST_MODEL (self->origins);
+  g_return_val_if_fail (g_list_model_get_n_items (model) > 0, FALSE);
 
   g_debug ("Received SIGUSR1, adding new incoming call");
 
-  origin = CALLS_DUMMY_ORIGIN (self->origins->data);
+  origin = g_list_model_get_item (model, 0);
   calls_dummy_origin_create_inbound (origin, "0987654321");
 
   return TRUE;
 }
 
+static const char *
+calls_dummy_provider_get_name (CallsProvider *provider)
+{
+  return "Dummy provider";
+}
+
+static const char *
+calls_dummy_provider_get_status (CallsProvider *provider)
+{
+  return "Normal";
+}
+
+static GListModel *
+calls_dummy_provider_get_origins (CallsProvider *provider)
+{
+  CallsDummyProvider *self = CALLS_DUMMY_PROVIDER (provider);
+
+  return G_LIST_MODEL (self->origins);
+}
 
 static void
 constructed (GObject *object)
@@ -115,39 +111,12 @@ constructed (GObject *object)
 
 
 static void
-get_property (GObject      *object,
-              guint         property_id,
-              GValue       *value,
-              GParamSpec   *pspec)
-{
-  switch (property_id) {
-  case PROP_STATUS:
-    g_value_set_string (value, "Normal");
-    break;
-
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-    break;
-  }
-}
-
-
-static void
 dispose (GObject *object)
 {
-  gpointer origin;
-  GList *next;
   CallsDummyProvider *self = CALLS_DUMMY_PROVIDER (object);
 
-  while (self->origins != NULL) {
-    origin = self->origins->data;
-    next = self->origins->next;
-    g_list_free_1 (self->origins);
-    self->origins = next;
-
-    g_signal_emit_by_name (self, "origin-removed", origin);
-    g_object_unref (origin);
-  }
+  g_list_store_remove_all (self->origins);
+  g_clear_object (&self->origins);
 
   G_OBJECT_CLASS (calls_dummy_provider_parent_class)->dispose (object);
 }
@@ -157,32 +126,27 @@ static void
 calls_dummy_provider_class_init (CallsDummyProviderClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  CallsProviderClass *provider_class = CALLS_PROVIDER_CLASS (klass);
 
   object_class->constructed = constructed;
-  object_class->get_property = get_property;
   object_class->dispose = dispose;
 
-  g_object_class_override_property (object_class, PROP_STATUS, "status");
+  provider_class->get_name = calls_dummy_provider_get_name;
+  provider_class->get_status = calls_dummy_provider_get_status;
+  provider_class->get_origins = calls_dummy_provider_get_origins;
 }
 
 
 static void
-calls_dummy_provider_message_source_interface_init (CallsProviderInterface *iface)
+calls_dummy_provider_message_source_interface_init (CallsMessageSourceInterface *iface)
 {
-}
-
-
-static void
-calls_dummy_provider_provider_interface_init (CallsProviderInterface *iface)
-{
-  iface->get_name = get_name;
-  iface->get_origins = get_origins;
 }
 
 
 static void
 calls_dummy_provider_init (CallsDummyProvider *self)
 {
+  self->origins = g_list_store_new (CALLS_TYPE_DUMMY_ORIGIN);
 }
 
 
@@ -190,10 +154,10 @@ void
 calls_dummy_provider_add_origin (CallsDummyProvider *self,
                                  const gchar        *name)
 {
-  CallsDummyOrigin *origin = calls_dummy_origin_new (name);
-  self->origins = g_list_append (self->origins, origin);
+  g_autoptr (CallsDummyOrigin) origin = NULL;
 
-  g_signal_emit_by_name (CALLS_PROVIDER (self), "origin-added", CALLS_ORIGIN (origin));
+  origin = calls_dummy_origin_new (name);
+  g_list_store_append (self->origins, origin);
 }
 
 

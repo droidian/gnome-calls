@@ -23,6 +23,8 @@
  */
 
 #include "calls-best-match.h"
+#include "calls-contacts-provider.h"
+#include "calls-vala.h"
 #include "util.h"
 
 #include <glib/gi18n.h>
@@ -32,16 +34,9 @@ struct _CallsBestMatch
 {
   GObject parent_instance;
 
-  CallsBestMatchView *view;
+  FolksSearchView    *view;
   FolksIndividual    *best_match;
-  gulong display_name_notify_handler_id;
-  gulong avatar_notify_handler_id;
-  /** All requested gint avatar sizes */
-  GList              *avatar_sizes;
-  /** GCancellables for in-progress loads */
-  GList              *avatar_loads;
-  /** Map of gint icon size to GdkPixbuf */
-  GHashTable         *avatars;
+  gchar              *phone_number;
 };
 
 G_DEFINE_TYPE (CallsBestMatch, calls_best_match, G_TYPE_OBJECT);
@@ -49,165 +44,26 @@ G_DEFINE_TYPE (CallsBestMatch, calls_best_match, G_TYPE_OBJECT);
 
 enum {
   PROP_0,
-  PROP_VIEW,
+  PROP_PHONE_NUMBER,
   PROP_NAME,
+  PROP_AVATAR,
+  PROP_HAS_INDIVIDUAL,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
-enum {
-  SIGNAL_AVATAR,
-  SIGNAL_LAST_SIGNAL,
-};
-static guint signals [SIGNAL_LAST_SIGNAL];
-
-
-struct CallsAvatarRequestData
-{
-  CallsBestMatch *self;
-  GCancellable   *cancellable;
-  gint            size;
-};
-
-
 static void
-avatar_request_data_destroy (struct CallsAvatarRequestData *data)
+search_view_prepare_cb (FolksSearchView *view,
+                        GAsyncResult    *res,
+                        gpointer        *user_data)
 {
-  data->self->avatar_loads =
-    g_list_remove (data->self->avatar_loads,
-                   data->cancellable);
+  g_autoptr (GError) error = NULL;
 
-  g_free (data);
+  folks_search_view_prepare_finish (view, res, &error);
+
+  if (error)
+    g_warning ("Failed to prepare Folks search view: %s", error->message);
 }
-
-
-inline static void
-add_avatar (CallsBestMatch *self,
-            gint            size,
-            GdkPixbuf      *avatar)
-{
-  g_hash_table_insert (self->avatars,
-                       GINT_TO_POINTER (size),
-                       avatar);
-
-  g_debug ("Added avatar of size %i for best match `%s'",
-           size,
-           folks_individual_get_display_name (self->best_match));
-
-  g_signal_emit_by_name (self, "avatar", size, avatar);
-}
-
-
-static void
-request_avatar_pixbuf_new_cb (GInputStream *stream,
-                              GAsyncResult *res,
-                              struct CallsAvatarRequestData *data)
-{
-  GdkPixbuf *avatar;
-  GError *error = NULL;
-
-  avatar = gdk_pixbuf_new_from_stream_finish (res, &error);
-  if (avatar)
-    {
-      add_avatar (data->self, data->size, avatar);
-    }
-  else
-    {
-      if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-        {
-          g_warning ("Error creating GdkPixbuf from avatar"
-                     " icon stream at size %i for Folks"
-                     " individual `%s': %s",
-                     data->size,
-                     calls_best_match_get_name (data->self),
-                     error->message);
-        }
-      g_error_free (error);
-    }
-
-  avatar_request_data_destroy (data);
-}
-
-
-static void
-request_avatar_icon_load_cb (GLoadableIcon *icon,
-                             GAsyncResult *res,
-                             struct CallsAvatarRequestData *data)
-{
-  GInputStream *stream;
-  GError *error = NULL;
-
-  stream = g_loadable_icon_load_finish (icon, res, NULL, &error);
-  if (!stream)
-    {
-      if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-        {
-          g_warning ("Error loading avatar icon at size %i"
-                     " for Folks individual `%s': %s",
-                     data->size,
-                     calls_best_match_get_name (data->self),
-                     error->message);
-        }
-      g_error_free (error);
-
-      avatar_request_data_destroy (data);
-      return;
-    }
-
-  gdk_pixbuf_new_from_stream_at_scale_async
-    (stream,
-     -1,
-     data->size,
-     TRUE,
-     data->cancellable,
-     (GAsyncReadyCallback)request_avatar_pixbuf_new_cb,
-     data);
-
-  g_object_unref (stream);
-}
-
-
-static void
-request_avatar (CallsBestMatch *self,
-                gint            size)
-{
-  GLoadableIcon *icon;
-  struct CallsAvatarRequestData *data;
-
-  if (!self->best_match)
-    {
-      return;
-    }
-
-  icon = folks_avatar_details_get_avatar
-    (FOLKS_AVATAR_DETAILS(self->best_match));
-  if (!icon)
-    {
-      return;
-    }
-
-  g_debug ("Requesting avatar of size %i for best match `%s'",
-           size,
-           folks_individual_get_display_name (self->best_match));
-
-  data = g_new (struct CallsAvatarRequestData, 1);
-  data->self = self;
-  data->size = size;
-  data->cancellable = g_cancellable_new ();
-
-  self->avatar_loads = g_list_prepend
-    (self->avatar_loads, data->cancellable);
-
-  g_loadable_icon_load_async
-    (icon,
-     size,
-     data->cancellable,
-     (GAsyncReadyCallback)request_avatar_icon_load_cb,
-     data);
-
-  g_object_unref (data->cancellable);
-}
-
 
 static void
 notify_name (CallsBestMatch *self)
@@ -216,173 +72,49 @@ notify_name (CallsBestMatch *self)
                             props[PROP_NAME]);
 }
 
-
 static void
-clear_avatars (CallsBestMatch *self)
+notify_avatar (CallsBestMatch *self)
 {
-  GList *node;
-
-  for (node = self->avatar_loads; node; node = node->next)
-    {
-      g_cancellable_cancel ((GCancellable *)node->data);
-    }
-
-  g_list_free (self->avatar_loads);
-  self->avatar_loads = NULL;
-
-  g_hash_table_remove_all (self->avatars);
+  g_object_notify_by_pspec (G_OBJECT (self),
+                            props[PROP_AVATAR]);
 }
-
-
-static void
-request_avatars (CallsBestMatch *self)
-{
-  GList *node;
-
-  for (node = self->avatar_sizes; node; node = node->next)
-    {
-      request_avatar (self, GPOINTER_TO_INT (node->data));
-    }
-}
-
-
-static void
-change_avatar (CallsBestMatch *self)
-{
-  g_debug ("Avatar changed for best match `%s'",
-           folks_individual_get_display_name (self->best_match));
-
-  clear_avatars (self);
-  request_avatars (self);
-}
-
-
-static void
-set_best_match (CallsBestMatch  *self,
-                FolksIndividual *best_match)
-{
-  g_assert (self->best_match == NULL);
-  g_assert (self->display_name_notify_handler_id == 0);
-  g_assert (self->avatar_notify_handler_id == 0);
-
-  self->best_match = best_match;
-  g_object_ref (best_match);
-
-  self->display_name_notify_handler_id =
-    g_signal_connect_swapped (self->best_match,
-                              "notify::display-name",
-                              G_CALLBACK (notify_name),
-                              self);
-
-  self->avatar_notify_handler_id =
-    g_signal_connect_swapped (self->best_match,
-                              "notify::avatar",
-                              G_CALLBACK (change_avatar),
-                              self);
-}
-
-
-static void
-clear_best_match (CallsBestMatch *self)
-{
-  calls_clear_signal (self->best_match,
-                      &self->avatar_notify_handler_id);
-  calls_clear_signal (self->best_match,
-                      &self->display_name_notify_handler_id);
-
-  g_clear_object (&self->best_match);
-}
-
-
-static void
-new_best_match (CallsBestMatch  *self,
-                FolksIndividual *best_match)
-{
-  set_best_match (self, best_match);
-  request_avatars (self);
-  notify_name (self);
-}
-
-
-static void
-change_best_match (CallsBestMatch  *self,
-                   FolksIndividual *best_match)
-{
-  clear_best_match (self);
-  set_best_match (self, best_match);
-  change_avatar (self);
-  notify_name (self);
-}
-
-
-static void
-remove_best_match (CallsBestMatch *self)
-{
-  GList *node;
-
-  clear_best_match (self);
-  clear_avatars (self);
-
-  // Emit empty avatars
-  for (node = self->avatar_sizes; node; node = node->next)
-    {
-      g_signal_emit_by_name (self,
-                             "avatar",
-                             GPOINTER_TO_INT (node->data),
-                             NULL);
-    }
-
-  notify_name (self);
-}
-
 
 static void
 update_best_match (CallsBestMatch *self)
 {
-  FolksIndividual *best_match;
+  g_autoptr (GeeSortedSet) individuals = folks_search_view_get_individuals (self->view);
+  FolksIndividual *best_match = NULL;
+  gboolean notify_has_individual = FALSE;
 
-  g_debug ("Best match property notified");
+  if (!gee_collection_get_is_empty (GEE_COLLECTION (individuals)))
+      best_match = gee_sorted_set_first (individuals);
 
-  best_match = calls_best_match_view_get_best_match
-    (self->view);
+  if (best_match == self->best_match)
+    return;
 
-  if (best_match)
-    {
-      if (self->best_match)
-        {
-          if (self->best_match == best_match)
-            {
-              // No change
-              g_debug (" No best match change");
-            }
-          else
-            {
-              // Different best match object
-              change_best_match (self, best_match);
-              g_debug (" Different best match object");
-            }
-        }
-      else
-        {
-          // New best match
-          new_best_match (self, best_match);
-          g_debug (" New best match");
-        }
-    }
-  else
-    {
-      if (self->best_match)
-        {
-          // Best match disappeared
-          remove_best_match (self);
-          g_debug (" Best match disappeared");
-        }
-      else
-        {
-          // No change
-          g_debug (" No best match change");
-        }
-    }
+  if (self->best_match) {
+    g_signal_handlers_disconnect_by_data (self->best_match, self);
+    g_clear_object (&self->best_match);
+    notify_has_individual = TRUE;
+  }
+
+  if (best_match) {
+    g_set_object (&self->best_match, best_match);
+    g_signal_connect_swapped (self->best_match,
+                              "notify::display-name",
+                              G_CALLBACK (notify_name),
+                              self);
+    g_signal_connect_swapped (self->best_match,
+                              "notify::avatar",
+                              G_CALLBACK (notify_avatar),
+                              self);
+    notify_has_individual = TRUE;
+  }
+
+  notify_name (self);
+  notify_avatar (self);
+  if (notify_has_individual)
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_HAS_INDIVIDUAL]);
 }
 
 
@@ -396,9 +128,8 @@ set_property (GObject      *object,
 
   switch (property_id)
     {
-    case PROP_VIEW:
-      g_set_object (&self->view,
-                    CALLS_BEST_MATCH_VIEW (g_value_get_object (value)));
+    case PROP_PHONE_NUMBER:
+      calls_best_match_set_phone_number (self, g_value_get_string (value));
       break;
 
     default:
@@ -406,22 +137,6 @@ set_property (GObject      *object,
       break;
     }
 }
-
-
-static void
-constructed (GObject *object)
-{
-  CallsBestMatch *self = CALLS_BEST_MATCH (object);
-
-
-  g_signal_connect_swapped (self->view,
-                            "notify::best-match",
-                            G_CALLBACK (update_best_match),
-                            self);
-
-  G_OBJECT_CLASS (calls_best_match_parent_class)->constructed (object);
-}
-
 
 static void
 get_property (GObject      *object,
@@ -433,9 +148,24 @@ get_property (GObject      *object,
 
   switch (property_id)
     {
+    case PROP_HAS_INDIVIDUAL:
+      g_value_set_boolean (value,
+                           calls_best_match_has_individual (self));
+      break;
+
+    case PROP_PHONE_NUMBER:
+      g_value_set_string (value,
+                          calls_best_match_get_phone_number (self));
+      break;
+
     case PROP_NAME:
       g_value_set_string (value,
                           calls_best_match_get_name (self));
+      break;
+
+    case PROP_AVATAR:
+      g_value_set_object (value,
+                          calls_best_match_get_avatar (self));
       break;
 
     default:
@@ -450,23 +180,15 @@ dispose (GObject *object)
 {
   CallsBestMatch *self = CALLS_BEST_MATCH (object);
 
-  clear_avatars (self);
-
   g_clear_object (&self->view);
+  g_clear_pointer (&self->phone_number, g_free);
+
+  if (self->best_match) {
+    g_signal_handlers_disconnect_by_data (self->best_match, self);
+    g_clear_object (&self->best_match);
+  }
 
   G_OBJECT_CLASS (calls_best_match_parent_class)->dispose (object);
-}
-
-
-static void
-finalize (GObject *object)
-{
-  CallsBestMatch *self = CALLS_BEST_MATCH (object);
-
-  g_list_free (self->avatar_sizes);
-  g_hash_table_unref (self->avatars);
-
-  G_OBJECT_CLASS (calls_best_match_parent_class)->finalize (object);
 }
 
 
@@ -476,18 +198,22 @@ calls_best_match_class_init (CallsBestMatchClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->set_property = set_property;
-  object_class->constructed = constructed;
   object_class->get_property = get_property;
   object_class->dispose = dispose;
-  object_class->finalize = finalize;
 
+  props[PROP_HAS_INDIVIDUAL] =
+    g_param_spec_boolean ("has-individual",
+                          "Has individual",
+                          "Whether a matching individual was found or not",
+                          FALSE,
+                          G_PARAM_READABLE | G_PARAM_EXPLICIT_NOTIFY);
 
-  props[PROP_VIEW] =
-    g_param_spec_object ("view",
-                         "View",
-                         "The CallsBestMatchView to monitor",
-                         CALLS_TYPE_BEST_MATCH_VIEW,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+  props[PROP_PHONE_NUMBER] =
+    g_param_spec_string ("phone_number",
+                         "Phone number",
+                         "The phone number of the best match",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
   props[PROP_NAME] =
     g_param_spec_string ("name",
@@ -496,41 +222,96 @@ calls_best_match_class_init (CallsBestMatchClass *klass)
                          NULL,
                          G_PARAM_READABLE | G_PARAM_EXPLICIT_NOTIFY);
 
+  props[PROP_AVATAR] =
+    g_param_spec_object ("avatar",
+                         "Avatar",
+                         "The avatar of the best match",
+                         G_TYPE_LOADABLE_ICON,
+                         G_PARAM_READABLE | G_PARAM_EXPLICIT_NOTIFY);
+
+
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
-
-
-  signals[SIGNAL_AVATAR] =
-    g_signal_new ("avatar",
-                  G_TYPE_FROM_CLASS (klass),
-                  G_SIGNAL_RUN_LAST,
-                  0, NULL, NULL, NULL,
-                  G_TYPE_NONE, 2,
-                  G_TYPE_INT,
-                  GDK_TYPE_PIXBUF);
 }
 
 
 static void
 calls_best_match_init (CallsBestMatch *self)
 {
-  self->avatars = g_hash_table_new_full
-    (g_direct_hash,
-     g_direct_equal,
-     NULL,
-     (GDestroyNotify)g_object_unref);
 }
 
 
 CallsBestMatch *
-calls_best_match_new (CallsBestMatchView *view)
+calls_best_match_new (const gchar *number)
 {
-  g_return_val_if_fail (CALLS_IS_BEST_MATCH_VIEW (view), NULL);
-
   return g_object_new (CALLS_TYPE_BEST_MATCH,
-                       "view", view,
+                       "phone_number", number,
                        NULL);
 }
 
+gboolean
+calls_best_match_has_individual (CallsBestMatch *self)
+{
+  g_return_val_if_fail (CALLS_IS_BEST_MATCH (self), FALSE);
+
+  return !!self->best_match;
+}
+
+const gchar *
+calls_best_match_get_phone_number (CallsBestMatch *self)
+{
+  g_return_val_if_fail (CALLS_IS_BEST_MATCH (self), NULL);
+
+  return self->phone_number;
+}
+
+void
+calls_best_match_set_phone_number (CallsBestMatch *self,
+                                   const gchar    *phone_number)
+{
+  g_autoptr (EPhoneNumber) number = NULL;
+  g_autoptr (CallsPhoneNumberQuery) query = NULL;
+  g_autoptr (GError) error = NULL;
+
+  g_return_if_fail (CALLS_IS_BEST_MATCH (self));
+
+
+  if (self->phone_number == phone_number)
+    return;
+
+  g_clear_pointer (&self->phone_number, g_free);
+
+  // Consider empty string phone numbers as NULL
+  if (phone_number[0] != '\0')
+    self->phone_number = g_strdup (phone_number);
+
+  g_clear_object (&self->view);
+
+  if (self->phone_number) {
+    /* FIXME: parsing the phone number can add the wrong country code if the default region
+     * for the app isn't set correctly.See:
+     * https://developer.gnome.org/eds/stable/eds-e-phone-number.html#e-phone-number-get-default-region
+     */
+    number = e_phone_number_from_string (phone_number, NULL, &error);
+
+    if (!number) {
+      g_warning ("Failed to convert %s to a phone number: %s", phone_number, error->message);
+    } else {
+      query = calls_phone_number_query_new (number);
+      self->view = folks_search_view_new (folks_individual_aggregator_dup (), FOLKS_QUERY (query));
+
+      g_signal_connect_swapped (self->view,
+                                "individuals-changed-detailed",
+                                G_CALLBACK (update_best_match),
+                                self);
+
+      folks_search_view_prepare (FOLKS_SEARCH_VIEW (self->view),
+                                 (GAsyncReadyCallback) search_view_prepare_cb,
+                                 NULL);
+    }
+  }
+
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_PHONE_NUMBER]);
+}
 
 const gchar *
 calls_best_match_get_name (CallsBestMatch *self)
@@ -541,38 +322,28 @@ calls_best_match_get_name (CallsBestMatch *self)
     {
       return folks_individual_get_display_name (self->best_match);
     }
+  else if (self->phone_number)
+    {
+      return self->phone_number;
+    }
   else
     {
-      return NULL;
+      return _("Anonymous caller");
     }
 }
 
 
-GdkPixbuf *
-calls_best_match_request_avatar (CallsBestMatch *self,
-                                 gint            size)
+GLoadableIcon *
+calls_best_match_get_avatar (CallsBestMatch *self)
 {
-  gpointer sizeptr = GINT_TO_POINTER (size);
-  GdkPixbuf *avatar;
-
   g_return_val_if_fail (CALLS_IS_BEST_MATCH (self), NULL);
 
-  avatar = g_hash_table_lookup (self->avatars, sizeptr);
-  if (avatar)
+  if (self->best_match)
     {
-      // Already loaded
-      return avatar;
+      return folks_avatar_details_get_avatar (FOLKS_AVATAR_DETAILS (self->best_match));
     }
-
-  if (!g_list_find (self->avatar_sizes, sizeptr))
+  else
     {
-      // Not known, do the actual request
-      request_avatar (self, size);
-
-      // Add the size to the list
-      self->avatar_sizes = g_list_prepend
-        (self->avatar_sizes, sizeptr);
+      return NULL;
     }
-
-  return NULL;
 }

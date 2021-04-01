@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Purism SPC
+ * Copyright (C) 2020 Purism SPC
  *
  * This file is part of Calls.
  *
@@ -16,29 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Author: Bob Ham <bob.ham@puri.sm>
+ * Author: Julian Sparber <julian@sparber.net>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  */
 
-#ifndef CALLS_CALL_DATA_H__
-#define CALLS_CALL_DATA_H__
+#ifndef CALLS_CONTACTS_BOX_H__
+#define CALLS_CONTACTS_BOX_H__
 
-#include "calls-call.h"
-#include "calls-party.h"
+#include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
-#define CALLS_TYPE_CALL_DATA (calls_call_data_get_type ())
+#define CALLS_TYPE_CONTACTS_BOX (calls_contacts_box_get_type ())
 
-G_DECLARE_FINAL_TYPE (CallsCallData, calls_call_data, CALLS, CALL_DATA, GObject);
+G_DECLARE_FINAL_TYPE (CallsContactsBox, calls_contacts_box, CALLS, CONTACTS_BOX, GtkBin);
 
-CallsCallData *calls_call_data_new       (CallsCall     *call,
-                                          CallsParty    *party);
-CallsCall     *calls_call_data_get_call  (CallsCallData *data);
-CallsParty    *calls_call_data_get_party (CallsCallData *data);
+GtkWidget * calls_contacts_box_new (void);
 
 G_END_DECLS
 
-#endif /* CALLS_CALL_DATA_H__ */
+#endif /* CALLS_CONTACTS_BOX_H__ */

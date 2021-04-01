@@ -25,7 +25,7 @@
 #include "config.h"
 #include "calls-ussd.h"
 #include "calls-manager.h"
-#include "calls-contacts.h"
+#include "calls-contacts-provider.h"
 #include "enum-types.h"
 
 #include <glib/gi18n.h>
@@ -36,13 +36,14 @@ struct _CallsManager
   GObject parent_instance;
 
   CallsProvider *provider;
+  CallsContactsProvider *contacts_provider;
   gchar *provider_name;
   CallsOrigin *default_origin;
   CallsManagerState state;
+  CallsCall *primary_call;
 };
 
 G_DEFINE_TYPE (CallsManager, calls_manager, G_TYPE_OBJECT);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (EPhoneNumber, e_phone_number_free)
 
 enum {
   PROP_0,
@@ -55,8 +56,6 @@ static GParamSpec *props[PROP_LAST_PROP];
 
 
 enum {
-  SIGNAL_ORIGIN_ADD,
-  SIGNAL_ORIGIN_REMOVE,
   SIGNAL_CALL_ADD,
   SIGNAL_CALL_REMOVE,
   /* TODO: currently this event isn't emitted since the plugins don't give use
@@ -142,6 +141,11 @@ add_call (CallsManager *self, CallsCall *call, CallsOrigin *origin)
   g_return_if_fail (CALLS_IS_CALL (call));
 
   g_signal_emit (self, signals[SIGNAL_CALL_ADD], 0, call, origin);
+
+  if (self->primary_call == NULL)
+    self->primary_call = call;
+  else
+    calls_call_hang_up (call);
 }
 
 static void
@@ -153,6 +157,9 @@ remove_call (CallsManager *self, CallsCall *call, gchar *reason, CallsOrigin *or
 
   /* We ignore the reason for now, because it doesn't give any usefull information */
   g_signal_emit (self, signals[SIGNAL_CALL_REMOVE], 0, call, origin);
+
+  if (self->primary_call == call)
+    self->primary_call = NULL;
 }
 
 static void
@@ -205,7 +212,6 @@ add_origin (CallsManager *self, CallsOrigin *origin, CallsProvider *provider)
   calls_origin_foreach_call(origin, (CallsOriginForeachCallFunc)add_call, self);
 
   set_state (self, CALLS_MANAGER_STATE_READY);
-  g_signal_emit (self, signals[SIGNAL_ORIGIN_ADD], 0, origin);
 }
 
 static void
@@ -217,7 +223,7 @@ remove_call_cb (gpointer self, CallsCall *call, CallsOrigin *origin)
 static void
 remove_origin (CallsManager *self, CallsOrigin *origin, CallsProvider *provider)
 {
-  g_autoptr (GList) origins = NULL;
+  GListModel *origins;
 
   g_return_if_fail (CALLS_IS_ORIGIN (origin));
 
@@ -229,10 +235,8 @@ remove_origin (CallsManager *self, CallsOrigin *origin, CallsProvider *provider)
     calls_manager_set_default_origin (self, NULL);
 
   origins = calls_manager_get_origins (self);
-   if (origins == NULL)
-     set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
-
-  g_signal_emit (self, signals[SIGNAL_ORIGIN_REMOVE], 0, origin);
+  if (!origins || g_list_model_get_n_items (origins) == 0)
+    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
 }
 
 static void
@@ -240,29 +244,59 @@ remove_provider (CallsManager *self)
 {
   PeasEngine *engine = peas_engine_get_default ();
   PeasPluginInfo *plugin = peas_engine_get_plugin_info (engine, self->provider_name);
-  g_autoptr (GList) origins = NULL;
-  GList *o;
+  GListModel *origins;
+  guint n_items;
 
   g_debug ("Remove provider: %s", calls_provider_get_name (self->provider));
   g_signal_handlers_disconnect_by_data (self->provider, self);
 
   origins = calls_provider_get_origins (self->provider);
+  g_signal_handlers_disconnect_by_data (origins, self);
+  n_items = g_list_model_get_n_items (origins);
 
-  for (o = origins; o != NULL; o = o->next)
+  for (guint i = 0; i < n_items; i++)
     {
-      remove_origin (self, o->data, self->provider);
+      g_autoptr(CallsOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (origins, i);
+      remove_origin (self, origin, self->provider);
     }
 
   g_clear_pointer (&self->provider_name, g_free);
   peas_engine_unload_plugin (engine, plugin);
+  g_clear_object (&self->provider);
   set_state (self, CALLS_MANAGER_STATE_NO_PROVIDER);
+}
+
+static void
+origin_items_changed_cb (CallsManager *self)
+{
+  GListModel *origins;
+  guint n_items;
+
+  g_assert (CALLS_IS_MANAGER (self));
+
+  origins = calls_provider_get_origins (self->provider);
+  n_items = g_list_model_get_n_items (origins);
+
+  if (n_items)
+    set_state (self, CALLS_MANAGER_STATE_READY);
+  else
+    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
+
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr(CallsOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (origins, i);
+      add_origin (self, origin, self->provider);
+    }
 }
 
 static void
 add_provider (CallsManager *self, const gchar *name)
 {
-  g_autoptr (GList) origins = NULL;
-  GList *o;
+  GListModel *origins;
 
   /* We could eventually enable more then one provider, but for now let's use
      only one */
@@ -279,17 +313,17 @@ add_provider (CallsManager *self, const gchar *name)
     return;
   }
 
-  set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
+  if (g_strcmp0 (name, "dummy") == 0)
+    set_state (self, CALLS_MANAGER_STATE_READY);
+  else
+    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
 
   origins = calls_provider_get_origins (self->provider);
 
-  g_signal_connect_swapped (self->provider, "origin-added", G_CALLBACK (add_origin), self);
-  g_signal_connect_swapped (self->provider, "origin-removed", G_CALLBACK (remove_origin), self);
-
-  for (o = origins; o != NULL; o = o->next)
-    {
-      add_origin (self, o->data, self->provider);
-    }
+  g_signal_connect_object (origins, "items-changed",
+                           G_CALLBACK (origin_items_changed_cb), self,
+                           G_CONNECT_SWAPPED);
+  origin_items_changed_cb (self);
 
   self->provider_name = g_strdup (name);
 }
@@ -314,12 +348,12 @@ calls_manager_get_property (GObject    *object,
   case PROP_STATE:
     g_value_set_enum (value, calls_manager_get_state (self));
     break;
-  
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
   }
-} 
+}
 
 static void
 calls_manager_set_property (GObject      *object,
@@ -351,6 +385,7 @@ calls_manager_finalize (GObject *object)
 
   g_clear_object (&self->provider);
   g_clear_pointer (&self->provider_name, g_free);
+  g_clear_object (&self->contacts_provider);
 
   G_OBJECT_CLASS (calls_manager_parent_class)->finalize (object);
 }
@@ -364,26 +399,6 @@ calls_manager_class_init (CallsManagerClass *klass)
   object_class->get_property = calls_manager_get_property;
   object_class->set_property = calls_manager_set_property;
   object_class->finalize = calls_manager_finalize;
-
-  signals[SIGNAL_ORIGIN_ADD] =
-   g_signal_new ("origin-add",
-                 G_TYPE_FROM_CLASS (klass),
-                 G_SIGNAL_RUN_FIRST,
-                 0,
-                 NULL, NULL, NULL,
-                 G_TYPE_NONE,
-                 1,
-                 CALLS_TYPE_ORIGIN);
-
-  signals[SIGNAL_ORIGIN_REMOVE] =
-   g_signal_new ("origin-remove",
-                 G_TYPE_FROM_CLASS (klass),
-                 G_SIGNAL_RUN_FIRST,
-                 0,
-                 NULL, NULL, NULL,
-                 G_TYPE_NONE,
-                 1,
-                 CALLS_TYPE_ORIGIN);
 
   signals[SIGNAL_CALL_ADD] =
    g_signal_new ("call-add",
@@ -449,7 +464,7 @@ calls_manager_class_init (CallsManagerClass *klass)
                   CALLS_TYPE_USSD);
 
   props[PROP_PROVIDER] = g_param_spec_string ("provider",
-                                              "provider", 
+                                              "provider",
                                               "The name of the currently loaded provider",
                                               NULL,
                                               G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
@@ -476,6 +491,10 @@ calls_manager_init (CallsManager *self)
 {
   self->state = CALLS_MANAGER_STATE_NO_PROVIDER;
   self->provider_name = NULL;
+  self->primary_call = NULL;
+
+  // Load the contacts provider
+  self->contacts_provider = calls_contacts_provider_new ();
 }
 
 
@@ -495,6 +514,14 @@ calls_manager_get_default (void)
     g_object_add_weak_pointer (G_OBJECT (instance), (gpointer *)&instance);
   }
   return instance;
+}
+
+CallsContactsProvider *
+calls_manager_get_contacts_provider (CallsManager *self)
+{
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
+
+  return self->contacts_provider;
 }
 
 const gchar *
@@ -518,16 +545,6 @@ calls_manager_set_provider (CallsManager *self, const gchar *name)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_PROVIDER]);
 }
 
-/* FIXME: This function should be removed since we don't want to hand out the
-   provider */
-CallsProvider *
-calls_manager_get_real_provider (CallsManager *self)
-{
-  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
-
-  return self->provider;
-}
-
 CallsManagerState
 calls_manager_get_state (CallsManager *self)
 {
@@ -536,7 +553,7 @@ calls_manager_get_state (CallsManager *self)
   return self->state;
 }
 
-GList *
+GListModel *
 calls_manager_get_origins (CallsManager *self)
 {
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
@@ -550,18 +567,81 @@ calls_manager_get_origins (CallsManager *self)
 GList *
 calls_manager_get_calls (CallsManager *self)
 {
-  g_autoptr (GList) origins = NULL;
+  GListModel *origins = NULL;
   g_autoptr (GList) calls = NULL;
-  GList *o;
+  guint n_items = 0;
 
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
 
   origins = calls_manager_get_origins (self);
+  if (origins)
+    n_items = g_list_model_get_n_items (origins);
 
-  for (o = origins; o != NULL; o = o->next)
-    calls = g_list_concat (calls, calls_origin_get_calls (o->data));
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr(CallsOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (origins, i);
+      calls = g_list_concat (calls, calls_origin_get_calls (origin));
+    }
 
   return g_steal_pointer (&calls);
+}
+
+/**
+ * calls_manager_hang_up_all_calls:
+ * @self: a #CallsManager
+ *
+ * Hangs up on every call known to @self.
+ */
+void
+calls_manager_hang_up_all_calls (CallsManager *self)
+{
+  g_autoptr (GList) calls = NULL;
+  GList *node;
+  CallsCall *call;
+
+  g_return_if_fail (CALLS_IS_MANAGER (self));
+
+  calls = calls_manager_get_calls (self);
+
+  for (node = calls; node; node = node->next)
+    {
+      call = node->data;
+      g_debug ("Hanging up on call %s", calls_call_get_name (call));
+      calls_call_hang_up (call);
+    }
+
+  g_debug ("Hanged up on all calls");
+}
+
+/**
+ * calls_manager_has_active_call
+ * @self: a #CallsManager
+ *
+ * Checks if @self has any active call
+ *
+ * Returns: %TRUE if there are active calls, %FALSE otherwise
+ */
+gboolean
+calls_manager_has_active_call (CallsManager *self)
+{
+  g_autoptr (GList) calls = NULL;
+  GList *node;
+  CallsCall *call;
+
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), FALSE);
+
+  calls = calls_manager_get_calls (self);
+
+  for (node = calls; node; node = node->next)
+    {
+      call = node->data;
+      if (calls_call_get_state (call) != CALLS_CALL_STATE_DISCONNECTED)
+        return TRUE;
+    }
+
+  return FALSE;
 }
 
 CallsOrigin *
@@ -587,44 +667,4 @@ calls_manager_set_default_origin (CallsManager *self,
     self->default_origin = g_object_ref (origin);
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_DEFAULT_ORIGIN]);
-}
-
-/**
- * calls_manager_get_contact_name:
- * @call: a #CallsCall
- *
- * Looks up the contact name for @call. If the lookup
- * succeeds, the contact name will be returned. NULL if
- * no match has been found in the contact list.
- * If no number is associated with the @call, then
- * a translatable string will be returned.
- *
- * Returns: (transfer none): The caller's name, a string representing
- * an unknown caller or %NULL
- */
-const gchar *
-calls_manager_get_contact_name (CallsCall *call)
-{
-  g_autoptr (EPhoneNumber) phone_number = NULL;
-  g_autoptr (GError) err = NULL;
-  const gchar *number;
-  CallsBestMatch *match;
-
-  number = calls_call_get_number (call);
-  if (!number || g_strcmp0 (number, "") == 0)
-    return _("Anonymous caller");
-
-  phone_number = e_phone_number_from_string (number, NULL, &err);
-  if (!phone_number)
-    {
-      g_warning ("Failed to convert %s to a phone number: %s", number, err->message);
-      return NULL;
-    }
-
-  match = calls_contacts_lookup_phone_number (calls_contacts_get_default (),
-                                              phone_number);
-  if (!match)
-    return NULL;
-
-  return calls_best_match_get_name (match);
 }

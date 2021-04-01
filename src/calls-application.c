@@ -32,7 +32,6 @@
 #include "calls-ringer.h"
 #include "calls-notifier.h"
 #include "calls-record-store.h"
-#include "calls-contacts.h"
 #include "calls-call-window.h"
 #include "calls-main-window.h"
 #include "calls-manager.h"
@@ -61,9 +60,10 @@ struct _CallsApplication
   CallsRinger      *ringer;
   CallsNotifier    *notifier;
   CallsRecordStore *record_store;
-  CallsContacts    *contacts;
   CallsMainWindow  *main_window;
   CallsCallWindow  *call_window;
+
+  char             *uri;
 };
 
 G_DEFINE_TYPE (CallsApplication, calls_application, GTK_TYPE_APPLICATION);
@@ -77,7 +77,7 @@ handle_local_options (GApplication *application,
                       GVariantDict *options)
 {
   gboolean ok;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   const gchar *arg;
 
   g_debug ("Registering application");
@@ -176,23 +176,19 @@ set_daemon_action (GSimpleAction *action,
 static gboolean
 check_dial_number (const gchar *number)
 {
-  GError *error = NULL;
-  GRegex *reject;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GRegex) reject = g_regex_new (REJECT_RE, 0, 0, &error);
   gboolean matches;
 
-  reject = g_regex_new (REJECT_RE, 0, 0, &error);
   if (!reject)
     {
       g_warning ("Could not compile regex for"
                  " dial number checking: %s",
                  error->message);
-      g_error_free (error);
       return FALSE;
     }
 
   matches = g_regex_match (reject, number, 0, NULL);
-
-  g_regex_unref (reject);
 
   return !matches;
 }
@@ -201,11 +197,10 @@ check_dial_number (const gchar *number)
 static gchar *
 extract_dial_string (const gchar *number)
 {
-  g_autoptr(GError) error = NULL;
-  g_autoptr(GRegex) replace_visual;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GRegex) replace_visual = g_regex_new (VISUAL_RE, 0, 0, &error);
   gchar *dial_string;
 
-  replace_visual = g_regex_new (VISUAL_RE, 0, 0, &error);
   if (!replace_visual)
     {
       g_warning ("Could not compile regex for"
@@ -237,7 +232,7 @@ dial_action (GSimpleAction *action,
   CallsApplication *self = CALLS_APPLICATION (user_data);
   const gchar *number;
   gboolean number_ok;
-  gchar *dial_string;
+  g_autofree gchar *dial_string = NULL;
 
   number = g_variant_get_string (parameter, NULL);
   g_return_if_fail (number != NULL);
@@ -264,45 +259,45 @@ dial_action (GSimpleAction *action,
 
   calls_main_window_dial (self->main_window,
                           dial_string);
-  g_free (dial_string);
 }
 
+static void
+copy_number (GSimpleAction *action,
+             GVariant      *parameter,
+             gpointer       user_data)
+{
+  const gchar *number = g_variant_get_string (parameter, NULL);
+  GtkClipboard *clipboard =
+    gtk_clipboard_get_default (gdk_display_get_default ());
+
+  gtk_clipboard_set_text (clipboard, number, -1);
+
+  g_debug ("Copied `%s' to clipboard", number);
+}
+
+static void
+manager_state_changed_cb (GApplication *application)
+{
+  GAction* dial_action = g_action_map_lookup_action (G_ACTION_MAP (application), "dial");
+  CallsManagerState state = calls_manager_get_state (calls_manager_get_default ());
+
+  g_simple_action_set_enabled (G_SIMPLE_ACTION (dial_action), state == CALLS_MANAGER_STATE_READY);
+}
 
 static const GActionEntry actions[] =
 {
   { "set-provider-name", set_provider_name_action, "s" },
   { "set-daemon", set_daemon_action, NULL },
   { "dial", dial_action, "s" },
+  { "copy-number", copy_number, "s"},
 };
-
-
-static void
-css_setup ()
-{
-  GtkCssProvider *provider;
-  GFile *file;
-  GError *error = NULL;
-
-  provider = gtk_css_provider_new ();
-  file = g_file_new_for_uri ("resource:///sm/puri/calls/style.css");
-
-  if (!gtk_css_provider_load_from_file (provider, file, &error)) {
-    g_warning ("Failed to load CSS file: %s", error->message);
-    g_clear_error (&error);
-    g_object_unref (file);
-    return;
-  }
-  gtk_style_context_add_provider_for_screen (gdk_screen_get_default (),
-                                             GTK_STYLE_PROVIDER (provider), 600);
-  g_object_unref (file);
-}
 
 
 static void
 startup (GApplication *application)
 {
-  GtkIconTheme *icon_theme;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GtkCssProvider) provider = NULL;
+  g_autoptr (GError) error = NULL;
 
   G_APPLICATION_CLASS (calls_application_parent_class)->startup (application);
 
@@ -316,15 +311,39 @@ startup (GApplication *application)
   g_set_prgname (APP_ID);
   g_set_application_name (_("Calls"));
 
-  icon_theme = gtk_icon_theme_get_default ();
-  gtk_icon_theme_add_resource_path (icon_theme, "/sm/puri/calls/");
-
   g_action_map_add_action_entries (G_ACTION_MAP (application),
                                    actions,
                                    G_N_ELEMENTS (actions),
                                    application);
 
-  css_setup ();
+  g_signal_connect_swapped (calls_manager_get_default (),
+                            "notify::state",
+                            G_CALLBACK (manager_state_changed_cb),
+                            application);
+
+  manager_state_changed_cb (application);
+
+  provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_resource (provider, "/sm/puri/calls/style.css");
+  gtk_style_context_add_provider_for_screen (gdk_screen_get_default (),
+                                             GTK_STYLE_PROVIDER (provider),
+                                             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
+
+
+static void
+notify_window_visible_cb (GtkWidget       *window,
+                          GParamSpec      *pspec,
+                          CallsApplication *application)
+{
+  CallsManager *manager = calls_manager_get_default ();
+
+  g_return_if_fail (CALLS_IS_APPLICATION (application));
+  g_return_if_fail (CALLS_IS_CALL_WINDOW (window));
+
+  /* The UI is being closed, hang up active calls */
+  if (!gtk_widget_is_visible (window))
+    calls_manager_hang_up_all_calls (manager);
 }
 
 
@@ -346,9 +365,6 @@ start_proper (CallsApplication  *self)
   self->record_store = calls_record_store_new ();
   g_assert (self->record_store != NULL);
 
-  self->contacts = calls_contacts_get_default ();
-  g_assert (self->contacts != NULL);
-
   self->notifier = calls_notifier_new ();
   g_assert (CALLS_IS_NOTIFIER (self->notifier));
 
@@ -360,9 +376,44 @@ start_proper (CallsApplication  *self)
   self->call_window = calls_call_window_new (gtk_app);
   g_assert (self->call_window != NULL);
 
+  g_signal_connect (self->call_window,
+                    "notify::visible",
+                    G_CALLBACK (notify_window_visible_cb),
+                    self);
+
   return TRUE;
 }
 
+static void
+open_tel_uri (CallsApplication *self,
+              const gchar      *uri)
+{
+  g_autoptr (EPhoneNumber) number = NULL;
+  g_autoptr (GError) error = NULL;
+  g_autofree gchar *dial_str = NULL;
+
+  g_debug ("Opening tel URI `%s'", uri);
+
+  number = e_phone_number_from_string (uri, NULL, &error);
+  if (!number)
+    {
+      g_autofree gchar *msg =
+        g_strdup_printf (_("Tried dialing unparsable tel URI `%s'"), uri);
+
+      g_signal_emit_by_name (calls_manager_get_default (),
+                             "error",
+                             msg);
+      g_warning ("Ignoring unparsable tel URI `%s': %s",
+                 uri, error->message);
+      return;
+    }
+
+  dial_str = e_phone_number_to_string
+    (number, E_PHONE_NUMBER_FORMAT_E164);
+
+  calls_main_window_dial (self->main_window,
+                          dial_str);
+}
 
 static void
 activate (GApplication *application)
@@ -387,41 +438,16 @@ activate (GApplication *application)
       present = !self->daemon;
     }
 
-  if (present)
+  if (present || self->uri)
     {
       gtk_window_present (GTK_WINDOW (self->main_window));
     }
+
+  if (self->uri)
+    open_tel_uri (self, self->uri);
+
+  g_clear_pointer (&self->uri, g_free);
 }
-
-
-static void
-open_tel_uri (CallsApplication *self,
-              const gchar      *uri)
-{
-  EPhoneNumber *number;
-  GError *error = NULL;
-  gchar *dial_str;
-
-  g_debug ("Opening tel URI `%s'", uri);
-
-  number = e_phone_number_from_string (uri, NULL, &error);
-  if (!number)
-    {
-      g_warning ("Ignoring unparsable tel URI `%s': %s",
-                 uri, error->message);
-      g_error_free (error);
-      return;
-    }
-
-  dial_str = e_phone_number_to_string
-    (number, E_PHONE_NUMBER_FORMAT_E164);
-  e_phone_number_free (number);
-
-  calls_main_window_dial (self->main_window,
-                          dial_str);
-  g_free (dial_str);
-}
-
 
 static void
 app_open (GApplication  *application,
@@ -430,48 +456,35 @@ app_open (GApplication  *application,
           const gchar   *hint)
 {
   CallsApplication *self = CALLS_APPLICATION (application);
-  gint i;
 
   g_assert (n_files > 0);
 
-  g_debug ("Opened (%i files)", n_files);
+  if (n_files > 1)
+    g_warning ("Calls can handle only one call a time. %u items provided", n_files);
 
-  start_proper (self);
-
-  for (i = 0; i < n_files; ++i)
+  if (g_file_has_uri_scheme (files[0], "tel"))
     {
-      gchar *uri;
-      if (g_file_has_uri_scheme (files[i], "tel"))
-        {
-          uri = g_file_get_uri (files[i]);
+      g_free (self->uri);
+      self->uri = g_file_get_uri (files[0]);
+      g_debug ("Opening %s", self->uri);
 
-          open_tel_uri (self, uri);
-        }
-      else
-        {
-          uri = g_file_get_parse_name (files[i]);
-          g_warning ("Don't know how to"
-                     " open file `%s', ignoring",
-                     uri);
-        }
-
-      g_free (uri);
+      g_application_activate (application);
     }
-}
+  else
+    {
+      g_autofree char *msg = NULL;
+      g_autofree char *uri = NULL;
 
+      uri = g_file_get_parse_name (files[0]);
+      g_warning ("Don't know how to"
+                 " open file `%s', ignoring",
+                 uri);
 
-static void
-constructed (GObject *object)
-{
-  CallsApplication *self = CALLS_APPLICATION (object);
-  GSimpleActionGroup *action_group;
+      msg = g_strdup_printf (_("Don't know how to open `%s'"), uri);
 
-  action_group = g_simple_action_group_new ();
-  g_action_map_add_action_entries (G_ACTION_MAP (action_group),
-                                   actions, G_N_ELEMENTS (actions), self);
-  g_object_unref (action_group);
-
-  G_OBJECT_CLASS (calls_application_parent_class)->constructed (object);
+      g_signal_emit_by_name (calls_manager_get_default (),
+                             "error", msg);
+    }
 }
 
 
@@ -483,11 +496,11 @@ finalize (GObject *object)
   g_clear_object (&self->call_window);
   g_clear_object (&self->main_window);
   g_clear_object (&self->record_store);
-  g_clear_object (&self->contacts);
   g_clear_object (&self->ringer);
   g_clear_object (&self->notifier);
+  g_free (self->uri);
 
-  G_OBJECT_CLASS (calls_application_parent_class)->dispose (object);
+  G_OBJECT_CLASS (calls_application_parent_class)->finalize (object);
 }
 
 
@@ -497,7 +510,6 @@ calls_application_class_init (CallsApplicationClass *klass)
   GApplicationClass *application_class = G_APPLICATION_CLASS (klass);
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->constructed = constructed;
   object_class->finalize = finalize;
 
   application_class->handle_local_options = handle_local_options;

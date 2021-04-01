@@ -1,86 +1,87 @@
-# Hungarian translation for calls.
-# Copyright (C) 2020 calls's COPYRIGHT HOLDER
-# This file is distributed under the same license as the calls package.
-# Balázs Meskó <mesko.balazs@fsf.hu>, 2020.
+# Creole Haitian translation for GNOME Calls.
+# Copyright (C) 2021 Purism
+# This file is distributed under the same license as the Calls package. 
+# Pierre Michel Augustin <augustinpierremichel@hotmail.com>, 2021.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: calls master\n"
+"Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: https://source.puri.sm/Librem5/calls/issues\n"
-"POT-Creation-Date: 2021-03-19 03:25+0000\n"
-"PO-Revision-Date: 2021-03-19 09:53+0100\n"
-"Last-Translator: Meskó Balázs <mesko.balazs@fsf.hu>\n"
-"Language-Team: Hungarian <gnome-hu-list@gnome.org>\n"
-"Language: hu\n"
+"POT-Creation-Date: 2021-02-07 15:24+0000\n"
+"PO-Revision-Date: 2021-02-13 13:16-0500\n"
+"Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.0.6\n"
+"Last-Translator: \n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 2.4.2\n"
+"Language: ht_HT\n"
 
-#: data/sm.puri.Calls.desktop.in:3 src/calls-application.c:312
+#: data/sm.puri.Calls.desktop.in:3 src/calls-application.c:314
 #: src/ui/call-window.ui:10 src/ui/main-window.ui:8
 msgid "Calls"
-msgstr "Hívások"
+msgstr "Apèl  yo"
 
 #: data/sm.puri.Calls.desktop.in:4 data/sm.puri.Calls-daemon.desktop.in:4
 msgid "Phone"
-msgstr "Telefon"
+msgstr "Telefòn"
 
 #: data/sm.puri.Calls.desktop.in:5
+#, fuzzy
 msgid "A phone dialer and call handler"
-msgstr "Tárcsázó és híváskezelő"
+msgstr "Yon moun kap fè apèl ak moun kap jere apèl yo"
 
 #. Translators: These are desktop search terms. Do not translate semicolons, end line with a semicolon.
 #: data/sm.puri.Calls.desktop.in:7 data/sm.puri.Calls-daemon.desktop.in:7
 msgid "Telephone;Call;Phone;Dial;Dialer;PSTN;"
-msgstr "Telefon;Hívás;Tárcsázás;Tárcsázó;PSTN;"
+msgstr "Telefòn; Apèl; Telefòn; Fè apèl; Moun k ap fè apèl la; PSTN;"
 
 #: data/sm.puri.Calls-daemon.desktop.in:3
 msgid "Calls (daemon)"
-msgstr "Hívások (démon)"
+msgstr "Apèl (Sèvis)"
 
 #: data/sm.puri.Calls-daemon.desktop.in:5
 msgid "A phone dialer and call handler (daemon mode)"
-msgstr "Tárcsázó és híváskezelő (démon mód)"
+msgstr "Yon moun k ap fè apèl ak jere apèl (mòd sèvis)"
 
-#: src/calls-application.c:401
+#: src/calls-application.c:434
 #, c-format
 msgid "Tried dialing unparsable tel URI `%s'"
-msgstr "Nem értelmezhető telefon-URI-t próbált meg tárcsázni: „%s”"
+msgstr "Eseye fè apèl URI telefòn pa analize `%s '"
 
-#: src/calls-application.c:483
+#: src/calls-application.c:485
 #, c-format
 msgid "Don't know how to open `%s'"
-msgstr "Nem tudja, hogyan nyissa meg a következőt: „%s”"
+msgstr "Pa konnen kijan yo louvri `%s '"
 
-#: src/calls-application.c:533
+#: src/calls-application.c:536
 msgid "The name of the plugin to use for the call Provider"
-msgstr "A hívásszolgáltatáshoz használandó bővítmény neve"
+msgstr "Non \"Plugin\" pou itilize a pou konpayi k ap konekte apèl la"
 
-#: src/calls-application.c:534
+#: src/calls-application.c:537
 msgid "PLUGIN"
-msgstr "BŐVÍTMÉNY"
+msgstr "PLUGIN"
 
-#: src/calls-application.c:539
+#: src/calls-application.c:542
 msgid "Whether to present the main window on startup"
-msgstr "Megjelenjen-e a főablak indításkor"
+msgstr "Si ou vle fè fenèt prensipal la parèt nan demaraj la"
 
-#: src/calls-application.c:545
+#: src/calls-application.c:548
 msgid "Dial a number"
-msgstr "Szám tárcsázása"
+msgstr "Fè yon nimewo"
 
-#: src/calls-application.c:546
+#: src/calls-application.c:549
 msgid "NUMBER"
-msgstr "SZÁM"
+msgstr "NIMEWO"
 
 #: src/calls-best-match.c:331 src/calls-call-record-row.c:40
 msgid "Anonymous caller"
-msgstr "Ismeretlen hívó"
+msgstr "Apèl san idantite"
 
-#: src/calls-call-display.c:292
+#: src/calls-call-display.c:286
 msgid "Calling…"
-msgstr "Hívás…"
+msgstr "Apèl ap kontekte ..."
 
 #: src/calls-call-record-row.c:113
 #, c-format
@@ -89,143 +90,139 @@ msgid ""
 "yesterday"
 msgstr ""
 "%s\n"
-"tegnap"
+"yè"
 
 #: src/calls-main-window.c:120
 msgid "translator-credits"
-msgstr "Meskó Balázs <mesko dot balazs at fsf dot hu>"
+msgstr "tradiktè-kredi"
 
 #: src/calls-main-window.c:318
 msgid "Can't place calls: No voice-capable modem available"
-msgstr "Nem lehet hívást indítani: Nem érhető el hangképes modem"
+msgstr "Pa ka fè apèl: Pa gen modèm vwa ki disponib"
 
 #: src/calls-main-window.c:323
 msgid "Can't place calls: No backend service"
-msgstr "Nem lehet hívást indítani: Nincs háttérszolgáltatás"
+msgstr "Pa ka fè apèl: Pa gen sèvis deyè"
 
 #: src/calls-main-window.c:327
 msgid "Can't place calls: No plugin"
-msgstr "Nem lehet hívást indítani: Nincs bővítmény"
+msgstr "Pa ka fè apèl: Pa gen okenn \"Plugin\""
 
 #: src/calls-main-window.c:364
 msgid "Contacts"
-msgstr "Névjegyek"
+msgstr "Kontak  yo"
 
 #: src/calls-main-window.c:374 src/ui/call-display.ui:287
 msgid "Dial Pad"
-msgstr "Tárcsázó"
+msgstr "Touch pou fè apèl"
 
 #: src/calls-main-window.c:382
 msgid "Recent"
-msgstr "Előzmények"
+msgstr "Resan"
 
-#: src/calls-notifier.c:46
+#: src/calls-notifier.c:53
 msgid "Missed call"
-msgstr "Nem fogadott hívás"
-
-#: src/calls-notifier.c:58
-#, c-format
-msgid "Missed call from <b>%s</b>"
-msgstr "Nem fogadott hívás innen: <b>%s</b>"
+msgstr "Apèl rate"
 
 #: src/calls-notifier.c:60
 #, c-format
-msgid "Missed call from %s"
-msgstr "Nem fogadott hívás innen: %s"
+msgid "Missed call from <b>%s</b>"
+msgstr "Apèl rate de <b>%s</b>"
 
-#: src/calls-notifier.c:66
+#: src/calls-notifier.c:62
+#, c-format
+msgid "Missed call from %s"
+msgstr "Apèl rate de %s"
+
+#: src/calls-notifier.c:68
 msgid "Call back"
-msgstr "Visszahívás"
+msgstr "Rele anko"
 
 #: src/ui/call-display.ui:33
 msgid "Incoming phone call"
-msgstr "Bejövő telefonhívás"
+msgstr "Apèl nan telefòn fèk ap rantre"
 
 #: src/ui/call-display.ui:133
 msgid "Mute"
-msgstr "Némítás"
+msgstr "San son"
 
 #: src/ui/call-display.ui:170
 msgid "Speaker"
-msgstr "Hangszóró"
+msgstr "Gwo volim"
 
 #: src/ui/call-display.ui:206
 msgid "Add call"
-msgstr "Hívás hozzáadása"
+msgstr "Ajoute apèl"
 
 #: src/ui/call-display.ui:251
 msgid "Hold"
-msgstr "Várakoztatás"
+msgstr "poz"
 
 #: src/ui/call-display.ui:343
 msgid "Hang up"
-msgstr "Bontás"
+msgstr "Koupe"
 
 #: src/ui/call-display.ui:374
 msgid "Answer"
-msgstr "Felvétel"
+msgstr "Reponn"
 
 #: src/ui/call-display.ui:456
 msgid "Hide the dial pad"
-msgstr "Tárcsázó elrejtése"
+msgstr "Kache touch apèl"
 
 #: src/ui/call-record-row.ui:68
 msgid "Call the party"
-msgstr "Fél hívása"
+msgstr "Rele pati a"
 
 #: src/ui/call-record-row.ui:112
 msgid "_Delete Call"
-msgstr "Hívás _törlése"
+msgstr "_Efase apèl"
 
 #. Translators: This is a phone number
 #: src/ui/call-record-row.ui:117
 msgid "_Copy number"
-msgstr "Szám _másolása"
+msgstr "_Kopye nimewo"
 
 #: src/ui/call-selector-item.ui:31
 msgid "+441234567890"
-msgstr "+36123456789"
+msgstr "+441234567890"
 
 #: src/ui/call-selector-item.ui:44
 msgid "On hold"
-msgstr "Várakoztatva"
-
-#: src/ui/contacts-box.ui:66
-msgid "No contacts found"
-msgstr "Nem található névjegy"
+msgstr "Sou poz"
 
 #: src/ui/encryption-indicator.ui:23
 msgid "This call is not encrypted"
-msgstr "A hívás nem titkosított"
+msgstr "Apèl sa a pa sekirize"
 
 #: src/ui/encryption-indicator.ui:45
 msgid "This call is encrypted"
-msgstr "A hívás titkosított"
+msgstr "Apèl sa a sekirize"
 
 #: src/ui/history-box.ui:23
 msgid "No Recent Calls"
-msgstr "Nem volt hívás a közelmúltban"
+msgstr "Pa gen apèl resan"
 
 #: src/ui/history-header-bar.ui:7
 msgid "Recent Calls"
-msgstr "Közelmúltbeli hívások"
+msgstr "Apèl resan"
 
 #: src/ui/history-header-bar.ui:20
 msgid "New call…"
-msgstr "Új hívás…"
+msgstr "Nouvo apèl ..."
 
 #. Translators: tooltip for the application menu button
 #: src/ui/history-header-bar.ui:39
 msgid "Menu"
-msgstr "Menü"
+msgstr "Meni"
 
 #: src/ui/history-header-bar.ui:70
 msgid "About Calls"
-msgstr "Hívások névjegye"
+msgstr "Konsènan apèl yo"
 
 #: src/ui/main-window.ui:38
 msgid "No modem found"
-msgstr "Nem található modem"
+msgstr "Pa jwenn modèm"
 
 #: src/ui/main-window.ui:95
 msgid "USSD"
@@ -233,31 +230,28 @@ msgstr "USSD"
 
 #: src/ui/main-window.ui:104
 msgid "_Cancel"
-msgstr "Mé_gse"
+msgstr "_Anile"
 
 #: src/ui/main-window.ui:121
 msgid "_Close"
-msgstr "_Bezárás"
+msgstr "_Femen"
 
 #: src/ui/main-window.ui:131
 msgid "_Send"
-msgstr "_Küldés"
+msgstr "_Voye"
 
-#: src/ui/new-call-box.ui:94
+#: src/ui/new-call-box.ui:101
 msgid "Dial"
-msgstr "Tárcsázás"
+msgstr "Fè apèl"
 
-#: src/ui/new-call-box.ui:122
+#: src/ui/new-call-box.ui:129
 msgid "Backspace through number"
-msgstr "Törléstől a számokig"
+msgstr "Retounen pa nimewo"
 
 #: src/ui/new-call-header-bar.ui:7
 msgid "New Call"
-msgstr "Új hívás"
+msgstr " Nouvo apèl"
 
 #: src/ui/new-call-header-bar.ui:20
 msgid "Back"
-msgstr "Vissza"
-
-#~ msgid "Can't place calls: No SIM card"
-#~ msgstr "Nem lehet hívást indítani: Nincs SIM-kártya"
+msgstr "Retounen"

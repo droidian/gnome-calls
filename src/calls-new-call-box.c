@@ -35,11 +35,12 @@ struct _CallsNewCallBox
 {
   GtkBox parent_instance;
 
-  GtkListStore *origin_store;
-  GtkComboBox *origin_box;
+  GtkListBox  *origin_list_box;
+  HdyComboRow *origin_list;
   GtkButton *backspace;
   HdyKeypad *keypad;
   GtkButton *dial;
+  GtkGestureLongPress *long_press_back_gesture;
 
   GList *dial_queue;
 };
@@ -47,34 +48,31 @@ struct _CallsNewCallBox
 G_DEFINE_TYPE (CallsNewCallBox, calls_new_call_box, GTK_TYPE_BOX);
 
 
-enum {
-  ORIGIN_STORE_COLUMN_NAME,
-  ORIGIN_STORE_COLUMN_ORIGIN
-};
-
-
 static CallsOrigin *
 get_origin (CallsNewCallBox *self)
 {
-  GtkTreeIter iter;
-  gboolean ok;
-  CallsOrigin *origin;
+  g_autoptr(CallsOrigin) origin = NULL;
+  GListModel *model;
+  int index = -1;
 
-  ok = gtk_combo_box_get_active_iter (self->origin_box, &iter);
-  if (!ok)
-    {
-      return NULL;
-    }
+  model = hdy_combo_row_get_model (self->origin_list);
 
-  gtk_tree_model_get (GTK_TREE_MODEL (self->origin_store),
-                      &iter,
-                      ORIGIN_STORE_COLUMN_ORIGIN, &origin,
-                      -1);
-  g_assert (CALLS_IS_ORIGIN (origin));
+  if (model)
+    index = hdy_combo_row_get_selected_index (self->origin_list);
+
+  if (model && index >= 0)
+    origin = g_list_model_get_item (model, index);
 
   return origin;
 }
 
+
+static void
+long_press_back_cb (CallsNewCallBox *self)
+{
+  GtkEntry *entry = hdy_keypad_get_entry (self->keypad);
+  gtk_editable_delete_text (GTK_EDITABLE (entry), 0, -1);
+}
 
 static void
 backspace_clicked_cb (CallsNewCallBox *self)
@@ -90,7 +88,7 @@ ussd_send_cb (GObject      *object,
 {
   CallsNewCallBox *self;
   CallsUssd *ussd = (CallsUssd *)object;
-  g_autoptr(GTask) task = user_data;
+  g_autoptr (GTask) task = user_data;
   GError *error = NULL;
   char *response;
 
@@ -162,120 +160,72 @@ dial_queued (CallsNewCallBox *self)
   g_list_foreach (self->dial_queue,
                   (GFunc)dial_queued_cb,
                   origin);
-  g_object_unref (origin);
 
   clear_dial_queue (self);
 }
 
 
-void
-update_origin_box (CallsNewCallBox *self)
+char *
+get_origin_name (gpointer item,
+                 gpointer user_data)
 {
-  GtkTreeModel *origin_store = GTK_TREE_MODEL (self->origin_store);
-  GtkTreeIter iter;
+  g_assert (CALLS_IS_ORIGIN (item));
 
-  if (!gtk_tree_model_get_iter_first (origin_store, &iter))
-    {
-      gtk_widget_hide (GTK_WIDGET (self->origin_box));
-      gtk_widget_set_sensitive (GTK_WIDGET (self->dial), FALSE);
-      return;
-    }
+  return g_strdup (calls_origin_get_name (item));
+}
 
-  /* We know there is at least one origin. */
+static void
+origin_count_changed_cb (CallsNewCallBox *self)
+{
+  GListModel *origins;
+  guint n_items = 0;
 
-  gtk_widget_set_sensitive (GTK_WIDGET (self->dial), TRUE);
+  g_assert (CALLS_IS_NEW_CALL_BOX (self));
 
-  if (!gtk_tree_model_iter_next (origin_store, &iter))
-    {
-      gtk_combo_box_set_active (self->origin_box, 0);
-      gtk_widget_hide (GTK_WIDGET (self->origin_box));
-    }
+  origins = calls_manager_get_origins (calls_manager_get_default ());
+  n_items = g_list_model_get_n_items (origins);
+
+  gtk_widget_set_visible (GTK_WIDGET (self->origin_list_box), n_items > 1);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->dial), n_items > 0);
+
+  if (n_items)
+    hdy_combo_row_bind_name_model (self->origin_list, origins,
+                                   get_origin_name, self, NULL);
   else
-    {
-      /* We know there are multiple origins. */
+    hdy_combo_row_bind_name_model (self->origin_list,
+                                   NULL, NULL, NULL, NULL);
 
-      if (gtk_combo_box_get_active (self->origin_box) < 0)
-        {
-          gtk_combo_box_set_active (self->origin_box, 0);
-        }
-
-      /* We know there are multiple origins and one is selected. */
-
-      gtk_widget_show (GTK_WIDGET (self->origin_box));
-    }
+  if (n_items)
+    hdy_combo_row_set_selected_index (self->origin_list, 0);
 
   dial_queued (self);
 }
 
-
 static void
-add_origin (CallsNewCallBox *self, CallsOrigin *origin)
+provider_changed_cb (CallsNewCallBox *self)
 {
-  GtkTreeIter iter;
+  GListModel *origins;
 
-  gtk_list_store_append (self->origin_store, &iter);
-  gtk_list_store_set (self->origin_store, &iter,
-                      ORIGIN_STORE_COLUMN_NAME, calls_origin_get_name (origin),
-                      ORIGIN_STORE_COLUMN_ORIGIN, G_OBJECT (origin),
-                      -1);
+  g_assert (CALLS_IS_NEW_CALL_BOX (self));
 
-  update_origin_box (self);
+  origins = calls_manager_get_origins (calls_manager_get_default ());
+  g_signal_connect_object (origins, "items-changed",
+                           G_CALLBACK (origin_count_changed_cb), self,
+                           G_CONNECT_SWAPPED);
+
+  origin_count_changed_cb (self);
 }
-
-
-static void
-remove_origin (CallsNewCallBox *self, CallsOrigin *origin)
-{
-  GtkTreeIter iter;
-  gboolean ok;
-
-  ok = calls_list_store_find (self->origin_store, origin,
-                              ORIGIN_STORE_COLUMN_ORIGIN, &iter);
-  g_return_if_fail (ok);
-
-  gtk_list_store_remove (self->origin_store, &iter);
-
-  update_origin_box (self);
-}
-
-
-static void
-remove_origins (CallsNewCallBox *self)
-{
-  GtkTreeModel *model = GTK_TREE_MODEL (self->origin_store);
-  GtkTreeIter iter;
-
-  while (gtk_tree_model_get_iter_first (model, &iter))
-    {
-      gtk_list_store_remove (self->origin_store, &iter);
-    }
-}
-
 
 static void
 calls_new_call_box_init (CallsNewCallBox *self)
 {
-  g_autoptr (GList) origins = NULL;
-  GList *o;
-
   gtk_widget_init_template (GTK_WIDGET (self));
 
   g_signal_connect_swapped (calls_manager_get_default (),
-                            "origin-add",
-                            G_CALLBACK (add_origin),
+                            "notify::provider",
+                            G_CALLBACK (provider_changed_cb),
                             self);
-
-  g_signal_connect_swapped (calls_manager_get_default (),
-                            "origin-remove",
-                            G_CALLBACK (remove_origin),
-                            self);
-
-  origins = calls_manager_get_origins (calls_manager_get_default ());
-  for (o = origins; o != NULL; o = o->next) {
-    add_origin (self, o->data);
-  }
-
-  update_origin_box (self);
+  provider_changed_cb (self);
 }
 
 
@@ -286,10 +236,8 @@ dispose (GObject *object)
 
   clear_dial_queue (self);
 
-  if (self->origin_store)
-    {
-      remove_origins (self);
-    }
+  if (self->long_press_back_gesture != NULL)
+    g_object_unref (self->long_press_back_gesture);
 
   G_OBJECT_CLASS (calls_new_call_box_parent_class)->dispose (object);
 }
@@ -304,13 +252,15 @@ calls_new_call_box_class_init (CallsNewCallBoxClass *klass)
   object_class->dispose = dispose;
 
   gtk_widget_class_set_template_from_resource (widget_class, "/sm/puri/calls/ui/new-call-box.ui");
-  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_store);
-  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_box);
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list_box);
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, backspace);
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, long_press_back_gesture);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, keypad);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, dial);
   gtk_widget_class_bind_template_callback (widget_class, dial_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, backspace_clicked_cb);
+  gtk_widget_class_bind_template_callback (widget_class, long_press_back_cb);
 }
 
 
@@ -341,7 +291,6 @@ calls_new_call_box_dial (CallsNewCallBox *self,
     }
 
   calls_origin_dial (origin, target);
-  g_object_unref (origin);
 }
 
 void
@@ -351,8 +300,8 @@ calls_new_call_box_send_ussd_async (CallsNewCallBox     *self,
                                     GAsyncReadyCallback  callback,
                                     gpointer             user_data)
 {
-  g_autoptr(CallsOrigin) origin = NULL;
-  g_autoptr(GTask) task = NULL;
+  g_autoptr (CallsOrigin) origin = NULL;
+  g_autoptr (GTask) task = NULL;
   GtkEntry *entry;
 
   g_return_if_fail (CALLS_IS_NEW_CALL_BOX (self));

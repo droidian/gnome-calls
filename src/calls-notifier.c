@@ -43,16 +43,18 @@ static void
 notify (CallsNotifier *self, CallsCall *call)
 {
   GApplication *app = g_application_get_default ();
-  g_autoptr(GNotification) notification;
+  g_autoptr (GNotification) notification = g_notification_new (_("Missed call"));
+  g_autoptr (CallsBestMatch) contact = NULL;
   g_autofree gchar *msg = NULL;
   g_autofree gchar *ref = NULL;
   g_autofree gchar *label_callback = NULL;
   const char *name;
 
-  notification = g_notification_new (_("Missed call"));
+  contact = calls_call_get_contact (call);
+  // TODO: We need to update the notification when the contact name changes
+  name = calls_best_match_get_name (contact);
 
-  name = calls_manager_get_contact_name (call);
-  if (name)
+  if (calls_best_match_has_individual (contact))
     msg = g_strdup_printf (_("Missed call from <b>%s</b>"), name);
   else
     msg = g_strdup_printf (_("Missed call from %s"), calls_call_get_number (call));
@@ -91,7 +93,7 @@ state_changed_cb (CallsNotifier  *self,
   n = g_list_model_get_n_items (G_LIST_MODEL (self->unanswered));
   for (int i = 0; i < n; i++)
     {
-      g_autoptr(CallsCall) item = g_list_model_get_item (G_LIST_MODEL (self->unanswered), i);
+      g_autoptr (CallsCall) item = g_list_model_get_item (G_LIST_MODEL (self->unanswered), i);
       if (item == call)
         {
           g_list_store_remove (self->unanswered, i);

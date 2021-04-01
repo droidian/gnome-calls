@@ -37,91 +37,60 @@
 
 struct _CallsOfonoProvider
 {
-  GObject parent_instance;
+  CallsProvider parent_instance;
 
+  /** ID for the D-Bus watch */
+  guint watch_id;
   /** D-Bus connection */
   GDBusConnection *connection;
   /** D-Bus proxy for the oFono Manager object */
   GDBOManager *manager;
   /** Map of D-Bus object paths to a struct CallsModemData */
   GHashTable *modems;
-  /** Map of D-Bus object paths to Origins */
-  GHashTable *origins;
+  /* A list of CallsOrigins */
+  GListStore *origins;
 };
 
 
-static void calls_ofono_provider_message_source_interface_init (CallsProviderInterface *iface);
-static void calls_ofono_provider_provider_interface_init (CallsProviderInterface *iface);
+static void calls_ofono_provider_message_source_interface_init (CallsMessageSourceInterface *iface);
 
 
 G_DEFINE_DYNAMIC_TYPE_EXTENDED
-(CallsOfonoProvider, calls_ofono_provider, G_TYPE_OBJECT, 0,
+(CallsOfonoProvider, calls_ofono_provider, CALLS_TYPE_PROVIDER, 0,
  G_IMPLEMENT_INTERFACE_DYNAMIC (CALLS_TYPE_MESSAGE_SOURCE,
-                                calls_ofono_provider_message_source_interface_init)
- G_IMPLEMENT_INTERFACE_DYNAMIC (CALLS_TYPE_PROVIDER,
-                                calls_ofono_provider_provider_interface_init))
+                                calls_ofono_provider_message_source_interface_init))
 
 
-static const gchar *
-get_name (CallsProvider *iface)
+gboolean
+ofono_find_origin_index (CallsOfonoProvider *self,
+                         const char         *path,
+                         guint              *index)
 {
-  return "oFono";
+  GListModel *model;
+  guint n_items;
+
+  g_assert (CALLS_IS_OFONO_PROVIDER (self));
+
+  model = G_LIST_MODEL (self->origins);
+  n_items = g_list_model_get_n_items (model);
+
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr(CallsOfonoOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (model, i);
+
+      if (calls_ofono_origin_matches (origin, path))
+        {
+          if (index)
+            *index = i;
+
+          return TRUE;
+        }
+    }
+
+  return FALSE;
 }
-
-
-static void
-add_origin_to_list (const gchar *path,
-                    CallsOfonoOrigin *origin,
-                    GList **list)
-{
-  *list = g_list_prepend (*list, origin);
-}
-
-
-static GList *
-get_origins (CallsProvider *iface)
-{
-  CallsOfonoProvider *self = CALLS_OFONO_PROVIDER (iface);
-  GList *list = NULL;
-
-  g_hash_table_foreach (self->origins,
-                        (GHFunc)add_origin_to_list, &list);
-
-  return g_list_reverse (list);
-}
-
-
-static void
-add_origin (CallsOfonoProvider *self,
-            const gchar        *path,
-            GDBOModem          *modem)
-{
-  CallsOfonoOrigin *origin;
-
-  g_debug ("Adding oFono Origin with path `%s'", path);
-
-  origin = calls_ofono_origin_new (modem);
-  g_hash_table_insert (self->origins, g_strdup(path), origin);
-
-  g_signal_emit_by_name (CALLS_PROVIDER (self),
-                         "origin-added", origin);
-}
-
-
-static void
-remove_origin (CallsOfonoProvider *self,
-               const gchar        *path,
-               CallsOfonoOrigin   *origin)
-{
-  g_debug ("Removing oFono Origin with path `%s'", path);
-
-  g_signal_emit_by_name (CALLS_PROVIDER (self),
-                         "origin-removed", origin);
-
-  g_hash_table_remove (self->origins, path);
-  g_object_unref (origin);
-}
-
 
 static gboolean
 object_array_includes (GVariantIter *iter,
@@ -152,7 +121,8 @@ modem_check_ifaces (CallsOfonoProvider *self,
   gboolean voice;
   GVariantIter *iter = NULL;
   const gchar *path;
-  CallsOfonoOrigin *origin;
+  guint index;
+  gboolean has_origin;
 
   g_variant_get (ifaces, "as", &iter);
 
@@ -160,15 +130,20 @@ modem_check_ifaces (CallsOfonoProvider *self,
     (iter, "org.ofono.VoiceCallManager");
 
   path = g_dbus_proxy_get_object_path (G_DBUS_PROXY (modem));
-  origin = g_hash_table_lookup (self->origins, path);
 
-  if (voice && !origin)
+  has_origin = ofono_find_origin_index (self, path, &index);
+  if (voice && !has_origin)
     {
-      add_origin (self, path, modem);
+      g_autoptr(CallsOfonoOrigin) origin = NULL;
+
+      g_debug ("Adding oFono Origin with path `%s'", path);
+
+      origin = calls_ofono_origin_new (modem);
+      g_list_store_append (self->origins, origin);
     }
-  else if (!voice && origin)
+  else if (!voice && has_origin)
     {
-      remove_origin (self, path, origin);
+      g_list_store_remove (self->origins, index);
     }
 }
 
@@ -320,15 +295,12 @@ modem_removed_cb (GDBOManager        *manager,
                   const gchar        *path,
                   CallsOfonoProvider *self)
 {
-  CallsOfonoOrigin *origin;
+  guint index;
 
   g_debug ("Removing modem `%s'", path);
 
-  origin = g_hash_table_lookup (self->origins, path);
-  if (origin)
-    {
-      remove_origin (self, path, origin);
-    }
+  if (ofono_find_origin_index (self, path, &index))
+    g_list_store_remove (self->origins, index);
 
   g_hash_table_remove (self->modems, path);
 
@@ -344,7 +316,7 @@ get_modems_cb (GDBOManager *manager,
   gboolean ok;
   GVariant *modems;
   GVariantIter *modems_iter = NULL;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   const gchar *path;
   GVariant *properties;
 
@@ -376,14 +348,34 @@ get_modems_cb (GDBOManager *manager,
   g_variant_unref (modems);
 }
 
+static const char *
+calls_ofono_provider_get_name (CallsProvider *provider)
+{
+  return "Ofono";
+}
+
+static const char *
+calls_ofono_provider_get_status (CallsProvider *provider)
+{
+  return "";
+}
+
+static GListModel *
+calls_ofono_provider_get_origins (CallsProvider *provider)
+{
+  CallsOfonoProvider *self = CALLS_OFONO_PROVIDER (provider);
+
+  return G_LIST_MODEL (self->origins);
+}
 
 static void
-constructed (GObject *object)
+ofono_appeared_cb (GDBusConnection *connection,
+                   const gchar *name,
+                   const gchar *name_owner,
+                   CallsOfonoProvider *self)
 {
-  CallsOfonoProvider *self = CALLS_OFONO_PROVIDER (object);
-  GError *error = NULL;
-
-  self->connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
+  g_autoptr (GError) error = NULL;
+  self->connection = connection;
   if (!self->connection)
     {
       g_error ("Error creating D-Bus connection: %s",
@@ -413,7 +405,35 @@ constructed (GObject *object)
      NULL,
      (GAsyncReadyCallback) get_modems_cb,
      self);
-     
+}
+
+
+void
+ofono_vanished_cb (GDBusConnection *connection,
+                   const gchar *name,
+                   CallsOfonoProvider *self)
+{
+  g_debug ("Ofono vanished from D-Bus");
+  g_list_store_remove_all (self->origins);
+  //update_status (self);
+}
+
+static void
+constructed (GObject *object)
+{
+  CallsOfonoProvider *self = CALLS_OFONO_PROVIDER (object);
+
+  self->watch_id =
+    g_bus_watch_name (G_BUS_TYPE_SYSTEM,
+                      "org.ofono",
+                      G_BUS_NAME_WATCHER_FLAGS_AUTO_START,
+                      (GBusNameAppearedCallback) ofono_appeared_cb,
+                      (GBusNameVanishedCallback) ofono_vanished_cb,
+                      self, NULL);
+
+  g_debug ("Watching for Ofono");
+
+
   G_OBJECT_CLASS (calls_ofono_provider_parent_class)->constructed (object);
 }
 
@@ -435,7 +455,7 @@ finalize (GObject *object)
 {
   CallsOfonoProvider *self = CALLS_OFONO_PROVIDER (object);
 
-  g_hash_table_unref (self->origins);
+  g_object_unref (self->origins);
   g_hash_table_unref (self->modems);
 
   G_OBJECT_CLASS (calls_ofono_provider_parent_class)->finalize (object);
@@ -446,10 +466,15 @@ static void
 calls_ofono_provider_class_init (CallsOfonoProviderClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  CallsProviderClass *provider_class = CALLS_PROVIDER_CLASS (klass);
 
   object_class->constructed = constructed;
   object_class->dispose = dispose;
   object_class->finalize = finalize;
+
+  provider_class->get_name = calls_ofono_provider_get_name;
+  provider_class->get_status = calls_ofono_provider_get_status;
+  provider_class->get_origins = calls_ofono_provider_get_origins;
 }
 
 
@@ -460,16 +485,8 @@ calls_ofono_provider_class_finalize (CallsOfonoProviderClass *klass)
 
 
 static void
-calls_ofono_provider_message_source_interface_init (CallsProviderInterface *iface)
+calls_ofono_provider_message_source_interface_init (CallsMessageSourceInterface *iface)
 {
-}
-
-
-static void
-calls_ofono_provider_provider_interface_init (CallsProviderInterface *iface)
-{
-  iface->get_name = get_name;
-  iface->get_origins = get_origins;
 }
 
 
@@ -478,8 +495,7 @@ calls_ofono_provider_init (CallsOfonoProvider *self)
 {
   self->modems = g_hash_table_new_full (g_str_hash, g_str_equal,
                                         g_free, g_object_unref);
-  self->origins = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                         g_free, NULL);
+  self->origins = g_list_store_new (CALLS_TYPE_OFONO_ORIGIN);
 }
 
 
