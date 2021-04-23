@@ -24,6 +24,7 @@
 
 #include "calls-best-match.h"
 #include "calls-contacts-provider.h"
+#include "calls-manager.h"
 #include "calls-vala.h"
 #include "util.h"
 
@@ -37,6 +38,8 @@ struct _CallsBestMatch
   FolksSearchView    *view;
   FolksIndividual    *best_match;
   gchar              *phone_number;
+  gchar              *country_code;
+  gboolean            had_country_code_last_time;
 };
 
 G_DEFINE_TYPE (CallsBestMatch, calls_best_match, G_TYPE_OBJECT);
@@ -48,6 +51,7 @@ enum {
   PROP_NAME,
   PROP_AVATAR,
   PROP_HAS_INDIVIDUAL,
+  PROP_COUNTRY_CODE,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -85,6 +89,8 @@ update_best_match (CallsBestMatch *self)
   g_autoptr (GeeSortedSet) individuals = folks_search_view_get_individuals (self->view);
   FolksIndividual *best_match = NULL;
   gboolean notify_has_individual = FALSE;
+
+  g_return_if_fail (GEE_IS_COLLECTION (individuals));
 
   if (!gee_collection_get_is_empty (GEE_COLLECTION (individuals)))
       best_match = gee_sorted_set_first (individuals);
@@ -125,11 +131,25 @@ set_property (GObject      *object,
               GParamSpec   *pspec)
 {
   CallsBestMatch *self = CALLS_BEST_MATCH (object);
+  const gchar *country_code;
 
   switch (property_id)
     {
     case PROP_PHONE_NUMBER:
       calls_best_match_set_phone_number (self, g_value_get_string (value));
+      break;
+
+    case PROP_COUNTRY_CODE:
+      country_code = g_value_get_string (value);
+      if (country_code) {
+        g_free (self->country_code);
+        self->country_code = g_strdup (country_code);
+
+        if (self->phone_number) {
+          g_autofree gchar *number = g_strdup (self->phone_number);
+          calls_best_match_set_phone_number (self, number);
+        }
+      }
       break;
 
     default:
@@ -158,6 +178,10 @@ get_property (GObject      *object,
                           calls_best_match_get_phone_number (self));
       break;
 
+    case PROP_COUNTRY_CODE:
+      g_value_set_string (value, self->country_code);
+      break;
+
     case PROP_NAME:
       g_value_set_string (value,
                           calls_best_match_get_name (self));
@@ -182,6 +206,7 @@ dispose (GObject *object)
 
   g_clear_object (&self->view);
   g_clear_pointer (&self->phone_number, g_free);
+  g_clear_pointer (&self->country_code, g_free);
 
   if (self->best_match) {
     g_signal_handlers_disconnect_by_data (self->best_match, self);
@@ -215,6 +240,13 @@ calls_best_match_class_init (CallsBestMatchClass *klass)
                          NULL,
                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
+  props[PROP_COUNTRY_CODE] =
+    g_param_spec_string ("country-code",
+                         "Country code",
+                         "The country code used for matching",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT);
+
   props[PROP_NAME] =
     g_param_spec_string ("name",
                          "Name",
@@ -237,6 +269,9 @@ calls_best_match_class_init (CallsBestMatchClass *klass)
 static void
 calls_best_match_init (CallsBestMatch *self)
 {
+  g_object_bind_property (calls_manager_get_default (), "country-code",
+                          self, "country-code",
+                          G_BINDING_SYNC_CREATE);
 }
 
 
@@ -271,12 +306,18 @@ calls_best_match_set_phone_number (CallsBestMatch *self,
   g_autoptr (EPhoneNumber) number = NULL;
   g_autoptr (CallsPhoneNumberQuery) query = NULL;
   g_autoptr (GError) error = NULL;
+  gboolean have_country_code_now = FALSE;
 
   g_return_if_fail (CALLS_IS_BEST_MATCH (self));
+  g_return_if_fail (phone_number);
 
+  have_country_code_now = !!self->country_code;
 
-  if (self->phone_number == phone_number)
+  if (self->phone_number == phone_number &&
+      self->had_country_code_last_time == have_country_code_now)
     return;
+
+  self->had_country_code_last_time = have_country_code_now;
 
   g_clear_pointer (&self->phone_number, g_free);
 
@@ -284,14 +325,12 @@ calls_best_match_set_phone_number (CallsBestMatch *self,
   if (phone_number[0] != '\0')
     self->phone_number = g_strdup (phone_number);
 
+  if (self->view)
+    g_signal_handlers_disconnect_by_data (self->view, self);
   g_clear_object (&self->view);
 
   if (self->phone_number) {
-    /* FIXME: parsing the phone number can add the wrong country code if the default region
-     * for the app isn't set correctly.See:
-     * https://developer.gnome.org/eds/stable/eds-e-phone-number.html#e-phone-number-get-default-region
-     */
-    number = e_phone_number_from_string (phone_number, NULL, &error);
+    number = e_phone_number_from_string (phone_number, self->country_code, &error);
 
     if (!number) {
       g_warning ("Failed to convert %s to a phone number: %s", phone_number, error->message);

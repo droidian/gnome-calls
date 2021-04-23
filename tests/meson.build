@@ -8,6 +8,9 @@ test_env = [
   'PYTHONDONTWRITEBYTECODE=yes',
   'MALLOC_CHECK_=2',
   'NO_AT_BRIDGE=1',
+  'CALLS_SIP_DO_NOT_AUTOLOAD=1',
+  'CALLS_AUDIOSRC=audiotestsrc',
+  'CALLS_AUDIOSINK=fakesink',
 ]
 
 test_cflags = [
@@ -42,8 +45,8 @@ foreach test : tests
                     'common.h' ]
 
   t = executable(name, test_sources,
-                 calls_sources, dummy_sources, calls_enum_sources, calls_resources,
-                 wl_proto_sources, wayland_sources,
+                 calls_sources,
+                 dummy_sources,
                  c_args : test_cflags,
                  link_args: test_link_args,
                  link_with : calls_vala,
@@ -59,8 +62,7 @@ endforeach
 test_sources = [ 'test-manager.c' ]
 
 t = executable('manager', test_sources,
-                 calls_sources, calls_enum_sources, calls_resources,
-                 wl_proto_sources, wayland_sources,
+                 calls_sources,
                  c_args : test_cflags,
                  link_args: test_link_args,
                  link_with : calls_vala,
@@ -71,5 +73,32 @@ t = executable('manager', test_sources,
                 )
 test('manager', t, env: test_env)
 
+test_sources = [ 'test-plugins.c' ]
+
+t = executable('plugins', test_sources,
+                 calls_sources,
+                 c_args : test_cflags,
+                 link_args: test_link_args,
+                 link_with : calls_vala,
+                 dependencies: calls_deps,
+                 include_directories : [
+                   calls_includes
+                 ]
+                )
+test('plugins', t, env: test_env)
+
+test_sources = [ 'test-sip.c' ]
+t = executable('sip', test_sources,
+               calls_sources,
+               c_args : test_cflags,
+               link_args: test_link_args,
+               link_with : [calls_vala, calls_sip],
+               dependencies: [calls_deps, sip_deps],
+               include_directories : [
+                   calls_includes,
+                   sip_include,
+                 ]
+               )
+test('sip', t, env: test_env)
 
 endif

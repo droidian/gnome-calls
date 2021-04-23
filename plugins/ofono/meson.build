@@ -46,7 +46,7 @@ ofono_sources = files(
   ]
 )
 
-shared_module(
+calls_ofono = shared_module(
   'ofono',
   ofono_sources, gdbofono_headers,
   dependencies: ofono_deps,

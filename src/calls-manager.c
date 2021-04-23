@@ -40,6 +40,9 @@ struct _CallsManager
   gchar *provider_name;
   CallsOrigin *default_origin;
   CallsManagerState state;
+  CallsCall *primary_call;
+  char *country_code;
+  GBinding *country_code_binding;
 };
 
 G_DEFINE_TYPE (CallsManager, calls_manager, G_TYPE_OBJECT);
@@ -49,14 +52,13 @@ enum {
   PROP_PROVIDER,
   PROP_DEFAULT_ORIGIN,
   PROP_STATE,
+  PROP_COUNTRY_CODE,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
 
 enum {
-  SIGNAL_ORIGIN_ADD,
-  SIGNAL_ORIGIN_REMOVE,
   SIGNAL_CALL_ADD,
   SIGNAL_CALL_REMOVE,
   /* TODO: currently this event isn't emitted since the plugins don't give use
@@ -80,60 +82,6 @@ set_state (CallsManager *self, CallsManagerState state)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_STATE]);
 }
 
-static CallsProvider *
-load_provider (const gchar* name)
-{
-  g_autoptr (GError) error = NULL;
-  PeasEngine *plugins;
-  PeasPluginInfo *info;
-  PeasExtension *extension;
-
-  // Add Calls search path and rescan
-  plugins = peas_engine_get_default ();
-  peas_engine_add_search_path (plugins, PLUGIN_LIBDIR, NULL);
-  g_debug ("Scanning for plugins in `%s'", PLUGIN_LIBDIR);
-
-  // Find the plugin
-  info = peas_engine_get_plugin_info (plugins, name);
-  if (!info)
-    {
-      g_debug ("Could not find plugin `%s'", name);
-      return NULL;
-    }
-
-  // Possibly load the plugin
-  if (!peas_plugin_info_is_loaded (info))
-    {
-      peas_engine_load_plugin (plugins, info);
-
-      if (!peas_plugin_info_is_available (info, &error))
-        {
-          g_debug ("Error loading plugin `%s': %s", name, error->message);
-          return NULL;
-        }
-
-      g_debug ("Loaded plugin `%s'", name);
-    }
-
-  // Check the plugin provides CallsProvider
-  if (!peas_engine_provides_extension (plugins, info, CALLS_TYPE_PROVIDER))
-    {
-      g_debug ("Plugin `%s' does not have a provider extension", name);
-      return NULL;
-    }
-
-  // Get the extension
-  extension = peas_engine_create_extensionv (plugins, info, CALLS_TYPE_PROVIDER, 0, NULL);
-  if (!extension)
-    {
-      g_debug ("Could not create provider from plugin `%s'", name);
-      return NULL;
-    }
-
-  g_debug ("Created provider from plugin `%s'", name);
-  return CALLS_PROVIDER (extension);
-}
-
 static void
 add_call (CallsManager *self, CallsCall *call, CallsOrigin *origin)
 {
@@ -142,6 +90,11 @@ add_call (CallsManager *self, CallsCall *call, CallsOrigin *origin)
   g_return_if_fail (CALLS_IS_CALL (call));
 
   g_signal_emit (self, signals[SIGNAL_CALL_ADD], 0, call, origin);
+
+  if (self->primary_call == NULL)
+    self->primary_call = call;
+  else
+    calls_call_hang_up (call);
 }
 
 static void
@@ -153,6 +106,9 @@ remove_call (CallsManager *self, CallsCall *call, gchar *reason, CallsOrigin *or
 
   /* We ignore the reason for now, because it doesn't give any usefull information */
   g_signal_emit (self, signals[SIGNAL_CALL_REMOVE], 0, call, origin);
+
+  if (self->primary_call == call)
+    self->primary_call = NULL;
 }
 
 static void
@@ -205,7 +161,6 @@ add_origin (CallsManager *self, CallsOrigin *origin, CallsProvider *provider)
   calls_origin_foreach_call(origin, (CallsOriginForeachCallFunc)add_call, self);
 
   set_state (self, CALLS_MANAGER_STATE_READY);
-  g_signal_emit (self, signals[SIGNAL_ORIGIN_ADD], 0, origin);
 }
 
 static void
@@ -217,7 +172,7 @@ remove_call_cb (gpointer self, CallsCall *call, CallsOrigin *origin)
 static void
 remove_origin (CallsManager *self, CallsOrigin *origin, CallsProvider *provider)
 {
-  g_autoptr (GList) origins = NULL;
+  GListModel *origins;
 
   g_return_if_fail (CALLS_IS_ORIGIN (origin));
 
@@ -229,40 +184,80 @@ remove_origin (CallsManager *self, CallsOrigin *origin, CallsProvider *provider)
     calls_manager_set_default_origin (self, NULL);
 
   origins = calls_manager_get_origins (self);
-   if (origins == NULL)
-     set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
-
-  g_signal_emit (self, signals[SIGNAL_ORIGIN_REMOVE], 0, origin);
+  if (!origins || g_list_model_get_n_items (origins) == 0)
+    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
 }
 
 static void
 remove_provider (CallsManager *self)
 {
-  PeasEngine *engine = peas_engine_get_default ();
-  PeasPluginInfo *plugin = peas_engine_get_plugin_info (engine, self->provider_name);
-  g_autoptr (GList) origins = NULL;
-  GList *o;
+  GListModel *origins;
+  guint n_items;
 
   g_debug ("Remove provider: %s", calls_provider_get_name (self->provider));
   g_signal_handlers_disconnect_by_data (self->provider, self);
 
   origins = calls_provider_get_origins (self->provider);
+  g_signal_handlers_disconnect_by_data (origins, self);
+  n_items = g_list_model_get_n_items (origins);
 
-  for (o = origins; o != NULL; o = o->next)
+  for (guint i = 0; i < n_items; i++)
     {
-      remove_origin (self, o->data, self->provider);
+      g_autoptr(CallsOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (origins, i);
+      remove_origin (self, origin, self->provider);
     }
 
+  calls_provider_unload_plugin (self->provider_name);
+
   g_clear_pointer (&self->provider_name, g_free);
-  peas_engine_unload_plugin (engine, plugin);
+  g_clear_object (&self->provider);
   set_state (self, CALLS_MANAGER_STATE_NO_PROVIDER);
+}
+
+static void
+origin_items_changed_cb (CallsManager *self)
+{
+  GListModel *origins;
+  guint n_items;
+  gboolean has_default_origin = FALSE;
+
+  g_assert (CALLS_IS_MANAGER (self));
+
+  has_default_origin = !!self->default_origin;
+  origins = calls_provider_get_origins (self->provider);
+  n_items = g_list_model_get_n_items (origins);
+
+  if (n_items)
+    set_state (self, CALLS_MANAGER_STATE_READY);
+  else
+    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
+
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr(CallsOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (origins, i);
+      add_origin (self, origin, self->provider);
+      if (!has_default_origin)
+        {
+          /* XXX
+            This actually doesn't work correctly when we default origin is removed.
+            This will require a rework when supporting multiple providers anyway
+            and also isn't really used outside of getting the country code
+            it's not really a problem.
+          */
+          calls_manager_set_default_origin (self, origin);
+          has_default_origin = TRUE;
+        }
+    }
 }
 
 static void
 add_provider (CallsManager *self, const gchar *name)
 {
-  g_autoptr (GList) origins = NULL;
-  GList *o;
+  GListModel *origins;
 
   /* We could eventually enable more then one provider, but for now let's use
      only one */
@@ -272,24 +267,24 @@ add_provider (CallsManager *self, const gchar *name)
   if (name == NULL)
     return;
 
-  self->provider = load_provider (name);
+  self->provider = calls_provider_load_plugin (name);
 
   if (self->provider == NULL) {
     set_state (self, CALLS_MANAGER_STATE_NO_PLUGIN);
     return;
   }
 
-  set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
+  if (g_strcmp0 (name, "dummy") == 0)
+    set_state (self, CALLS_MANAGER_STATE_READY);
+  else
+    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
 
   origins = calls_provider_get_origins (self->provider);
 
-  g_signal_connect_swapped (self->provider, "origin-added", G_CALLBACK (add_origin), self);
-  g_signal_connect_swapped (self->provider, "origin-removed", G_CALLBACK (remove_origin), self);
-
-  for (o = origins; o != NULL; o = o->next)
-    {
-      add_origin (self, o->data, self->provider);
-    }
+  g_signal_connect_object (origins, "items-changed",
+                           G_CALLBACK (origin_items_changed_cb), self,
+                           G_CONNECT_SWAPPED);
+  origin_items_changed_cb (self);
 
   self->provider_name = g_strdup (name);
 }
@@ -315,6 +310,10 @@ calls_manager_get_property (GObject    *object,
     g_value_set_enum (value, calls_manager_get_state (self));
     break;
 
+  case PROP_COUNTRY_CODE:
+    g_value_set_string (value, self->country_code);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -338,6 +337,11 @@ calls_manager_set_property (GObject      *object,
     calls_manager_set_default_origin (self, g_value_get_object (value));
     break;
 
+  case PROP_COUNTRY_CODE:
+    g_free (self->country_code);
+    self->country_code = g_value_dup_string (value);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -352,6 +356,7 @@ calls_manager_finalize (GObject *object)
   g_clear_object (&self->provider);
   g_clear_pointer (&self->provider_name, g_free);
   g_clear_object (&self->contacts_provider);
+  g_clear_pointer (&self->country_code, g_free);
 
   G_OBJECT_CLASS (calls_manager_parent_class)->finalize (object);
 }
@@ -365,26 +370,6 @@ calls_manager_class_init (CallsManagerClass *klass)
   object_class->get_property = calls_manager_get_property;
   object_class->set_property = calls_manager_set_property;
   object_class->finalize = calls_manager_finalize;
-
-  signals[SIGNAL_ORIGIN_ADD] =
-   g_signal_new ("origin-add",
-                 G_TYPE_FROM_CLASS (klass),
-                 G_SIGNAL_RUN_FIRST,
-                 0,
-                 NULL, NULL, NULL,
-                 G_TYPE_NONE,
-                 1,
-                 CALLS_TYPE_ORIGIN);
-
-  signals[SIGNAL_ORIGIN_REMOVE] =
-   g_signal_new ("origin-remove",
-                 G_TYPE_FROM_CLASS (klass),
-                 G_SIGNAL_RUN_FIRST,
-                 0,
-                 NULL, NULL, NULL,
-                 G_TYPE_NONE,
-                 1,
-                 CALLS_TYPE_ORIGIN);
 
   signals[SIGNAL_CALL_ADD] =
    g_signal_new ("call-add",
@@ -468,6 +453,12 @@ calls_manager_class_init (CallsManagerClass *klass)
                                                     CALLS_TYPE_ORIGIN,
                                                     G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
+  props[PROP_COUNTRY_CODE] = g_param_spec_string ("country-code",
+                                                  "country code",
+                                                  "The default country code to use",
+                                                  NULL,
+                                                  G_PARAM_READWRITE);
+
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
@@ -477,9 +468,13 @@ calls_manager_init (CallsManager *self)
 {
   self->state = CALLS_MANAGER_STATE_NO_PROVIDER;
   self->provider_name = NULL;
+  self->primary_call = NULL;
 
   // Load the contacts provider
   self->contacts_provider = calls_contacts_provider_new ();
+  g_object_bind_property (self, "country-code",
+                          self->contacts_provider, "country-code",
+                          G_BINDING_DEFAULT);
 }
 
 
@@ -530,16 +525,6 @@ calls_manager_set_provider (CallsManager *self, const gchar *name)
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_PROVIDER]);
 }
 
-/* FIXME: This function should be removed since we don't want to hand out the
-   provider */
-CallsProvider *
-calls_manager_get_real_provider (CallsManager *self)
-{
-  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
-
-  return self->provider;
-}
-
 CallsManagerState
 calls_manager_get_state (CallsManager *self)
 {
@@ -548,7 +533,7 @@ calls_manager_get_state (CallsManager *self)
   return self->state;
 }
 
-GList *
+GListModel *
 calls_manager_get_origins (CallsManager *self)
 {
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
@@ -562,16 +547,23 @@ calls_manager_get_origins (CallsManager *self)
 GList *
 calls_manager_get_calls (CallsManager *self)
 {
-  g_autoptr (GList) origins = NULL;
+  GListModel *origins = NULL;
   g_autoptr (GList) calls = NULL;
-  GList *o;
+  guint n_items = 0;
 
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
 
   origins = calls_manager_get_origins (self);
+  if (origins)
+    n_items = g_list_model_get_n_items (origins);
 
-  for (o = origins; o != NULL; o = o->next)
-    calls = g_list_concat (calls, calls_origin_get_calls (o->data));
+  for (guint i = 0; i < n_items; i++)
+    {
+      g_autoptr(CallsOrigin) origin = NULL;
+
+      origin = g_list_model_get_item (origins, i);
+      calls = g_list_concat (calls, calls_origin_get_calls (origin));
+    }
 
   return g_steal_pointer (&calls);
 }
@@ -649,10 +641,17 @@ calls_manager_set_default_origin (CallsManager *self,
   if (self->default_origin == origin)
     return;
 
+  g_clear_pointer (&self->country_code_binding, g_binding_unbind);
+
   g_clear_object (&self->default_origin);
 
-  if (origin)
+  if (origin) {
     self->default_origin = g_object_ref (origin);
+    self->country_code_binding =
+      g_object_bind_property (origin, "country-code",
+                              self, "country-code",
+                              G_BINDING_SYNC_CREATE);
+  }
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_DEFAULT_ORIGIN]);
 }

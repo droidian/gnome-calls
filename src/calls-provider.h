@@ -42,17 +42,19 @@ G_DECLARE_DERIVABLE_TYPE (CallsProvider, calls_provider, CALLS, PROVIDER, GObjec
 
 struct _CallsProviderClass
 {
-  GObjectClass parent_iface;
+  GObjectClass parent_class;
 
   const char *(*get_name)    (CallsProvider *self);
   const char *(*get_status)  (CallsProvider *self);
-  GList      *(*get_origins) (CallsProvider *self);
+  GListModel *(*get_origins) (CallsProvider *self);
 };
 
 
-const char *calls_provider_get_name    (CallsProvider *self);
-const char *calls_provider_get_status  (CallsProvider *self);
-GList      *calls_provider_get_origins (CallsProvider *self);
+const char    *calls_provider_get_name      (CallsProvider *self);
+const char    *calls_provider_get_status    (CallsProvider *self);
+GListModel    *calls_provider_get_origins   (CallsProvider *self);
+CallsProvider *calls_provider_load_plugin   (const char *name);
+void           calls_provider_unload_plugin (const char *name);
 
 
 G_END_DECLS
