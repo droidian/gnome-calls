@@ -58,8 +58,16 @@ calls_origin_default_init (CallsOriginInterface *iface)
   g_object_interface_install_property (
     iface,
     g_param_spec_pointer ("calls",
-                         "Calls",
-                         "The list of current calls",
+                          "Calls",
+                          "The list of current calls",
+                          G_PARAM_READABLE));
+
+  g_object_interface_install_property (
+    iface,
+    g_param_spec_string ("country-code",
+                         "country code",
+                         "The country code of the origin, if any",
+                         NULL,
                          G_PARAM_READABLE));
 
   signals[SIGNAL_CALL_ADDED] =

@@ -50,9 +50,17 @@ struct _CallsContactsProvider
   FolksIndividualAggregator *folks_aggregator;
 
   GHashTable                *phone_number_best_matches;
+  gchar                     *country_code;
 };
 
 G_DEFINE_TYPE (CallsContactsProvider, calls_contacts_provider, G_TYPE_OBJECT)
+
+enum {
+  PROP_0,
+  PROP_COUNTRY_CODE,
+  PROP_LAST_PROP
+};
+static GParamSpec *props[PROP_LAST_PROP];
 
 enum {
   SIGNAL_ADDED,
@@ -61,9 +69,9 @@ enum {
 };
 static guint signals[SIGNAL_LAST_SIGNAL];
 
-static void folks_remove_contact (CallsContactsProvider *self,    
+static void folks_remove_contact (CallsContactsProvider *self,
                                   FolksIndividual       *individual);
-static void folks_add_contact    (CallsContactsProvider *self,     
+static void folks_add_contact    (CallsContactsProvider *self,
                                   FolksIndividual       *individual);
 
 static gboolean
@@ -71,13 +79,13 @@ folks_individual_has_phone_numbers (FolksIndividual *individual)
 {
   g_autoptr (GeeSet) phone_numbers;
 
-  g_object_get (individual, "phone-numbers", &phone_numbers, NULL); 
+  g_object_get (individual, "phone-numbers", &phone_numbers, NULL);
 
   return !gee_collection_get_is_empty (GEE_COLLECTION (phone_numbers));
 }
 
 static void
-folks_individual_property_changed_cb (CallsContactsProvider *self, 
+folks_individual_property_changed_cb (CallsContactsProvider *self,
                                       GParamSpec            *pspec,
                                       FolksIndividual       *individual)
 {
@@ -161,10 +169,51 @@ folks_prepare_cb (GObject      *obj,
 }
 
 static void
+calls_contacts_provider_set_property (GObject      *object,
+                                      guint         property_id,
+                                      const GValue *value,
+                                      GParamSpec   *pspec)
+{
+  CallsContactsProvider *self = CALLS_CONTACTS_PROVIDER (object);
+
+  switch (property_id) {
+  case PROP_COUNTRY_CODE:
+    g_free (self->country_code);
+    self->country_code = g_value_dup_string (value);
+    break;
+
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
+}
+
+static void
+calls_contacts_provider_get_property (GObject    *object,
+                                      guint       property_id,
+                                      GValue     *value,
+                                      GParamSpec *pspec)
+{
+  CallsContactsProvider *self = CALLS_CONTACTS_PROVIDER (object);
+
+  switch (property_id) {
+  case PROP_COUNTRY_CODE:
+    g_value_set_string (value, self->country_code);
+    break;
+
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
+}
+
+
+static void
 calls_contacts_provider_finalize (GObject *object)
 {
   CallsContactsProvider *self = CALLS_CONTACTS_PROVIDER (object);
 
+  g_clear_object (&self->country_code);
   g_clear_object (&self->folks_aggregator);
   g_clear_pointer (&self->phone_number_best_matches, g_hash_table_unref);
 
@@ -177,6 +226,8 @@ calls_contacts_provider_class_init (CallsContactsProviderClass *klass)
 {
   GObjectClass *object_class  = G_OBJECT_CLASS (klass);
 
+  object_class->get_property = calls_contacts_provider_get_property;
+  object_class->set_property = calls_contacts_provider_set_property;
   object_class->finalize = calls_contacts_provider_finalize;
 
   signals[SIGNAL_ADDED] =
@@ -198,6 +249,14 @@ calls_contacts_provider_class_init (CallsContactsProviderClass *klass)
                  G_TYPE_NONE,
                  1,
                  FOLKS_TYPE_INDIVIDUAL);
+
+  props[PROP_COUNTRY_CODE] = g_param_spec_string ("country-code",
+                                                  "country code",
+                                                  "The default country code to use",
+                                                  NULL,
+                                                  G_PARAM_READWRITE);
+
+  g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
 
@@ -255,13 +314,14 @@ calls_contacts_provider_get_individuals (CallsContactsProvider *self)
  *
  * Get a best contact match for a phone number
  *
- * Returns: (transfer none): The best match as #CallsBestMatch
+ * Returns: (transfer: full): The best match as #CallsBestMatch
  */
 CallsBestMatch *
 calls_contacts_provider_lookup_phone_number (CallsContactsProvider *self,
                                              const gchar           *number)
 {
   g_autoptr (CallsBestMatch) best_match = NULL;
+  g_autofree gchar *country_code = NULL;
 
   g_return_val_if_fail (CALLS_IS_CONTACTS_PROVIDER (self), NULL);
 
@@ -269,6 +329,10 @@ calls_contacts_provider_lookup_phone_number (CallsContactsProvider *self,
 
   if (best_match) {
     g_object_ref (best_match);
+
+    g_object_get (best_match, "country-code", &country_code, NULL);
+    if (g_strcmp0 (country_code, self->country_code) != 0)
+      calls_best_match_set_phone_number (best_match, number);
 
     return g_steal_pointer (&best_match);
   }

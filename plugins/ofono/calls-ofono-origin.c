@@ -56,6 +56,7 @@ enum {
   PROP_NAME,
   PROP_CALLS,
   PROP_MODEM,
+  PROP_COUNTRY_CODE,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -67,7 +68,7 @@ dial_cb (GDBOVoiceCallManager  *voice,
          CallsOfonoOrigin      *self)
 {
   gboolean ok;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   ok = gdbo_voice_call_manager_call_dial_finish
     (voice, NULL, res, &error);
@@ -110,6 +111,16 @@ calls_ofono_origin_new (GDBOModem *modem)
                        NULL);
 }
 
+gboolean
+calls_ofono_origin_matches (CallsOfonoOrigin *self,
+                            const char       *path)
+{
+  g_return_val_if_fail (CALLS_IS_OFONO_ORIGIN (self), FALSE);
+  g_return_val_if_fail (path, FALSE);
+  g_return_val_if_fail (self->modem, FALSE);
+
+  return g_strcmp0 (g_dbus_proxy_get_object_path (G_DBUS_PROXY (self->modem)), path) == 0;
+}
 
 static void
 set_property (GObject      *object,
@@ -147,6 +158,10 @@ get_property (GObject      *object,
 
   case PROP_CALLS:
     g_value_set_pointer(value, g_hash_table_get_values (self->calls));
+    break;
+
+  case PROP_COUNTRY_CODE:
+    g_value_set_string (value, NULL);
     break;
 
   default:
@@ -282,7 +297,7 @@ voice_call_proxy_new_cb (GDBusConnection *connection,
 {
   CallsOfonoOrigin *self = data->self;
   GDBOVoiceCall *voice_call;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   const gchar *path;
   CallsOfonoCall *call;
 
@@ -343,7 +358,7 @@ call_added_cb (GDBOVoiceCallManager *voice,
 
   g_debug ("Call `%s' addition in progress", path);
 }
-               
+
 
 static void
 call_removed_cb (GDBOVoiceCallManager *voice,
@@ -379,7 +394,7 @@ call_removed_cb (GDBOVoiceCallManager *voice,
   remove_call (self, ofono_call, reason->str);
 
   g_string_free (reason, TRUE);
-  
+
   g_debug ("Removed call `%s'", path);
 }
 
@@ -390,7 +405,7 @@ get_calls_cb (GDBOVoiceCallManager *voice,
 {
   gboolean ok;
   GVariant *calls_with_properties = NULL;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
   GVariantIter *iter = NULL;
   const gchar *path;
   GVariant *properties;
@@ -431,7 +446,7 @@ voice_new_cb (GDBusConnection  *connection,
               GAsyncResult     *res,
               CallsOfonoOrigin *self)
 {
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   self->voice = gdbo_voice_call_manager_proxy_new_finish
     (res, &error);
@@ -487,8 +502,6 @@ constructed (GObject *object)
      (GAsyncReadyCallback)voice_new_cb,
      self);
 
-  g_clear_object (&self->modem);
-     
   G_OBJECT_CLASS (calls_ofono_origin_parent_class)->constructed (object);
 }
 
@@ -546,6 +559,7 @@ calls_ofono_origin_class_init (CallsOfonoOriginClass *klass)
 
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
+  IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
 
 #undef IMPLEMENTS
 

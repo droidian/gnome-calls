@@ -30,7 +30,7 @@ calls_includes = [ top_include, src_include ]
 
 calls_deps = [ dependency('gobject-2.0', version: '>= 2.58'),
                dependency('gtk+-3.0'),
-               dependency('libhandy-1', version: '>= 1.0.0'),
+               dependency('libhandy-1', version: '>= 1.1.90'),
                dependency('libfeedback-0.0'),
                dependency('libpeas-1.0'),
                dependency('gom-1.0'),
@@ -64,6 +64,23 @@ calls_vala = static_library (
 )
 
 
+calls_enum_headers = files(['calls-call.h', 'calls-ussd.h', 'calls-manager.h'])
+calls_enum_sources = gnome.mkenums_simple('enum-types',
+                                          sources : calls_enum_headers)
+
+calls_resources = gnome.compile_resources(
+   'calls-resources',
+   'calls.gresources.xml',
+   source_dir: ['ui', '../data'],
+   c_name: 'call',
+)
+
+calls_generated_sources = [
+  calls_enum_sources,
+  calls_resources,
+  wl_proto_sources,
+]
+
 calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-call.c',
                        'calls-ussd.c',
@@ -89,7 +106,7 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-notifier.c', 'calls-notifier.h',
                        'calls-contacts-box.c', 'calls-contacts-box.h',
                        'calls-contacts-row.c', 'calls-contacts-row.h',
-                      ])
+                      ]) + wayland_sources + calls_generated_sources
 
 calls_config_data = config_data
 calls_config_data.set_quoted('VCS_TAG', '@VCS_TAG@')
@@ -106,21 +123,9 @@ config_h = vcs_tag(
       output: 'config.h',
 )
 
-calls_enum_headers = files(['calls-call.h', 'calls-ussd.h', 'calls-manager.h'])
-calls_enum_sources = gnome.mkenums_simple('enum-types',
-                                          sources : calls_enum_headers)
-
-calls_resources = gnome.compile_resources(
-   'calls-resources',
-   'calls.gresources.xml',
-   source_dir: ['ui', '../data'],
-   c_name: 'call',
-)
-
 executable (
   'gnome-calls',
-  calls_sources, calls_enum_sources, calls_resources,
-  wl_proto_sources, wayland_sources, 'main.c',
+  calls_sources, 'main.c',
   dependencies : calls_deps,
   export_dynamic : true,
   include_directories : calls_includes,
