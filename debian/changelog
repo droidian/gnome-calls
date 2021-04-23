@@ -1,3 +1,14 @@
+gnome-calls (0.3.2-1) experimental; urgency=medium
+
+  * d/patches: Remove upstreamed patches
+  * d/control: Add gstreamer dependencies
+  * d/control: Add sofia dependency
+  * d/control: bump required libhandy to >=1.1.90
+  * d/salsa-ci.yml: Build against experimental
+  * d/patches: Don't use DNS lookups during tests
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Fri, 23 Apr 2021 15:03:42 +0200
+
 gnome-calls (0.3.0-2) experimental; urgency=medium
 
   * d/patches: fix double free

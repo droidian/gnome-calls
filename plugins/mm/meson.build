@@ -46,7 +46,7 @@ mm_sources = files(
   ]
 )
 
-shared_module(
+calls_mm = shared_module(
   'mm',
   mm_sources,
   dependencies: mm_deps,

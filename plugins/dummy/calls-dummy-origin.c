@@ -58,6 +58,7 @@ enum {
   PROP_NAME,
 
   PROP_CALLS,
+  PROP_COUNTRY_CODE,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -132,13 +133,13 @@ add_call (CallsDummyOrigin *self, const gchar *number, gboolean inbound)
   g_assert (dummy_call != NULL);
 
   call = CALLS_CALL (dummy_call);
+  g_signal_emit_by_name (CALLS_ORIGIN (self), "call-added", call);
   g_signal_connect_swapped (call, "state-changed",
                             G_CALLBACK (call_state_changed_cb),
                             self);
 
   self->calls = g_list_append (self->calls, dummy_call);
 
-  g_signal_emit_by_name (CALLS_ORIGIN (self), "call-added", call);
 }
 
 
@@ -198,6 +199,10 @@ get_property (GObject      *object,
     g_value_set_pointer (value, g_list_copy (self->calls));
     break;
 
+  case PROP_COUNTRY_CODE:
+    g_value_set_string (value, NULL);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -252,6 +257,7 @@ calls_dummy_origin_class_init (CallsDummyOriginClass *klass)
 
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
+  IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
 
 #undef IMPLEMENTS
 }

@@ -46,7 +46,7 @@ dummy_sources = files(
   ]
 )
 
-shared_module(
+calls_dummy = shared_module(
   'dummy',
   dummy_sources,
   dependencies: dummy_deps,

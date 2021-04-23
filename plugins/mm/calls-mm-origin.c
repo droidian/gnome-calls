@@ -27,6 +27,7 @@
 #include "calls-ussd.h"
 #include "calls-mm-call.h"
 #include "calls-message-source.h"
+#include "itu-e212-iso.h"
 
 #include <glib/gi18n.h>
 
@@ -37,6 +38,7 @@ struct _CallsMMOrigin
   MMObject *mm_obj;
   MMModemVoice *voice;
   MMModem3gppUssd *ussd;
+  MMSim *sim;
 
   /* XXX: These should be used only for pointer comparison,
    * The content should never be used as it might be
@@ -47,6 +49,7 @@ struct _CallsMMOrigin
   gulong           ussd_handle_id;
   gchar *name;
   GHashTable *calls;
+  char *country_code;
 };
 
 static void calls_mm_origin_message_source_interface_init (CallsOriginInterface *iface);
@@ -66,6 +69,7 @@ enum {
   PROP_NAME,
   PROP_CALLS,
   PROP_MODEM,
+  PROP_COUNTRY_CODE,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -303,7 +307,7 @@ dial_cb (MMModemVoice  *voice,
          CallsMMOrigin *self)
 {
   MMCall *call;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   call = mm_modem_voice_create_call_finish (voice, res, &error);
   if (!call)
@@ -370,7 +374,7 @@ delete_call_cb (MMModemVoice                       *voice,
                 struct CallsMMOriginDeleteCallData *data)
 {
   gboolean ok;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   ok = mm_modem_voice_delete_call_finish (voice, res, &error);
   if (!ok)
@@ -463,7 +467,7 @@ call_added_list_calls_cb (MMModemVoice                      *voice,
                           struct CallsMMOriginCallAddedData *data)
 {
   GList *calls;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   calls = mm_modem_voice_list_calls_finish (voice, res, &error);
   if (!calls)
@@ -585,7 +589,7 @@ list_calls_cb (MMModemVoice  *voice,
                CallsMMOrigin *self)
 {
   GList *calls, *node;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   calls = mm_modem_voice_list_calls_finish (voice, res, &error);
   if (!calls)
@@ -643,6 +647,10 @@ get_property (GObject      *object,
 
   case PROP_CALLS:
     g_value_set_pointer(value, g_hash_table_get_values (self->calls));
+    break;
+
+  case PROP_COUNTRY_CODE:
+    g_value_set_string (value, self->country_code);
     break;
 
   default:
@@ -743,12 +751,39 @@ call_mm_ussd_changed_cb (CallsMMOrigin *self)
 }
 
 static void
+get_sim_ready_cb (MMModem      *modem,
+                  GAsyncResult *res,
+                  gpointer      user_data)
+{
+  const char *code;
+  CallsMMOrigin *self = CALLS_MM_ORIGIN (user_data);
+
+  self->sim = mm_modem_get_sim_finish (modem, res, NULL);
+
+  code = get_country_iso_for_mcc (mm_sim_get_imsi (self->sim));
+  if (code) {
+    if (g_strcmp0 (self->country_code, code) == 0)
+      return;
+
+    g_debug ("Setting the country code to `%s'", code);
+
+    self->country_code = g_strdup (code);
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_COUNTRY_CODE]);
+  }
+}
+
+static void
 constructed (GObject *object)
 {
   CallsMMOrigin *self = CALLS_MM_ORIGIN (object);
   MmGdbusModemVoice *gdbus_voice;
 
   self->name = modem_get_name (mm_object_get_modem (self->mm_obj));
+
+  mm_modem_get_sim (mm_object_get_modem (self->mm_obj),
+                    NULL,
+                    (GAsyncReadyCallback) get_sim_ready_cb,
+                    self);
 
   g_signal_connect_object (self->mm_obj, "notify::modem3gpp-ussd",
                            G_CALLBACK (call_mm_ussd_changed_cb), self,
@@ -781,6 +816,8 @@ dispose (GObject *object)
   remove_calls (self, NULL);
   g_clear_object (&self->mm_obj);
   g_clear_object (&self->ussd);
+  g_clear_object (&self->sim);
+  g_clear_pointer (&self->country_code, g_free);
 
   G_OBJECT_CLASS (calls_mm_origin_parent_class)->dispose (object);
 }
@@ -823,6 +860,7 @@ calls_mm_origin_class_init (CallsMMOriginClass *klass)
 
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
+  IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
 
 #undef IMPLEMENTS
 
@@ -869,3 +907,18 @@ calls_mm_origin_new (MMObject *mm_obj)
                        "mm-object", mm_obj,
                        NULL);
 }
+
+gboolean
+calls_mm_origin_matches (CallsMMOrigin *self,
+                         MMObject      *mm_obj)
+{
+  g_return_val_if_fail (CALLS_IS_MM_ORIGIN (self), FALSE);
+  g_return_val_if_fail (MM_IS_OBJECT (mm_obj), FALSE);
+
+  if (self->mm_obj)
+    return g_strcmp0 (mm_object_get_path (mm_obj),
+                      mm_object_get_path (self->mm_obj)) == 0;
+
+  return FALSE;
+}
+
