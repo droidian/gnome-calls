@@ -2,3 +2,11 @@
 include:
   - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/salsa-ci.yml
   - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/pipeline-jobs.yml
+
+variables:
+  SALSA_CI_DISABLE_BUILD_PACKAGE_ANY: 1
+  RELEASE: 'experimental'
+  # Since those pull from unstable
+  SALSA_CI_DISABLE_REPROTEST: 1
+  SALSA_CI_DISABLE_PIUPARTS: 1
+  SALSA_CI_DISABLE_AUTOPKGTEST: 1
