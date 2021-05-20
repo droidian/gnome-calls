@@ -1,7 +1,11 @@
 gnome-calls (0.3.3-1) experimental; urgency=medium
 
+  [ Evangelos Ribeiro Tzaras ]
   * New upstream version 0.3.3
   * d/patches: Remove upstreamed patches
+
+  [ Henry-Nicolas Tourneur ]
+  * patches: remove empty series file
 
  -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Thu, 20 May 2021 03:10:20 +0200
 
