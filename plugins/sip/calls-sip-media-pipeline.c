@@ -360,7 +360,7 @@ initable_init (GInitable    *initable,
                GError      **error)
 {
   CallsSipMediaPipeline *self = CALLS_SIP_MEDIA_PIPELINE (initable);
-  GstCaps *caps;
+  g_autoptr (GstCaps) caps = NULL;
   g_autofree char *caps_string = NULL;
   GstPad *srcpad, *sinkpad;
   GstStructure *props = NULL;
@@ -384,6 +384,22 @@ initable_init (GInitable    *initable,
                   "stream-properties", props,
                   NULL);
 
+    gst_structure_free (props);
+  }
+
+  env_var = g_getenv ("CALLS_AUDIOSRC");
+  if (env_var) {
+    self->audiosrc = gst_element_factory_make (env_var, "source");
+  } else {
+    /* could also use autoaudiosrc instead of pulsesrc */
+    self->audiosrc = gst_element_factory_make ("pulsesrc", "source");
+
+    /* enable echo cancellation and set buffer size to 40ms */
+    props = gst_structure_new ("props",
+                               "media.role", G_TYPE_STRING, "phone",
+                               "filter.want", G_TYPE_STRING, "echo-cancel",
+                               NULL);
+
     g_object_set (self->audiosrc,
                   "buffer-time", (gint64) 40000,
                   "stream-properties", props,
@@ -391,12 +407,6 @@ initable_init (GInitable    *initable,
 
     gst_structure_free (props);
   }
-
-  env_var = g_getenv ("CALLS_AUDIOSRC");
-  if (env_var)
-    self->audiosrc = gst_element_factory_make (env_var, "source");
-  else
-    self->audiosrc = gst_element_factory_make ("pulsesrc", "source");
 
   if (!self->audiosrc || !self->audiosink) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -569,7 +579,7 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link rtpsrc to rtpbin");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
@@ -579,7 +589,7 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link rtcpsrc to rtpbin");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
@@ -589,7 +599,7 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link rtpbin to rtcpsink");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
@@ -605,7 +615,7 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link payloader to rtpbin");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
@@ -616,7 +626,7 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link rtpbin to rtpsink");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
@@ -627,7 +637,7 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link rtpbin to rtcpsink");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
@@ -638,12 +648,18 @@ initable_init (GInitable    *initable,
   if (gst_pad_link (srcpad, sinkpad) != GST_PAD_LINK_OK) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Failed to link rtcpsrc to rtpbin");
-    return FALSE;
+    goto err;
   }
   gst_object_unref (srcpad);
   gst_object_unref (sinkpad);
 
   return TRUE;
+
+ err:
+  gst_object_unref (srcpad);
+  gst_object_unref (sinkpad);
+
+  return FALSE;
 }
 
 
