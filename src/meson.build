@@ -64,7 +64,11 @@ calls_vala = static_library (
 )
 
 
-calls_enum_headers = files(['calls-call.h', 'calls-ussd.h', 'calls-manager.h'])
+calls_enum_headers = files(['calls-call.h',
+                            'calls-ussd.h',
+                            'calls-manager.h',
+                            'calls-account.h',
+                            ])
 calls_enum_sources = gnome.mkenums_simple('enum-types',
                                           sources : calls_enum_headers)
 
@@ -106,30 +110,43 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-notifier.c', 'calls-notifier.h',
                        'calls-contacts-box.c', 'calls-contacts-box.h',
                        'calls-contacts-row.c', 'calls-contacts-row.h',
+                       'calls-credentials.c', 'calls-credentials.h',
+                       'calls-account.c', 'calls-account.h',
+                       'calls-account-provider.c', 'calls-account-provider.h',
                       ]) + wayland_sources + calls_generated_sources
 
 calls_config_data = config_data
-calls_config_data.set_quoted('VCS_TAG', '@VCS_TAG@')
 calls_config_data.set10('WL_SCANNER_FOUND', wl_scanner.found())
 
-config_h_in = configure_file(
-  output: 'config.h.in',
+config_h = configure_file(
+  output: 'config.h',
   configuration: calls_config_data
 )
 
-config_h = vcs_tag(
+version_h = vcs_tag(
     fallback: '',
-       input: config_h_in,
-      output: 'config.h',
+       input: 'version.h.in',
+      output: 'version.h',
+)
+
+calls_sources += [ version_h ]
+
+libcalls = static_library(
+  'calls', calls_sources,
+  install: false,
+  dependencies : calls_deps,
+  link_with: calls_vala,
+  include_directories: src_include,
 )
 
 executable (
   'gnome-calls',
-  calls_sources, 'main.c',
+  calls_resources,
+  'main.c',
   dependencies : calls_deps,
   export_dynamic : true,
   include_directories : calls_includes,
   install : true,
-  link_with : calls_vala,
+  link_with : [calls_vala, libcalls],
   c_args : '-Wno-error=deprecated-declarations',
 )

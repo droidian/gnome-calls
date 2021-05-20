@@ -11,6 +11,7 @@
 #include "calls-sip-provider.h"
 #include "calls-sip-origin.h"
 #include "calls-sip-util.h"
+#include "calls-account.h"
 #include "gst-rfc3551.h"
 
 #include <gtk/gtk.h>
@@ -23,6 +24,9 @@ typedef struct {
   CallsSipOrigin *origin_alice;
   CallsSipOrigin *origin_bob;
   CallsSipOrigin *origin_offline;
+  CallsCredentials *credentials_alice;
+  CallsCredentials *credentials_bob;
+  CallsCredentials *credentials_offline;
 } SipFixture;
 
 
@@ -81,7 +85,7 @@ static void
 test_sip_origin_objects (SipFixture   *fixture,
                          gconstpointer user_data)
 {
-  SipAccountState state_alice, state_bob, state_offline;
+  CallsAccountState state_alice, state_bob, state_offline;
 
   g_assert_true (G_IS_OBJECT (fixture->origin_alice));
   g_assert_true (G_IS_OBJECT (fixture->origin_bob));
@@ -109,9 +113,9 @@ test_sip_origin_objects (SipFixture   *fixture,
                 "account-state", &state_offline,
                 NULL);
 
-  g_assert_cmpint (state_alice, ==, SIP_ACCOUNT_ONLINE);
-  g_assert_cmpint (state_bob, ==, SIP_ACCOUNT_ONLINE);
-  g_assert_cmpint (state_offline, ==, SIP_ACCOUNT_OFFLINE);
+  g_assert_cmpint (state_alice, ==, CALLS_ACCOUNT_ONLINE);
+  g_assert_cmpint (state_bob, ==, CALLS_ACCOUNT_ONLINE);
+  g_assert_cmpint (state_offline, ==, CALLS_ACCOUNT_OFFLINE);
 }
 
 static void
@@ -130,35 +134,6 @@ test_sip_origin_call_lists (SipFixture   *fixture,
 
   calls_offline = calls_origin_get_calls (CALLS_ORIGIN (fixture->origin_offline));
   g_assert_null (calls_offline);
-}
-
-static gboolean
-on_check_call_disconnected_cb (gpointer user_data)
-{
-  CallsCall *call = CALLS_CALL (user_data);
-  CallsCallState state = calls_call_get_state (call);
-
-  g_assert_cmpint (state, ==, CALLS_CALL_STATE_DISCONNECTED);
-
-  g_object_unref (call);
-
-  if (is_call_test_done)
-    are_call_tests_done = TRUE;
-
-  is_call_test_done = TRUE;
-
-  return G_SOURCE_REMOVE;
-}
-
-static gboolean
-on_check_call_active_cb (gpointer user_data)
-{
-  CallsCall *call = CALLS_CALL (user_data);
-  CallsCallState state = calls_call_get_state (call);
-
-  g_assert_cmpint (state, ==, CALLS_CALL_STATE_ACTIVE);
-
-  return G_SOURCE_REMOVE;
 }
 
 static gboolean
@@ -183,30 +158,68 @@ on_call_answer_cb (gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-/**
- * TODO the calling tests are all g_timeout_add based and should be reworked
- * using g_idle_add and/or using the "state-changed" signal of CallsCall
- */
+static void
+on_autoreject_state_changed_cb (CallsCall     *call,
+                                CallsCallState new_state,
+                                CallsCallState old_state,
+                                gpointer       user_data)
+{
+  g_assert_cmpint (old_state, ==, CALLS_CALL_STATE_INCOMING);
+  g_assert_cmpint (new_state, ==, CALLS_CALL_STATE_DISCONNECTED);
+
+  g_object_unref (call);
+
+  is_call_test_done = TRUE;
+}
+
+static void
+on_state_changed_cb (CallsCall     *call,
+                     CallsCallState new_state,
+                     CallsCallState old_state,
+                     gpointer       user_data)
+{
+  gboolean schedule_hangup = GPOINTER_TO_INT (user_data);
+
+  switch (old_state) {
+  case CALLS_CALL_STATE_INCOMING:
+  case CALLS_CALL_STATE_DIALING:
+    g_assert_cmpint (new_state, ==, CALLS_CALL_STATE_ACTIVE);
+
+    if (schedule_hangup)
+      g_idle_add ((GSourceFunc) on_call_hangup_cb, call);
+    break;
+
+  case CALLS_CALL_STATE_ACTIVE:
+    g_assert_cmpint (new_state, ==, CALLS_CALL_STATE_DISCONNECTED);
+
+    g_object_unref (call);
+
+    if (is_call_test_done)
+      are_call_tests_done = TRUE;
+
+    is_call_test_done = TRUE;
+    break;
+
+  default:
+    g_assert_not_reached ();
+  }
+}
+
 static gboolean
 on_incoming_call_autoaccept_cb (CallsOrigin *origin,
                                 CallsCall   *call,
                                 gpointer     user_data)
 {
   CallsCallState state = calls_call_get_state (call);
-  gboolean schedule_hangup = GPOINTER_TO_INT (user_data);
 
   g_assert_cmpint (state, ==, CALLS_CALL_STATE_INCOMING);
 
   g_object_ref (call);
 
-  g_timeout_add (50, (GSourceFunc) on_call_answer_cb, call);
+  g_idle_add ((GSourceFunc) on_call_answer_cb, call);
 
-  g_timeout_add (500, (GSourceFunc) on_check_call_active_cb, call);
-
-  if (schedule_hangup)
-    g_timeout_add (1500, (GSourceFunc) on_call_hangup_cb, call);
-
-  g_timeout_add (2000, (GSourceFunc) on_check_call_disconnected_cb, call);
+  g_signal_connect (call, "state-changed",
+                    (GCallback) on_state_changed_cb, user_data);
 
   return G_SOURCE_REMOVE;
 }
@@ -221,9 +234,10 @@ on_incoming_call_autoreject_cb (CallsOrigin *origin,
   g_assert_cmpint (state, ==, CALLS_CALL_STATE_INCOMING);
 
   g_object_ref (call);
-  g_timeout_add (200, (GSourceFunc) on_call_hangup_cb, call);
+  g_idle_add ((GSourceFunc) on_call_hangup_cb, call);
 
-  g_timeout_add (1000, (GSourceFunc) on_check_call_disconnected_cb, call);
+  g_signal_connect (call, "state-changed",
+                    (GCallback) on_autoreject_state_changed_cb, NULL);
 
   return G_SOURCE_REMOVE;
 }
@@ -235,18 +249,13 @@ on_outgoing_call_cb (CallsOrigin *origin,
                      gpointer     user_data)
 {
   CallsCallState state = calls_call_get_state (call);
-  gboolean schedule_hangup = GPOINTER_TO_INT (user_data);
 
   g_assert_cmpint (state, ==, CALLS_CALL_STATE_DIALING);
 
   g_object_ref (call);
 
-  g_timeout_add (250, (GSourceFunc) on_check_call_active_cb, call);
-
-  if (schedule_hangup)
-    g_timeout_add (750, (GSourceFunc) on_call_hangup_cb, call);
-
-  g_timeout_add (2000, (GSourceFunc) on_check_call_disconnected_cb, call);
+  g_signal_connect (call, "state-changed",
+                    (GCallback) on_state_changed_cb, user_data);
 
   return G_SOURCE_REMOVE;
 }
@@ -263,13 +272,13 @@ test_sip_call_direct_calls (SipFixture   *fixture,
   g_object_get (fixture->origin_alice,
                 "local-port", &local_port_alice,
                 NULL);
-  address_alice = g_strdup_printf ("sip:alice@localhost:%d",
+  address_alice = g_strdup_printf ("sip:alice@127.0.0.1:%d",
                                    local_port_alice);
 
   g_object_get (fixture->origin_bob,
                 "local-port", &local_port_bob,
                 NULL);
-  address_bob = g_strdup_printf ("sip:bob@localhost:%d",
+  address_bob = g_strdup_printf ("sip:bob@127.0.0.1:%d",
                                  local_port_bob);
 
   /* Case 1: Bob calls Alice, Alice rejects call */
@@ -353,27 +362,43 @@ setup_sip_origins (SipFixture   *fixture,
                    gconstpointer user_data)
 {
   GListModel *origins;
+  CallsCredentials *alice = calls_credentials_new ();
+  CallsCredentials *bob = calls_credentials_new ();
+  CallsCredentials *offline = calls_credentials_new ();
 
   setup_sip_provider (fixture, user_data);
 
-  calls_sip_provider_add_origin (fixture->provider, "Alice",
-                                 "alice", NULL, NULL, 5060,
-                                 5060, "UDP", TRUE, FALSE);
+  g_object_set (alice, "name", "Alice", "user", "alice", NULL);
 
-  calls_sip_provider_add_origin (fixture->provider, "Bob",
-                                 "bob", NULL, NULL, 5060,
-                                 5061, "UDP", TRUE, FALSE);
+  calls_sip_provider_add_origin (fixture->provider, alice, 5060, TRUE);
 
-  calls_sip_provider_add_origin (fixture->provider, "Offline",
-                                 "someuser", "sip.imaginary-host.org", "password", 5060,
-                                 5062, "UDP", FALSE, FALSE);
+  g_object_set (bob, "name", "Bob", "user", "bob", NULL);
+
+  calls_sip_provider_add_origin (fixture->provider, bob, 5061, TRUE);
+
+  g_object_set (offline,
+                "name", "Offline",
+                "user", "someuser",
+                "host", "sip.imaginary-host.org",
+                "password", "password123",
+                "port", 5060,
+                "protocol", "UDP",
+                "auto-connect", FALSE,
+                NULL);
+
+  calls_sip_provider_add_origin (fixture->provider, offline, 0, FALSE);
 
   origins = calls_provider_get_origins
     (CALLS_PROVIDER (fixture->provider));
 
   fixture->origin_alice = g_list_model_get_item (origins, 0);
+  fixture->credentials_alice = alice;
+
   fixture->origin_bob = g_list_model_get_item (origins, 1);
+  fixture->credentials_bob = bob;
+
   fixture->origin_offline = g_list_model_get_item (origins, 2);
+  fixture->credentials_offline = offline;
 }
 
 static void
@@ -381,8 +406,13 @@ tear_down_sip_origins (SipFixture   *fixture,
                        gconstpointer user_data)
 {
   g_clear_object (&fixture->origin_alice);
+  g_clear_object (&fixture->credentials_alice);
+
   g_clear_object (&fixture->origin_bob);
+  g_clear_object (&fixture->credentials_bob);
+
   g_clear_object (&fixture->origin_offline);
+  g_clear_object (&fixture->credentials_offline);
 
   tear_down_sip_provider (fixture, user_data);
 }
