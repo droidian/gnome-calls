@@ -1,3 +1,10 @@
+gnome-calls (0.3.4-1) experimental; urgency=medium
+
+  * New upstream version 0.3.4
+  * Install schemas
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 13 Jun 2021 03:38:29 +0200
+
 gnome-calls (0.3.3-1) experimental; urgency=medium
 
   [ Evangelos Ribeiro Tzaras ]
