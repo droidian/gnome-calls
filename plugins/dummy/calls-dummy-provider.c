@@ -30,6 +30,10 @@
 #include <libpeas/peas.h>
 #include <glib-unix.h>
 
+static const char * const supported_protocols[] = {
+  "tel",
+  NULL
+};
 
 struct _CallsDummyProvider
 {
@@ -95,6 +99,12 @@ calls_dummy_provider_get_origins (CallsProvider *provider)
   return G_LIST_MODEL (self->origins);
 }
 
+static const char * const *
+calls_dummy_provider_get_protocols (CallsProvider *provider)
+{
+  return supported_protocols;
+}
+
 static void
 constructed (GObject *object)
 {
@@ -134,6 +144,7 @@ calls_dummy_provider_class_init (CallsDummyProviderClass *klass)
   provider_class->get_name = calls_dummy_provider_get_name;
   provider_class->get_status = calls_dummy_provider_get_status;
   provider_class->get_origins = calls_dummy_provider_get_origins;
+  provider_class->get_protocols = calls_dummy_provider_get_protocols;
 }
 
 
@@ -146,7 +157,7 @@ calls_dummy_provider_message_source_interface_init (CallsMessageSourceInterface 
 static void
 calls_dummy_provider_init (CallsDummyProvider *self)
 {
-  self->origins = g_list_store_new (CALLS_TYPE_DUMMY_ORIGIN);
+  self->origins = g_list_store_new (CALLS_TYPE_ORIGIN);
 }
 
 
@@ -162,7 +173,7 @@ calls_dummy_provider_add_origin (CallsDummyProvider *self,
 
 
 CallsDummyProvider *
-calls_dummy_provider_new ()
+calls_dummy_provider_new (void)
 {
   return g_object_new (CALLS_TYPE_DUMMY_PROVIDER, NULL);
 }

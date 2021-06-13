@@ -26,6 +26,7 @@
  */
 
 #include "config.h"
+#include "calls-dbus-manager.h"
 #include "calls-history-box.h"
 #include "calls-new-call-box.h"
 #include "calls-encryption-indicator.h"
@@ -35,6 +36,7 @@
 #include "calls-call-window.h"
 #include "calls-main-window.h"
 #include "calls-manager.h"
+#include "calls-settings.h"
 #include "calls-application.h"
 #include "version.h"
 
@@ -63,6 +65,8 @@ struct _CallsApplication
   CallsRecordStore *record_store;
   CallsMainWindow  *main_window;
   CallsCallWindow  *call_window;
+  CallsSettings    *settings;
+  CallsDBusManager *dbus_manager;
 
   char             *uri;
 };
@@ -71,6 +75,39 @@ G_DEFINE_TYPE (CallsApplication, calls_application, GTK_TYPE_APPLICATION);
 
 
 static gboolean start_proper (CallsApplication *self);
+
+
+static gboolean
+calls_application_dbus_register (GApplication    *application,
+                                 GDBusConnection *connection,
+                                 const gchar     *object_path,
+                                 GError         **error)
+{
+  CallsApplication *self = CALLS_APPLICATION (application);
+
+  G_APPLICATION_CLASS (calls_application_parent_class)->dbus_register (application,
+                                                                       connection,
+                                                                       object_path,
+                                                                       error);
+
+  self->dbus_manager = calls_dbus_manager_new ();
+  return calls_dbus_manager_register (self->dbus_manager, connection, object_path, error);
+}
+
+
+static void
+calls_application_dbus_unregister (GApplication    *application,
+                                   GDBusConnection *connection,
+                                   const gchar     *object_path)
+{
+  CallsApplication *self = CALLS_APPLICATION (application);
+
+  g_clear_object (&self->dbus_manager);
+
+  G_APPLICATION_CLASS (calls_application_parent_class)->dbus_unregister (application,
+                                                                         connection,
+                                                                         object_path);
+}
 
 
 static gint
@@ -102,9 +139,10 @@ handle_local_options (GApplication *application,
                                     "set-provider-name",
                                     g_variant_new_string (arg));
   } else {
-    g_action_group_activate_action (G_ACTION_GROUP (application),
-                                    "set-provider-name",
-                                    g_variant_new_string (DEFAULT_PROVIDER_PLUGIN));
+    if (!calls_manager_has_any_provider (calls_manager_get_default ()))
+      g_action_group_activate_action (G_ACTION_GROUP (application),
+                                      "set-provider-name",
+                                      g_variant_new_string (DEFAULT_PROVIDER_PLUGIN));
   }
 
   ok = g_variant_dict_contains (options, "daemon");
@@ -135,17 +173,14 @@ set_provider_name_action (GSimpleAction *action,
   name = g_variant_get_string (parameter, NULL);
   g_return_if_fail (name != NULL);
 
-  /* FIXME: allow to set a new provider, we need to make sure that the
-     provider is unloaded correctly from the CallsManager */
-  if (calls_manager_get_provider (calls_manager_get_default ()) != NULL) {
-    g_warning ("Cannot set provider name to `%s'"
-               " because provider is already created",
+  if (calls_manager_has_provider (calls_manager_get_default (), name)) {
+    g_warning ("Cannot add provider `%s' because it is already loaded",
                name);
     return;
   }
 
   g_debug ("Start loading provider `%s'", name);
-  calls_manager_set_provider (calls_manager_get_default (), name);
+  calls_manager_add_provider (calls_manager_get_default (), name);
 }
 
 
@@ -300,6 +335,8 @@ startup (GApplication *application)
 {
   g_autoptr (GtkCssProvider) provider = NULL;
   g_autoptr (GError) error = NULL;
+  CallsApplication *self = CALLS_APPLICATION (application);
+  CallsManager *manager;
 
   G_APPLICATION_CLASS (calls_application_parent_class)->startup (application);
 
@@ -318,7 +355,14 @@ startup (GApplication *application)
                                    G_N_ELEMENTS (actions),
                                    application);
 
-  g_signal_connect_swapped (calls_manager_get_default (),
+  self->settings = calls_settings_new ();
+  g_assert (self->settings != NULL);
+
+  manager = calls_manager_get_default ();
+  g_object_bind_property (self->settings, "country-code",
+                          manager, "country-code",
+                          G_BINDING_SYNC_CREATE);
+  g_signal_connect_swapped (manager,
                             "notify::state",
                             G_CALLBACK (manager_state_changed_cb),
                             application);
@@ -525,6 +569,7 @@ finalize (GObject *object)
   g_clear_object (&self->record_store);
   g_clear_object (&self->ringer);
   g_clear_object (&self->notifier);
+  g_clear_object (&self->settings);
   g_free (self->uri);
 
   G_OBJECT_CLASS (calls_application_parent_class)->finalize (object);
@@ -543,6 +588,8 @@ calls_application_class_init (CallsApplicationClass *klass)
   application_class->startup = startup;
   application_class->activate = activate;
   application_class->open = app_open;
+  application_class->dbus_register  = calls_application_dbus_register;
+  application_class->dbus_unregister  = calls_application_dbus_unregister;
 
   g_type_ensure (CALLS_TYPE_ENCRYPTION_INDICATOR);
   g_type_ensure (CALLS_TYPE_HISTORY_BOX);
@@ -595,4 +642,38 @@ calls_application_new (void)
                        "flags", G_APPLICATION_HANDLES_OPEN,
                        "register-session", TRUE,
                        NULL);
+}
+
+gboolean
+calls_application_get_use_default_origins_setting (CallsApplication *self)
+{
+  g_return_val_if_fail (CALLS_IS_APPLICATION (self), FALSE);
+
+  return calls_settings_get_use_default_origins (self->settings);
+}
+
+void
+calls_application_set_use_default_origins_setting (CallsApplication *self,
+                                                   gboolean enabled)
+{
+  g_return_if_fail (CALLS_IS_APPLICATION (self));
+
+  calls_settings_set_use_default_origins (self->settings, enabled);
+}
+
+char *
+calls_application_get_country_code_setting (CallsApplication *self)
+{
+  g_return_val_if_fail (CALLS_IS_APPLICATION (self), FALSE);
+
+  return calls_settings_get_country_code (self->settings);
+}
+
+void
+calls_application_set_country_code_setting (CallsApplication *self,
+                                            const char       *country_code)
+{
+  g_return_if_fail (CALLS_IS_APPLICATION (self));
+
+  calls_settings_set_country_code (self->settings, country_code);
 }

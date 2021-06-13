@@ -323,21 +323,32 @@ static void
 dial (CallsOrigin *origin, const gchar *number)
 {
   CallsMMOrigin *self = CALLS_MM_ORIGIN (origin);
-  MMCallProperties *props;
+  MMCallProperties *call_props;
 
   g_assert (self->voice != NULL);
 
-  props = mm_call_properties_new();
-  mm_call_properties_set_number (props, number);
+  call_props = mm_call_properties_new ();
+  mm_call_properties_set_number (call_props, number);
 
   mm_modem_voice_create_call
     (self->voice,
-     props,
+     call_props,
      NULL,
      (GAsyncReadyCallback) dial_cb,
      self);
 
-  g_object_unref (props);
+  g_object_unref (call_props);
+}
+
+
+static gboolean
+supports_protocol (CallsOrigin *origin,
+                   const char  *protocol)
+{
+  g_assert (protocol);
+  g_assert (CALLS_IS_MM_ORIGIN (origin));
+
+  return g_strcmp0 (protocol, "tel") == 0;
 }
 
 
@@ -663,7 +674,14 @@ get_property (GObject      *object,
 static gchar *
 modem_get_name (MMModem *modem)
 {
-  gchar *name = NULL;
+  char *name = NULL;
+  const char * const *numbers = NULL;
+
+  numbers = mm_modem_get_own_numbers (modem);
+  if (numbers && g_strv_length ((char **) numbers) > 0) {
+    name = g_strdup (numbers[0]);
+    return name;
+  }
 
 #define try(prop)                               \
   name = mm_modem_dup_##prop (modem);           \
@@ -890,6 +908,7 @@ static void
 calls_mm_origin_origin_interface_init (CallsOriginInterface *iface)
 {
   iface->dial = dial;
+  iface->supports_protocol = supports_protocol;
 }
 
 

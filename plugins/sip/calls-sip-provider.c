@@ -40,6 +40,13 @@
 #include <sofia-sip/nua.h>
 #include <sofia-sip/su_glib.h>
 
+static const char * const supported_protocols[] = {
+  "tel",
+  "sip",
+  "sips",
+  NULL
+};
+
 /**
  * SECTION:sip-provider
  * @short_description: A #CallsProvider for the SIP protocol
@@ -154,6 +161,12 @@ calls_sip_provider_get_origins (CallsProvider *provider)
   CallsSipProvider *self = CALLS_SIP_PROVIDER (provider);
 
   return G_LIST_MODEL (self->origins);
+}
+
+static const char * const *
+calls_sip_provider_get_protocols (CallsProvider *provider)
+{
+  return supported_protocols;
 }
 
 
@@ -319,6 +332,7 @@ calls_sip_provider_class_init (CallsSipProviderClass *klass)
   provider_class->get_name = calls_sip_provider_get_name;
   provider_class->get_status = calls_sip_provider_get_status;
   provider_class->get_origins = calls_sip_provider_get_origins;
+  provider_class->get_protocols = calls_sip_provider_get_protocols;
 
   props[PROP_SIP_STATE] =
     g_param_spec_enum ("sip-state",
@@ -416,7 +430,7 @@ calls_sip_provider_init (CallsSipProvider *self)
   self->credentials =
     g_hash_table_new_full (NULL, NULL, g_object_unref, g_object_unref);
 
-  self->origins = g_list_store_new (CALLS_TYPE_SIP_ORIGIN);
+  self->origins = g_list_store_new (CALLS_TYPE_ORIGIN);
 
   if (filename_env && filename_env[0] != '\0')
     self->filename = g_strdup (filename_env);
@@ -455,7 +469,8 @@ calls_sip_provider_add_origin (CallsSipProvider *self,
     g_autofree char *name = NULL;
     g_object_get (credentials, "name", &name, NULL);
 
-    g_warning ("Cannot add credentials with name '%s' multiple times", name);
+    /* This could be a INFO level log once we have improved logging */
+    g_debug ("Cannot add credentials with name '%s' multiple times", name);
     return NULL;
   }
 
@@ -473,7 +488,7 @@ calls_sip_provider_add_origin (CallsSipProvider *self,
 
 
 CallsSipProvider *
-calls_sip_provider_new ()
+calls_sip_provider_new (void)
 {
   return g_object_new (CALLS_TYPE_SIP_PROVIDER, NULL);
 }
