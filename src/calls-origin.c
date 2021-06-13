@@ -96,10 +96,10 @@ calls_origin_default_init (CallsOriginInterface *iface)
  *
  * Get the user-presentable name of the origin.
  *
- * Returns: A string containing the name.  The string must be freed by
+ * Returns (transfer full): A string containing the name.  The string must be freed by
  * the caller.
  */
-DEFINE_ORIGIN_GETTER(name, const gchar *, NULL);
+DEFINE_ORIGIN_GETTER(name, char *, NULL);
 
 /**
  * calls_origin_get_calls:
@@ -161,4 +161,26 @@ calls_origin_dial(CallsOrigin *self,
   g_return_if_fail (iface->dial != NULL);
 
   return iface->dial(self, number);
+}
+
+/**
+ * calls_origin_supports_protocol:
+ * @self: A #CallsOrigin
+ * @protocol: The protocol to check support for
+ *
+ * Returns: %TRUE if the origin supports the protocol, %FALSE otherwise
+ */
+gboolean
+calls_origin_supports_protocol (CallsOrigin *self,
+                                const char  *protocol)
+{
+  CallsOriginInterface *iface;
+
+  g_return_val_if_fail (CALLS_IS_ORIGIN (self), FALSE);
+  g_return_val_if_fail (protocol != NULL, FALSE);
+
+  iface = CALLS_ORIGIN_GET_IFACE (self);
+  g_return_val_if_fail (iface->supports_protocol != NULL, FALSE);
+
+  return iface->supports_protocol (self, protocol);
 }

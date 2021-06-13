@@ -44,17 +44,21 @@ struct _CallsOriginInterface
 
   void               (*dial)                                (CallsOrigin *self,
                                                              const char  *number);
+  gboolean           (*supports_protocol)                   (CallsOrigin *self,
+                                                             const char  *protocol);
 };
 
 typedef void (*CallsOriginForeachCallFunc) (gpointer param, CallsCall* call, CallsOrigin* origin);
 
-const gchar *          calls_origin_get_name                (CallsOrigin *self);
+char *                 calls_origin_get_name                (CallsOrigin *self);
 GList *                calls_origin_get_calls               (CallsOrigin *self);
 void                   calls_origin_foreach_call            (CallsOrigin *self,
                                                              CallsOriginForeachCallFunc callback,
                                                              gpointer     param);
 void                   calls_origin_dial                    (CallsOrigin *self,
                                                              const char  *number);
+gboolean               calls_origin_supports_protocol       (CallsOrigin *self,
+                                                             const char *protocol);
 G_END_DECLS
 
 #endif /* CALLS_ORIGIN_H__ */

@@ -224,6 +224,8 @@ add_call (CallsSipOrigin *self,
 
     g_debug ("Setting local SDP for outgoing call to %s:\n%s", address, local_sdp);
 
+    /* TODO transform tel URI according to https://tools.ietf.org/html/rfc3261#section-19.1.6 */
+
     /* TODO handle IPv4 vs IPv6 for nua_invite (SOATAG_TAG) */
     nua_invite (self->oper->call_handle,
                 SOATAG_AF (SOA_AF_IP4_IP6),
@@ -242,13 +244,16 @@ dial (CallsOrigin *origin,
 {
   CallsSipOrigin *self;
   nua_handle_t *nh;
+  g_autofree char *name = NULL;
 
   g_assert (CALLS_ORIGIN (origin));
   g_assert (CALLS_IS_SIP_ORIGIN (origin));
 
+  name = calls_origin_get_name (origin);
+
   if (address == NULL) {
     g_warning ("Tried dialing on origin '%s' without an address",
-               calls_origin_get_name (origin));
+               name);
     return;
   }
 
@@ -259,7 +264,7 @@ dial (CallsOrigin *origin,
                    SOATAG_ACTIVE_AUDIO (SOA_ACTIVE_SENDRECV),
                    TAG_END ());
 
-  g_debug ("Calling `%s'", address);
+  g_debug ("Calling `%s' from origin '%s'", address, name);
 
   add_call (CALLS_SIP_ORIGIN (origin), address, FALSE, nh);
 }
@@ -949,7 +954,7 @@ init_sip_account (CallsSipOrigin *self,
     goto err;
   }
 
-  // setup_nua and setup_oper only after account data has been set
+  // setup_nua() and setup_sip_handles() only after account data has been set
   self->nua = setup_nua (self);
   if (self->nua == NULL) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -985,6 +990,26 @@ init_sip_account (CallsSipOrigin *self,
 
  err:
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACC_STATE]);
+  return FALSE;
+}
+
+
+static gboolean
+supports_protocol (CallsOrigin *origin,
+                   const char  *protocol)
+{
+  CallsSipOrigin *self;
+  g_assert (protocol);
+  g_assert (CALLS_IS_SIP_ORIGIN (origin));
+
+  self = CALLS_SIP_ORIGIN (origin);
+
+  if (g_strcmp0 (protocol, "sip") == 0)
+    return TRUE;
+  if (g_strcmp0 (protocol, "sips") == 0)
+    return g_strcmp0 (self->protocol_prefix, "sips") == 0;
+
+  /* TODO need to set a property (from the UI) to allow using origin for telephony */
   return FALSE;
 }
 
@@ -1103,7 +1128,7 @@ calls_sip_origin_dispose (GObject *object)
     g_clear_pointer (&self->oper->call_handle, nua_handle_unref);
     g_clear_pointer (&self->oper->register_handle, nua_handle_unref);
 
-    if (!self->use_direct_connection && self->state == CALLS_ACCOUNT_OFFLINE)
+    if (!self->use_direct_connection && self->state != CALLS_ACCOUNT_OFFLINE)
       go_online (CALLS_ACCOUNT (self), FALSE);
   }
 
@@ -1199,6 +1224,7 @@ static void
 calls_sip_origin_origin_interface_init (CallsOriginInterface *iface)
 {
   iface->dial = dial;
+  iface->supports_protocol = supports_protocol;
 }
 
 static void

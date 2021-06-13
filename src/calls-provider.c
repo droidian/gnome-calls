@@ -66,10 +66,35 @@ calls_provider_real_get_status (CallsProvider *self)
   return NULL;
 }
 
-GListModel *
+static GListModel *
 calls_provider_real_get_origins (CallsProvider *self)
 {
   return NULL;
+}
+
+static const char * const *
+calls_provider_real_get_protocols (CallsProvider *self)
+{
+  g_assert_not_reached ();
+}
+
+static gboolean
+calls_provider_real_is_modem (CallsProvider *self)
+{
+  return FALSE;
+}
+
+static gboolean
+calls_provider_real_is_operational (CallsProvider *self)
+{
+  GListModel *origins;
+
+  origins = calls_provider_get_origins (self);
+
+  if (origins)
+    return !!g_list_model_get_n_items (origins);
+
+  return FALSE;
 }
 
 
@@ -81,15 +106,14 @@ calls_provider_get_property (GObject    *object,
 {
   CallsProvider *self = CALLS_PROVIDER (object);
 
-  switch (prop_id)
-    {
-    case PROP_STATUS:
-      g_value_set_string (value, calls_provider_get_status (self));
-      break;
+  switch (prop_id) {
+  case PROP_STATUS:
+    g_value_set_string (value, calls_provider_get_status (self));
+    break;
 
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+  }
 }
 
 static void
@@ -102,6 +126,9 @@ calls_provider_class_init (CallsProviderClass *klass)
   klass->get_name = calls_provider_real_get_name;
   klass->get_status = calls_provider_real_get_status;
   klass->get_origins = calls_provider_real_get_origins;
+  klass->get_protocols = calls_provider_real_get_protocols;
+  klass->is_modem = calls_provider_real_is_modem;
+  klass->is_operational = calls_provider_real_is_operational;
 
   props[PROP_STATUS] =
     g_param_spec_string ("status",
@@ -174,55 +201,40 @@ calls_provider_load_plugin (const char *name)
   PeasEngine *plugins;
   PeasPluginInfo *info;
   PeasExtension *extension;
-  const gchar *dir;
 
-  // Add Calls search path and rescan
   plugins = peas_engine_get_default ();
-  peas_engine_add_search_path (plugins, PLUGIN_LIBDIR, NULL);
-  g_debug ("Scanning for plugins in `%s'", PLUGIN_LIBDIR);
-
-  dir = g_getenv ("CALLS_PLUGIN_DIR");
-  if (dir && dir[0] != '\0') {
-    g_debug ("Adding %s to plugin search path", dir);
-    peas_engine_prepend_search_path (plugins, dir, NULL);
-  }
 
   // Find the plugin
   info = peas_engine_get_plugin_info (plugins, name);
-  if (!info)
-    {
-      g_debug ("Could not find plugin `%s'", name);
-      return NULL;
-    }
+  if (!info) {
+    g_debug ("Could not find plugin `%s'", name);
+    return NULL;
+  }
 
   // Possibly load the plugin
-  if (!peas_plugin_info_is_loaded (info))
-    {
-      peas_engine_load_plugin (plugins, info);
+  if (!peas_plugin_info_is_loaded (info)) {
+    peas_engine_load_plugin (plugins, info);
 
-      if (!peas_plugin_info_is_available (info, &error))
-        {
-          g_debug ("Error loading plugin `%s': %s", name, error->message);
-          return NULL;
-        }
-
-      g_debug ("Loaded plugin `%s'", name);
-    }
-
-  // Check the plugin provides CallsProvider
-  if (!peas_engine_provides_extension (plugins, info, CALLS_TYPE_PROVIDER))
-    {
-      g_debug ("Plugin `%s' does not have a provider extension", name);
+    if (!peas_plugin_info_is_available (info, &error)) {
+      g_debug ("Error loading plugin `%s': %s", name, error->message);
       return NULL;
     }
+
+    g_debug ("Loaded plugin `%s'", name);
+  }
+
+  // Check the plugin provides CallsProvider
+  if (!peas_engine_provides_extension (plugins, info, CALLS_TYPE_PROVIDER)) {
+    g_debug ("Plugin `%s' does not have a provider extension", name);
+    return NULL;
+  }
 
   // Get the extension
   extension = peas_engine_create_extensionv (plugins, info, CALLS_TYPE_PROVIDER, 0, NULL);
-  if (!extension)
-    {
-      g_debug ("Could not create provider from plugin `%s'", name);
-      return NULL;
-    }
+  if (!extension) {
+    g_debug ("Could not create provider from plugin `%s'", name);
+    return NULL;
+  }
 
   g_debug ("Created provider from plugin `%s'", name);
   return CALLS_PROVIDER (extension);
@@ -238,4 +250,49 @@ calls_provider_unload_plugin (const char *name)
     peas_engine_unload_plugin (engine, plugin);
   else
     g_warning ("Can't unload plugin: No plugin with name %s found", name);
+}
+
+/**
+ * calls_provider_get_protocols:
+ * @self: A #CallsProvider
+ *
+ * Returns: (transfer none): A null-terminated array of strings
+ */
+const char * const *
+calls_provider_get_protocols (CallsProvider *self)
+{
+  g_return_val_if_fail (CALLS_IS_PROVIDER (self), NULL);
+
+  return CALLS_PROVIDER_GET_CLASS (self)->get_protocols (self);
+}
+
+/**
+ * calls_provider_is_modem:
+ * @self: A #CallsProvider
+ *
+ * Returns: %TRUE is this provider handles modems, %FALSE otherwise
+ */
+gboolean
+calls_provider_is_modem (CallsProvider *self)
+{
+  g_return_val_if_fail (CALLS_IS_PROVIDER (self), FALSE);
+
+  return CALLS_PROVIDER_GET_CLASS (self)->is_modem (self);
+}
+
+/**
+ * calls_provider_is_operational:
+ * @self: A #CallsProvider
+ *
+ * Returns: %TRUE is this provider is operational, %FALSE otherwise
+ *
+ * If not subclassed this method will simply test if there are any
+ * origins available.
+ */
+gboolean
+calls_provider_is_operational (CallsProvider *self)
+{
+  g_return_val_if_fail (CALLS_IS_PROVIDER (self), FALSE);
+
+  return CALLS_PROVIDER_GET_CLASS (self)->is_operational (self);
 }

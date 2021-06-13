@@ -114,6 +114,12 @@ calls_ofono_call_get_inbound (CallsCall *call)
   return self->inbound;
 }
 
+static const char *
+calls_ofono_call_get_protocol (CallsCall *call)
+{
+  return "tel";
+}
+
 struct CallsCallOperationData
 {
   const gchar *desc;
@@ -196,16 +202,16 @@ calls_ofono_call_tone_start (CallsCall *call, gchar key)
 
 static void
 set_properties (CallsOfonoCall *self,
-                GVariant       *props)
+                GVariant       *call_props)
 {
   const gchar *str = NULL;
 
-  g_return_if_fail (props != NULL);
+  g_return_if_fail (call_props != NULL);
 
-  g_variant_lookup (props, "LineIdentification", "s", &self->number);
-  g_variant_lookup (props, "Name", "s", &self->name);
+  g_variant_lookup (call_props, "LineIdentification", "s", &self->number);
+  g_variant_lookup (call_props, "Name", "s", &self->name);
 
-  g_variant_lookup (props, "State", "&s", &str);
+  g_variant_lookup (call_props, "State", "&s", &str);
   g_return_if_fail (str != NULL);
   calls_call_state_parse_nick (&self->state, str);
 
@@ -351,6 +357,7 @@ calls_ofono_call_class_init (CallsOfonoCallClass *klass)
   call_class->get_name = calls_ofono_call_get_name;
   call_class->get_state = calls_ofono_call_get_state;
   call_class->get_inbound = calls_ofono_call_get_inbound;
+  call_class->get_protocol = calls_ofono_call_get_protocol;
   call_class->answer = calls_ofono_call_answer;
   call_class->hang_up = calls_ofono_call_hang_up;
   call_class->tone_start = calls_ofono_call_tone_start;

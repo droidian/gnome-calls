@@ -25,8 +25,8 @@
 #pragma once
 
 #include "calls-contacts-provider.h"
-#include "calls-provider.h"
 #include "calls-origin.h"
+#include "calls-credentials.h"
 
 #include <glib-object.h>
 
@@ -42,27 +42,39 @@ typedef enum
   CALLS_MANAGER_STATE_NO_PLUGIN,
   CALLS_MANAGER_STATE_NO_PROVIDER,
   CALLS_MANAGER_STATE_NO_ORIGIN,
+  CALLS_MANAGER_STATE_NO_VOICE_MODEM,
   CALLS_MANAGER_STATE_READY,
 } CallsManagerState;
 
 
-CallsManager          *calls_manager_new                   (void);
-CallsManager          *calls_manager_get_default           (void);
-CallsContactsProvider *calls_manager_get_contacts_provider (CallsManager *self);
-const gchar           *calls_manager_get_provider          (CallsManager *self);
-void                   calls_manager_set_provider          (CallsManager *self,
-                                                           const gchar *name);
-CallsManagerState      calls_manager_get_state             (CallsManager *self);
-GListModel            *calls_manager_get_origins           (CallsManager *self);
-GList                 *calls_manager_get_calls             (CallsManager *self);
-void                   calls_manager_dial                  (CallsManager *self,
-                                                            CallsOrigin  *origin,
-                                                            const gchar  *target);
-CallsOrigin           *calls_manager_get_default_origin    (CallsManager *self);
-void                   calls_manager_set_default_origin    (CallsManager *self,
-                                                            CallsOrigin *origin);
-const gchar           *calls_manager_get_contact_name      (CallsCall *call);
-gboolean               calls_manager_has_active_call       (CallsManager *self);
-void                   calls_manager_hang_up_all_calls     (CallsManager *self);
+CallsManager          *calls_manager_new                      (void);
+CallsManager          *calls_manager_get_default              (void);
+CallsContactsProvider *calls_manager_get_contacts_provider    (CallsManager     *self);
+void                   calls_manager_add_provider             (CallsManager     *self,
+                                                               const char       *name);
+void                   calls_manager_remove_provider          (CallsManager     *self,
+                                                               const char       *name);
+gboolean               calls_manager_has_provider             (CallsManager     *self,
+                                                               const char       *name);
+gboolean               calls_manager_is_modem_provider        (CallsManager     *self,
+                                                               const char       *name);
+gboolean               calls_manager_provider_add_account     (CallsManager     *self,
+                                                               const char       *provider,
+                                                               CallsCredentials *credentials);
+gboolean               calls_manager_provider_remove_account  (CallsManager     *self,
+                                                               const char       *provider,
+                                                               CallsCredentials *credentials);
+CallsManagerState      calls_manager_get_state                (CallsManager     *self);
+GListModel            *calls_manager_get_origins              (CallsManager     *self);
+GList                 *calls_manager_get_calls                (CallsManager     *self);
+void                   calls_manager_dial                     (CallsManager     *self,
+                                                               CallsOrigin      *origin,
+                                                               const char       *target);
+GListModel            *calls_manager_get_suitable_origins     (CallsManager     *self,
+                                                               const char       *target);
+const gchar           *calls_manager_get_contact_name         (CallsCall        *call);
+gboolean               calls_manager_has_active_call          (CallsManager     *self);
+void                   calls_manager_hang_up_all_calls        (CallsManager     *self);
+gboolean               calls_manager_has_any_provider         (CallsManager *self);
 
 G_END_DECLS
