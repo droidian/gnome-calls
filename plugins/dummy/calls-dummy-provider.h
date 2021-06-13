@@ -25,9 +25,10 @@
 #ifndef CALLS_DUMMY_PROVIDER_H__
 #define CALLS_DUMMY_PROVIDER_H__
 
-#include <glib-object.h>
-
 #include "calls-provider.h"
+
+#include <glib-object.h>
+#include <libpeas/peas.h>
 
 G_BEGIN_DECLS
 
@@ -35,9 +36,10 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (CallsDummyProvider, calls_dummy_provider, CALLS, DUMMY_PROVIDER, CallsProvider)
 
-CallsDummyProvider *calls_dummy_provider_new        ();
+CallsDummyProvider *calls_dummy_provider_new        (void);
 void                calls_dummy_provider_add_origin (CallsDummyProvider *self,
                                                      const gchar        *name);
+void                peas_register_types             (PeasObjectModule *module);
 
 G_END_DECLS
 

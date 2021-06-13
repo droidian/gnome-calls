@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '0.3.3',
+  version: '0.3.4',
   license: 'GPLv3+',
   meson_version: '>= 0.47.0',
   default_options: [
@@ -58,10 +58,63 @@ config_data.set_quoted('PACKAGE_URL', calls_homepage)
 config_data.set_quoted('PACKAGE_VERSION', calls_version)
 config_data.set('PACKAGE_URL_RAW', calls_homepage)
 
-add_project_arguments([
- '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_58',
- '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_64',
-], language: 'c')
+run_data = configuration_data()
+run_data.set('ABS_BUILDDIR', meson.current_build_dir())
+run_data.set('ABS_SRCDIR', meson.current_source_dir())
+
+configure_file(
+  input: 'run.in',
+  output: 'run',
+  configuration: run_data)
+
+cc = meson.get_compiler('c')
+
+global_c_args = []
+test_c_args = [
+  '-Wcast-align',
+  '-Wdate-time',
+  '-Wdeclaration-after-statement',
+  ['-Werror=format-security', '-Werror=format=2'],
+  '-Wendif-labels',
+  '-Werror=incompatible-pointer-types',
+  '-Werror=missing-declarations',
+  '-Werror=overflow',
+  '-Werror=return-type',
+  '-Werror=shift-count-overflow',
+  '-Werror=shift-overflow=2',
+  '-Wfloat-equal',
+  '-Wformat-nonliteral',
+  '-Wformat-security',
+  '-Winit-self',
+  '-Wmaybe-uninitialized',
+  '-Wmissing-include-dirs',
+  '-Wmissing-noreturn',
+  '-Wnested-externs',
+  '-Wold-style-definition',
+  '-Wshadow',
+  '-Wstrict-prototypes',
+  '-Wswitch-default',
+  '-Wno-switch-enum',
+  '-Wtype-limits',
+  '-Wunused-function',
+  '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_58',
+ '  -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_66',
+]
+
+if get_option('buildtype') != 'plain'
+  test_c_args += '-fstack-protector-strong'
+endif
+
+foreach arg: test_c_args
+  if cc.has_multi_arguments(arg)
+    global_c_args += arg
+  endif
+endforeach
+
+add_project_arguments(
+  global_c_args,
+  language: 'c'
+)
 
 subdir('po')
 subdir('src')
@@ -69,3 +122,4 @@ subdir('plugins')
 subdir('doc')
 subdir('data')
 subdir('tests')
+

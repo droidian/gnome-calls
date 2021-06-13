@@ -298,7 +298,7 @@ calls_credentials_init (CallsCredentials *self)
 
 
 CallsCredentials *
-calls_credentials_new ()
+calls_credentials_new (void)
 {
   return g_object_new (CALLS_TYPE_CREDENTIALS, NULL);
 }
@@ -388,4 +388,30 @@ calls_credentials_update_from_keyfile (CallsCredentials *self,
   g_signal_emit (self, signals[SIGNAL_ACCOUNT_UPDATED], 0);
 
   return TRUE;
+}
+
+const char *
+calls_credentials_get_name (CallsCredentials *self)
+{
+  g_return_val_if_fail (CALLS_IS_CREDENTIALS (self), NULL);
+
+  return self->name;
+}
+
+void
+calls_credentials_set_name (CallsCredentials *self,
+                            const char       *name)
+{
+  g_return_if_fail (CALLS_IS_CREDENTIALS (self));
+
+  if (!name)
+    return;
+
+  if (g_strcmp0 (name, self->name) == 0)
+    return;
+
+  g_free (self->name);
+  self->name = g_strdup (name);
+
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_NAME]);
 }

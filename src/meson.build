@@ -21,9 +21,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-subdir('wayland')
 
 gnome = import('gnome')
+
+subdir('wayland')
+subdir('dbus')
 
 src_include = include_directories('.')
 calls_includes = [ top_include, src_include ]
@@ -82,11 +84,13 @@ calls_resources = gnome.compile_resources(
 calls_generated_sources = [
   calls_enum_sources,
   calls_resources,
+  generated_dbus_sources,
   wl_proto_sources,
 ]
 
 calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-call.c',
+                       'calls-dbus-manager.c',
                        'calls-ussd.c',
                        'calls-origin.c', 'calls-origin.h',
                        'calls-provider.c', 'calls-provider.h',
@@ -113,6 +117,7 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-credentials.c', 'calls-credentials.h',
                        'calls-account.c', 'calls-account.h',
                        'calls-account-provider.c', 'calls-account-provider.h',
+                       'calls-settings.c', 'calls-settings.h',
                       ]) + wayland_sources + calls_generated_sources
 
 calls_config_data = config_data

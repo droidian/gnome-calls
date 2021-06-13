@@ -24,24 +24,21 @@
 
 #pragma once
 
-#include "calls-credentials.h"
-#include "calls-provider.h"
-#include "calls-sip-origin.h"
-
 #include <glib-object.h>
-#include <libpeas/peas.h>
 
 G_BEGIN_DECLS
 
-#define CALLS_TYPE_SIP_PROVIDER (calls_sip_provider_get_type ())
+#define CALLS_TYPE_SETTINGS (calls_settings_get_type ())
 
-G_DECLARE_FINAL_TYPE (CallsSipProvider, calls_sip_provider, CALLS, SIP_PROVIDER, CallsProvider)
+G_DECLARE_FINAL_TYPE (CallsSettings, calls_settings, CALLS, SETTINGS, GObject)
 
-CallsSipProvider *calls_sip_provider_new                    (void);
-CallsSipOrigin   *calls_sip_provider_add_origin             (CallsSipProvider *self,
-                                                             CallsCredentials *credentials,
-                                                             gint              local_port,
-                                                             gboolean          direct_connection);
-void              peas_register_types                       (PeasObjectModule *module);
+CallsSettings     *calls_settings_new                            (void);
+gboolean           calls_settings_get_use_default_origins        (CallsSettings *self);
+void               calls_settings_set_use_default_origins        (CallsSettings *self,
+                                                                  gboolean       enable);
+char              *calls_settings_get_country_code               (CallsSettings *self);
+void               calls_settings_set_country_code               (CallsSettings *self,
+                                                                  const char    *country_code);
 
 G_END_DECLS
+

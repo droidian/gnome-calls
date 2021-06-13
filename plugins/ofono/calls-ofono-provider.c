@@ -34,6 +34,10 @@
 #include <glib/gi18n.h>
 #include <libpeas/peas.h>
 
+static const char * const supported_protocols[] = {
+  "tel",
+  NULL
+};
 
 struct _CallsOfonoProvider
 {
@@ -103,7 +107,7 @@ update_status (CallsOfonoProvider *self)
 }
 
 
-gboolean
+static gboolean
 ofono_find_origin_index (CallsOfonoProvider *self,
                          const char         *path,
                          guint              *index)
@@ -296,6 +300,17 @@ modem_properties_get_name (GVariant *properties)
   return NULL;
 }
 
+static const char * const *
+calls_ofono_provider_get_protocols (CallsProvider *provider)
+{
+  return supported_protocols;
+}
+
+static gboolean
+calls_ofono_provider_is_modem (CallsProvider *provider)
+{
+  return TRUE;
+}
 
 static void
 modem_added_cb (GDBOManager        *manager,
@@ -457,7 +472,7 @@ ofono_appeared_cb (GDBusConnection *connection,
 }
 
 
-void
+static void
 ofono_vanished_cb (GDBusConnection *connection,
                    const gchar *name,
                    CallsOfonoProvider *self)
@@ -525,6 +540,8 @@ calls_ofono_provider_class_init (CallsOfonoProviderClass *klass)
   provider_class->get_name = calls_ofono_provider_get_name;
   provider_class->get_status = calls_ofono_provider_get_status;
   provider_class->get_origins = calls_ofono_provider_get_origins;
+  provider_class->get_protocols = calls_ofono_provider_get_protocols;
+  provider_class->is_modem = calls_ofono_provider_is_modem;
 }
 
 
@@ -546,7 +563,7 @@ calls_ofono_provider_init (CallsOfonoProvider *self)
   self->status = g_strdup (_("Initialised"));
   self->modems = g_hash_table_new_full (g_str_hash, g_str_equal,
                                         g_free, g_object_unref);
-  self->origins = g_list_store_new (CALLS_TYPE_OFONO_ORIGIN);
+  self->origins = g_list_store_new (CALLS_TYPE_ORIGIN);
 }
 
 

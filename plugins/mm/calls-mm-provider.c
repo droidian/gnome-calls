@@ -32,6 +32,11 @@
 #include <libpeas/peas.h>
 #include <glib/gi18n.h>
 
+static const char * const supported_protocols[] = {
+  "tel",
+  NULL
+};
+
 struct _CallsMMProvider
 {
   CallsProvider parent_instance;
@@ -91,7 +96,7 @@ update_status (CallsMMProvider *self)
 }
 
 
-gboolean
+static gboolean
 mm_provider_contains (CallsMMProvider *self,
                       MMObject        *mm_obj)
 {
@@ -247,7 +252,7 @@ add_mm_objects (CallsMMProvider *self)
 }
 
 
-void
+static void
 object_added_cb (CallsMMProvider *self,
                  GDBusObject     *object)
 {
@@ -258,7 +263,7 @@ object_added_cb (CallsMMProvider *self,
 }
 
 
-void
+static void
 object_removed_cb (CallsMMProvider *self,
                    GDBusObject     *object)
 {
@@ -321,7 +326,7 @@ mm_appeared_cb (GDBusConnection *connection,
 }
 
 
-void
+static void
 mm_vanished_cb (GDBusConnection *connection,
                 const gchar *name,
                 CallsMMProvider *self)
@@ -352,6 +357,18 @@ calls_mm_provider_get_origins (CallsProvider *provider)
   CallsMMProvider *self = CALLS_MM_PROVIDER (provider);
 
   return G_LIST_MODEL (self->origins);
+}
+
+static const char * const *
+calls_mm_provider_get_protocols (CallsProvider *provider)
+{
+  return supported_protocols;
+}
+
+static gboolean
+calls_mm_provider_is_modem (CallsProvider *provider)
+{
+  return TRUE;
 }
 
 static void
@@ -415,6 +432,8 @@ calls_mm_provider_class_init (CallsMMProviderClass *klass)
   provider_class->get_name = calls_mm_provider_get_name;
   provider_class->get_status = calls_mm_provider_get_status;
   provider_class->get_origins = calls_mm_provider_get_origins;
+  provider_class->get_protocols = calls_mm_provider_get_protocols;
+  provider_class->is_modem = calls_mm_provider_is_modem;
 }
 
 
@@ -433,7 +452,7 @@ static void
 calls_mm_provider_init (CallsMMProvider *self)
 {
   self->status = g_strdup (_("Initialised"));
-  self->origins = g_list_store_new (CALLS_TYPE_MM_ORIGIN);
+  self->origins = g_list_store_new (CALLS_TYPE_ORIGIN);
 }
 
 
