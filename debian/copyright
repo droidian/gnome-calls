@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Calls
-Upstream-Contact: Julian Sparber <julian.sparber@puri.sm>
+Upstream-Contact: Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>
 Source: https://gitlab.gnome.org/GNOME/calls
 License: GPL-3+
 
