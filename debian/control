@@ -31,7 +31,7 @@ Build-Depends:
  xauth,
  xvfb,
 Standards-Version: 4.5.1
-Homepage: https://source.puri.sm/Librem5/calls
+Homepage: https://gitlab.gnome.org/GNOME/calls
 Vcs-Browser: https://salsa.debian.org/DebianOnMobile-team/gnome-calls
 Vcs-Git: https://salsa.debian.org/DebianOnMobile-team/gnome-calls.git
 Rules-Requires-Root: no
