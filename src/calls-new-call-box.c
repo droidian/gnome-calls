@@ -22,6 +22,8 @@
  *
  */
 
+#define G_LOG_DOMAIN "CallsNewCallBox"
+
 #include "calls-application.h"
 #include "calls-new-call-box.h"
 #include "calls-ussd.h"
@@ -268,7 +270,7 @@ calls_new_call_box_class_init (CallsNewCallBoxClass *klass)
 
   object_class->dispose = dispose;
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/sm/puri/calls/ui/new-call-box.ui");
+  gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/new-call-box.ui");
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list_box);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, backspace);
