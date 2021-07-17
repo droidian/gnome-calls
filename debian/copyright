@@ -9,13 +9,13 @@ Copyright: 2018-2020 Purism SPC
            2018 Mohammed Sadiq <sadiq@sadiqpk.org>
 License: GPL-3+
 
-Files: data/sm.puri.Calls.metainfo.xml
+Files: data/org.gnome.Calls.metainfo.xml
 Copyright: 2018 Purism SPC
 License: CC0-1.0
 
 Files: data/call-arrow*
  data/new-call-symbolic.svg
- data/sm.puri.Calls*svg
+ data/org.gnome.Calls*svg
 Copyright: 2019 Purism SPC
            2019 GNOME Design Team
 License: CC-BY-SA-4.0
