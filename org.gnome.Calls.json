@@ -1,5 +1,5 @@
 {
-    "app-id" : "sm.puri.Calls",
+    "app-id" : "org.gnome.Calls",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "master",
     "sdk" : "org.gnome.Sdk",
@@ -42,8 +42,8 @@
             "sources" : [
                 {
                     "type" : "archive",
-                    "url" : "https://www.freedesktop.org/software/ModemManager/ModemManager-1.12.4.tar.xz",
-                    "sha256" : "852d61755e0c1a8d0c609b17192d742b324fdd2e513f3ed64b228befb859a95b"
+                    "url" : "https://www.freedesktop.org/software/ModemManager/ModemManager-1.16.6.tar.xz",
+                    "sha256" : "2a90b6260f66d3135609d62667ada73416694d717e7fd9b73223e3703a499617"
                 }
             ]
         },
@@ -172,8 +172,8 @@
             "sources" : [
                 {
                     "type" : "archive",
-                    "url" : "https://github.com/libical/libical/releases/download/v3.0.7/libical-3.0.7.tar.gz",
-                    "sha256" : "0abe66df1ea826e57db7f281c704ede834c84139012e6c686ea7adafd4e763fc"
+                    "url" : "https://github.com/libical/libical/releases/download/v3.0.10/libical-3.0.10.tar.gz",
+                    "sha256" : "f933b3e6cf9d56a35bb5625e8e4a9c3a50239a85aea05ed842932c1a1dc336b4"
                 }
             ]
         },
@@ -212,8 +212,8 @@
             "sources" : [
                 {
                     "type" : "archive",
-                    "url" : "https://download.gnome.org/sources/evolution-data-server/3.35/evolution-data-server-3.35.90.tar.xz",
-                    "sha256" : "f7444e53228ecdae0f71c37846ff8e59ca7e54522dda040d889769d6fbd976fc"
+                    "url" : "https://download-fallback.gnome.org/sources/evolution-data-server/3.40/evolution-data-server-3.40.2.tar.xz",
+                    "sha256" : "ec82951639f32a5cece80a8b0b9aa3f66b7d318e3ee2c1c35234f2e2bde8a418"
                 }
             ]
         },
@@ -224,8 +224,8 @@
             "sources" : [
                 {
                     "type" : "archive",
-                    "url" : "https://download.gnome.org/sources/gom/0.3/gom-0.3.3.tar.xz",
-                    "sha256" : "ac57e34b5fe273ed306efaeabb346712c264e341502913044a782cdf8c1036d8"
+                    "url" : "https://download.gnome.org/sources/gom/0.4/gom-0.4.tar.xz",
+                    "sha256" : "68d08006aaa3b58169ce7cf1839498f45686fba8115f09acecb89d77e1018a9d"
                 }
             ]
         },
@@ -244,8 +244,8 @@
             "sources" : [
                 {
                     "type" : "archive",
-                    "url" : "https://download.gnome.org/sources/folks/0.13/folks-0.13.2.tar.xz",
-                    "sha256" : "0263d6b8de41acabbc95e9a2418374271fb649412a1de3e3ef6ad4a3a5270173"
+                    "url" : "https://download-fallback.gnome.org/sources/folks/0.15/folks-0.15.2.tar.xz",
+                    "sha256" : "ef777b2696d15ec31ba8b940ecabc17fe7fab909584f9425258f54d295ccd122"
                 }
             ]
         },
@@ -300,7 +300,7 @@
             "sources" : [
                 {
                     "type" : "git",
-                    "url" : "https://source.puri.sm/Librem5/calls.git"
+                    "url" : "https://gitlab.gnome.org/GNOME/calls.git"
                 }
             ]
         }

@@ -22,6 +22,8 @@
  *
  */
 
+#define G_LOG_DOMAIN "CallsManager"
+
 #include "config.h"
 
 #include "calls-application.h"
@@ -701,17 +703,19 @@ calls_manager_init (CallsManager *self)
                           self->contacts_provider, "country-code",
                           G_BINDING_DEFAULT);
 
-  // Prepend peas plugin search path
   peas = peas_engine_get_default ();
-  peas_engine_add_search_path (peas, PLUGIN_LIBDIR, NULL);
-  g_debug ("Scanning for plugins in `%s'", PLUGIN_LIBDIR);
 
   dir = g_getenv ("CALLS_PLUGIN_DIR");
   if (dir && dir[0] != '\0') {
+    /** Add the directory to the search path. prepend_search_path() does not work
+     * as expected. see https://gitlab.gnome.org/GNOME/libpeas/-/issues/19
+     */
     g_debug ("Adding %s to plugin search path", dir);
-    peas_engine_prepend_search_path (peas, dir, NULL);
+    peas_engine_add_search_path (peas, dir, NULL);
   }
 
+  peas_engine_add_search_path (peas, PLUGIN_LIBDIR, NULL);
+  g_debug ("Scanning for plugins in `%s'", PLUGIN_LIBDIR);
 }
 
 
@@ -974,4 +978,25 @@ calls_manager_has_any_provider (CallsManager *self)
   g_return_val_if_fail (CALLS_IS_MANAGER (self), FALSE);
 
   return !!g_hash_table_size (self->providers);
+}
+
+/**
+ * calls_manager_get_provider_names:
+ * @self: The #CallsManager
+ * @length: (optional) (out): the length of the returned array
+ *
+ * Retrieves the names of all providers loaded by @self, as an array.
+ *
+ * You should free the return value with g_free().
+ *
+ * Returns: (array length=length) (transfer container): a
+ * %NULL-terminated array containing the names of providers.
+ */
+const char **
+calls_manager_get_provider_names (CallsManager *self,
+                                  guint        *length)
+{
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
+
+  return (const char **) g_hash_table_get_keys_as_array (self->providers, length);
 }
