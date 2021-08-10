@@ -42,7 +42,7 @@
 
 struct _CallsMainWindow
 {
-  GtkApplicationWindow parent_instance;
+  HdyApplicationWindow parent_instance;
 
   GListModel *record_store;
 
@@ -67,7 +67,7 @@ struct _CallsMainWindow
   GtkButton  *ussd_reply_button;
 };
 
-G_DEFINE_TYPE (CallsMainWindow, calls_main_window, GTK_TYPE_APPLICATION_WINDOW);
+G_DEFINE_TYPE (CallsMainWindow, calls_main_window, HDY_TYPE_APPLICATION_WINDOW);
 
 enum {
   PROP_0,
@@ -466,7 +466,7 @@ calls_main_window_class_init (CallsMainWindowClass *klass)
 
   widget_class->size_allocate = size_allocate;
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/sm/puri/calls/ui/main-window.ui");
+  gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/main-window.ui");
   gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, in_app_notification);
   gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, title_switcher);
   gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, main_stack);

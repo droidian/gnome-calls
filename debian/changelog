@@ -1,3 +1,19 @@
+gnome-calls (41~alpha-1) experimental; urgency=medium
+
+  * d/watch: Update for new upstream URL and versioning scheme
+  * d/control: Update upstream URL
+  * New upstream version 41~alpha
+  * d/control: Breaks current phosh
+  * d/maintscript: Remove old autostart desktop files
+  * d/copyright: Layer surface got dropped
+  * d/copyright: Rename files
+  * d/copyright: Change upstream URL
+  * d/copyright: Update Upstream Contact
+  * d/copyright: Update copyright
+  * d/*.install: Update to reflect renamed file
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 17 Jul 2021 21:51:59 +0200
+
 gnome-calls (0.3.4-1) experimental; urgency=medium
 
   * New upstream version 0.3.4

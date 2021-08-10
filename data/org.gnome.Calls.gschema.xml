@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="purism-calls">
-  <schema id="sm.puri.Calls" path="/sm/puri/Calls/">
+  <schema id="org.gnome.Calls" path="/org/gnome/Calls/">
 
     <key name="auto-use-default-origins" type="b">
       <default>true</default>
@@ -12,6 +12,12 @@
       <default>''</default>
       <summary>The country code as reported by the modem</summary>
       <description>The country code is used for contact name lookup</description>
+    </key>
+
+    <key name="autoload-plugins" type="as">
+      <default>["mm", "sip"]</default>
+      <summary>The plugins to load automatically</summary>
+      <description>These plugins will be automatically loaded on application startup.</description>
     </key>
 
   </schema>

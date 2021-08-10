@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-    <id>sm.puri.Calls</id>
+    <id>org.gnome.Calls</id>
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0+</project_license>
     <name>Calls</name>
@@ -32,6 +32,8 @@
 
     <mimetypes>
         <mimetype>x-scheme-handler/tel</mimetype>
+        <mimetype>x-scheme-handler/sip</mimetype>
+        <mimetype>x-scheme-handler/sips</mimetype>
     </mimetypes>
 
     <content_rating type="oars-1.1">
@@ -65,9 +67,9 @@
     </content_rating>
 
     <releases>
-        <release version="0.0.0" date="2018-05-04">
-            <description>Pre-release development</description>
-        </release>
+      <release version="41.alpha" data="2021-07-16">
+        <description>First GNOME release</description>
+      </release>
     </releases>
 
     <custom>

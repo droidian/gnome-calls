@@ -40,6 +40,7 @@
 #include <glib/gi18n.h>
 #include <glib-object.h>
 
+#include <sofia-sip/sofia_features.h>
 #include <sofia-sip/nua.h>
 #include <sofia-sip/su_tag.h>
 #include <sofia-sip/su_tag_io.h>
@@ -70,6 +71,8 @@ enum {
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
+static gboolean set_contact_header = FALSE;
+
 struct _CallsSipOrigin
 {
   GObject parent_instance;
@@ -77,6 +80,7 @@ struct _CallsSipOrigin
   CallsSipContext *ctx;
   nua_t *nua;
   CallsSipHandles *oper;
+  char *contact_header; /* Needed for sofia SIP >= 1.13 */
 
   /* Direct connection mode is useful for debugging purposes */
   gboolean use_direct_connection;
@@ -231,6 +235,7 @@ add_call (CallsSipOrigin *self,
                 SOATAG_AF (SOA_AF_IP4_IP6),
                 SOATAG_USER_SDP_STR (local_sdp),
                 SIPTAG_TO_STR (address),
+                TAG_IF (!!self->contact_header, SIPTAG_CONTACT_STR (self->contact_header)),
                 SOATAG_RTP_SORT (SOA_RTP_SORT_REMOTE),
                 SOATAG_RTP_SELECT (SOA_RTP_SELECT_ALL),
                 TAG_END ());
@@ -456,22 +461,47 @@ sip_r_register (int              status,
 
   if (status == 200) {
     g_debug ("REGISTER successful");
-
     origin->state = CALLS_ACCOUNT_ONLINE;
-  }
-  else if (status == 401 || status == 407) {
-    sip_authenticate (origin, nh, sip);
+    nua_get_params (nua, TAG_ANY (), TAG_END());
 
+  } else if (status == 401 || status == 407) {
+    sip_authenticate (origin, nh, sip);
     origin->state = CALLS_ACCOUNT_AUTHENTICATING;
-  }
-  else if (status == 403) {
+
+  } else if (status == 403) {
     g_warning ("wrong credentials?");
     origin->state = CALLS_ACCOUNT_AUTHENTICATION_FAILURE;
-  }
-  else if (status == 904) {
+
+  } else if (status == 904) {
     g_warning ("unmatched challenge");
     origin->state = CALLS_ACCOUNT_AUTHENTICATION_FAILURE;
   }
+
+  g_object_notify_by_pspec (G_OBJECT (origin), props[PROP_ACC_STATE]);
+}
+
+
+static void
+sip_r_unregister (int              status,
+                  char const      *phrase,
+                  nua_t           *nua,
+                  CallsSipOrigin  *origin,
+                  nua_handle_t    *nh,
+                  CallsSipHandles *op,
+                  sip_t const     *sip,
+                  tagi_t           tags[])
+{
+  g_debug ("response to unregistering: %03d %s", status, phrase);
+
+  if (status == 200) {
+    g_debug ("Unregistering successful");
+    origin->state = CALLS_ACCOUNT_OFFLINE;
+
+  } else {
+    g_warning ("Unregisterung unsuccessful: %03d %s", status, phrase);
+    origin->state = CALLS_ACCOUNT_UNKNOWN_ERROR;
+  }
+
   g_object_notify_by_pspec (G_OBJECT (origin), props[PROP_ACC_STATE]);
 }
 
@@ -575,6 +605,35 @@ sip_i_state (int              status,
 
 
 static void
+sip_r_get_params (int              status,
+                  char const      *phrase,
+                  nua_t           *nua,
+                  CallsSipOrigin  *origin,
+                  nua_handle_t    *nh,
+                  CallsSipHandles *op,
+                  sip_t const     *sip,
+                  tagi_t           tags[])
+{
+  tagi_t *from = NULL;
+  const char *from_str = NULL;
+
+  g_debug ("response to get_params: %03d %s", status, phrase);
+
+  if (!set_contact_header)
+    return;
+
+  if ((status != 200) || ((from = tl_find (tags, siptag_from_str)) == NULL)) {
+    g_warning ("Could not find 'siptag_from_tag' among the tags");
+    return;
+  }
+
+  from_str = (const char *) from->t_value;
+  g_free (origin->contact_header);
+  origin->contact_header = g_strdup (from_str);
+}
+
+
+static void
 sip_callback (nua_event_t   event,
               int           status,
               char const   *phrase,
@@ -657,6 +716,28 @@ sip_callback (nua_event_t   event,
                     op,
                     sip,
                     tags);
+    break;
+
+  case nua_r_unregister:
+    sip_r_unregister (status,
+                      phrase,
+                      nua,
+                      origin,
+                      nh,
+                      op,
+                      sip,
+                      tags);
+    break;
+
+  case nua_r_get_params:
+    sip_r_get_params (status,
+                      phrase,
+                      nua,
+                      origin,
+                      nh,
+                      op,
+                      sip,
+                      tags);
     break;
 
   case nua_r_set_params:
@@ -865,15 +946,14 @@ go_online (CallsAccount *account,
                   TAG_IF (display_name, NUTAG_M_DISPLAY (display_name)),
                   NUTAG_REGISTRAR (registrar_url),
                   TAG_END ());
-  }
-  else {
+
+  } else {
     if (self->state == CALLS_ACCOUNT_OFFLINE)
       return;
 
     nua_unregister (self->oper->register_handle,
                     TAG_END ());
   }
-  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACC_STATE]);
 }
 
 
@@ -1100,6 +1180,16 @@ calls_sip_origin_constructed (GObject *object)
 {
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
   g_autoptr (GError) error = NULL;
+  int major = 0;
+  int minor = 0;
+  int patch = 0;
+
+  if (sscanf (SOFIA_SIP_VERSION, "%d.%d.%d", &major, &minor, &patch) == 3) {
+    if (major > 2 || (major == 1 && minor >= 13)) {
+      /* Sofia 1.13 does no longer include the contact header by default, see #304 */
+      set_contact_header = TRUE;
+    }
+  }
 
   if (!init_sip_account (self, &error)) {
     g_warning ("Error initializing the SIP account: %s", error->message);
@@ -1124,13 +1214,8 @@ calls_sip_origin_dispose (GObject *object)
 
   remove_calls (self, NULL);
 
-  if (self->oper) {
-    g_clear_pointer (&self->oper->call_handle, nua_handle_unref);
-    g_clear_pointer (&self->oper->register_handle, nua_handle_unref);
-
-    if (!self->use_direct_connection && self->state != CALLS_ACCOUNT_OFFLINE)
-      go_online (CALLS_ACCOUNT (self), FALSE);
-  }
+  if (!self->use_direct_connection && self->state == CALLS_ACCOUNT_ONLINE)
+    go_online (CALLS_ACCOUNT (self), FALSE);
 
   if (self->nua) {
     g_debug ("Requesting nua_shutdown ()");

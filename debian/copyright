@@ -1,25 +1,21 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Calls
-Upstream-Contact: Julian Sparber <julian.sparber@puri.sm>
-Source: https://source.puri.sm/Librem5/calls
+Upstream-Contact: Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>
+Source: https://gitlab.gnome.org/GNOME/calls
 License: GPL-3+
 
 Files: *
-Copyright: 2018-2020 Purism SPC
+Copyright: 2018-2021 Purism SPC
            2018 Mohammed Sadiq <sadiq@sadiqpk.org>
 License: GPL-3+
 
-Files: src/wayland/wlr-layer-shell-unstable-v1.xml
-Copyright: Copyright © 2017 Drew DeVault
-License: X11
-
-Files: data/sm.puri.Calls.metainfo.xml
+Files: data/org.gnome.Calls.metainfo.xml
 Copyright: 2018 Purism SPC
 License: CC0-1.0
 
 Files: data/call-arrow*
  data/new-call-symbolic.svg
- data/sm.puri.Calls*svg
+ data/org.gnome.Calls*svg
 Copyright: 2019 Purism SPC
            2019 GNOME Design Team
 License: CC-BY-SA-4.0
@@ -47,25 +43,6 @@ License: GPL-3+
  .
  On Debian systems, the full text of the GNU General Public License version 3
  can be found in the file `/usr/share/common-licenses/GPL-3'.
-
-License: X11
- Permission to use, copy, modify, distribute, and sell this software and
- its documentation for any purpose is hereby granted without fee, provided
- that the above copyright notice appear in all copies and fthat both that
- copyright notice and this permission notice appear in supporting
- documentation, and that the name of the copyright holders not be used in
- advertising or publicity pertaining to distribution of the software
- without specific, written prior permission.  The copyright holders make
- no representations about the suitability of this software for any
- purpose.  It is provided "as is" without express or implied warranty.
- .
- THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
- SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
- FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
- SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
- RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
- CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 License: CC0-1.0
  Creative Commons Legal Code

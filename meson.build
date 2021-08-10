@@ -22,9 +22,9 @@
 project(
   'calls',
   'c', 'vala',
-  version: '0.3.4',
+  version: '41.alpha',
   license: 'GPLv3+',
-  meson_version: '>= 0.47.0',
+  meson_version: '>= 0.49.0',
   default_options: [
     'warning_level=1',
     'buildtype=debugoptimized',
@@ -32,8 +32,8 @@ project(
   ]
 )
 
-calls_id = 'sm.puri.Calls'
-calls_homepage = 'https://source.puri.sm/Librem5/calls'
+calls_id = 'org.gnome.Calls'
+calls_homepage = 'https://gitlab.gnome.org/GNOME/calls'
 calls_name = meson.project_name()
 calls_version = meson.project_version()
 
@@ -97,8 +97,10 @@ test_c_args = [
   '-Wno-switch-enum',
   '-Wtype-limits',
   '-Wunused-function',
-  '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_58',
- '  -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_66',
+  '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_64',
+  '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_68',
+  # see https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/332
+  '-DEDS_DISABLE_DEPRECATED',
 ]
 
 if get_option('buildtype') != 'plain'
@@ -123,3 +125,4 @@ subdir('doc')
 subdir('data')
 subdir('tests')
 
+meson.add_install_script('build-aux/meson/postinstall.py')

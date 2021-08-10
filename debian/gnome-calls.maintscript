@@ -1,1 +1,3 @@
-mv_conffile /etc/xdg/autostart/sm.puri.Calls.desktop /etc/xdg/autostart/sm.puri.Calls-daemon.desktop 0.2.0~
+rm_conffile /etc/xdg/autostart/sm.puri.Calls.desktop 0.2.0-1~
+rm_conffile /etc/xdg/autostart/sm.puri.Calls-daemon.desktop 41~alpha-1~
+
