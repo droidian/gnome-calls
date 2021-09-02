@@ -10,11 +10,13 @@
         <p>Calls is a simple, elegant phone dialer and call handler built using GTK+ 3.</p>
     </description>
 
-    <url type="homepage">https://source.puri.sm/Librem5/calls</url>
-    <url type="bugtracker">https://source.puri.sm/Librem5/calls/issues</url>
+    <url type="homepage">https://gitlab.gnome.org/GNOME/calls</url>
+    <url type="bugtracker">https://gitlab.gnome.org/GNOME/calls/issues</url>
     
     <project_group>GNOME</project_group>
     <developer_name>Bob Ham</developer_name>
+    <developer_name>Evangelos Ribeiro Tzaras</developer_name>
+    <developer_name>Julian Sparber</developer_name>
 
     <recommends>
         <control>pointing</control>
@@ -67,7 +69,13 @@
     </content_rating>
 
     <releases>
-      <release version="41.alpha" data="2021-07-16">
+      <release version="41.rc" date="2021-09-02">
+        <description>SIP Plugin polish and bugfixes.</description>
+      </release>
+      <release version="41.beta" date="2021-08-14">
+        <description>SIP Plugin usable from the UI.</description>
+      </release>
+      <release version="41.alpha" date="2021-07-16">
         <description>First GNOME release</description>
       </release>
     </releases>

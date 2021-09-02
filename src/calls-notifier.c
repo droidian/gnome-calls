@@ -22,6 +22,8 @@
  *
  */
 
+#define G_LOG_DOMAIN "CallsNotifier"
+
 #include "calls-notifier.h"
 #include "calls-manager.h"
 #include "config.h"
@@ -52,6 +54,9 @@ notify (CallsNotifier *self, CallsCall *call)
   const char *number;
   gboolean got_number;
 
+#if GLIB_CHECK_VERSION(2,70,0)
+  g_notification_set_category (notification, "x-gnome.call.unanswered");
+#endif
   contact = calls_call_get_contact (call);
   // TODO: We need to update the notification when the contact name changes
   name = calls_best_match_get_name (contact);
