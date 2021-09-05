@@ -8,7 +8,7 @@ test_env = [
   'PYTHONDONTWRITEBYTECODE=yes',
   'MALLOC_CHECK_=2',
   'NO_AT_BRIDGE=1',
-  'CALLS_SIP_DO_NOT_AUTOLOAD=1',
+  'CALLS_SIP_TEST=1',
   'CALLS_AUDIOSRC=audiotestsrc',
   'CALLS_AUDIOSINK=fakesink',
 ]
@@ -100,20 +100,6 @@ t = executable('sip', test_sources,
                  ]
                )
 test('sip', t, env: test_env)
-
-test_sources = [ 'test-account.c' ]
-t = executable('account', test_sources,
-               c_args : test_cflags,
-               link_args: test_link_args,
-               pie: true,
-               link_with : [calls_vala, calls_sip, libcalls],
-               dependencies: [calls_deps, sip_deps],
-               include_directories : [
-                   calls_includes,
-                   sip_include,
-                 ]
-               )
-test('account', t, env: test_env)
 
 test_sources = [ 'test-util.c' ]
 t = executable('util', test_sources,

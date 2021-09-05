@@ -23,14 +23,16 @@ Build-Depends:
  libhandy-1-dev (>=1.1.90),
  libmm-glib-dev (>= 1.12.0),
  libpeas-dev,
+ libsecret-1-dev,
  libsofia-sip-ua-glib-dev,
+ libxml2-utils,
  meson,
  modemmanager-dev,
  pkg-config,
  valac,
  xauth,
  xvfb,
-Standards-Version: 4.5.1
+Standards-Version: 4.6.0
 Homepage: https://gitlab.gnome.org/GNOME/calls
 Vcs-Browser: https://salsa.debian.org/DebianOnMobile-team/gnome-calls
 Vcs-Git: https://salsa.debian.org/DebianOnMobile-team/gnome-calls.git
@@ -38,7 +40,7 @@ Rules-Requires-Root: no
 
 Package: gnome-calls
 Architecture: any
-Breaks: phosh (<< 0.12.2-1)
+Breaks: phosh (<< 0.13.0)
 Depends:
  callaudiod,
  gstreamer1.0-plugins-good,

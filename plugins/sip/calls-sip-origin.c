@@ -26,7 +26,6 @@
 
 
 #include "calls-account.h"
-#include "calls-credentials.h"
 #include "calls-message-source.h"
 #include "calls-origin.h"
 #include "calls-sip-call.h"
@@ -34,6 +33,7 @@
 #include "calls-sip-origin.h"
 #include "calls-sip-util.h"
 #include "calls-sip-media-manager.h"
+#include "calls-network-watch.h"
 #include "config.h"
 #include "enum-types.h"
 
@@ -59,14 +59,22 @@
 
 enum {
   PROP_0,
-  PROP_ACC_CREDENTIALS,
   PROP_NAME,
+  PROP_ACC_HOST,
+  PROP_ACC_USER,
+  PROP_ACC_PASSWORD,
+  PROP_ACC_DISPLAY_NAME,
+  PROP_ACC_PORT,
+  PROP_ACC_PROTOCOL,
+  PROP_ACC_AUTO_CONNECT,
   PROP_ACC_DIRECT,
+  PROP_ACC_LOCAL_PORT,
   PROP_SIP_CONTEXT,
-  PROP_SIP_LOCAL_PORT,
   PROP_ACC_STATE,
+  PROP_ACC_ADDRESS,
   PROP_CALLS,
   PROP_COUNTRY_CODE,
+  PROP_NUMERIC,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -87,15 +95,26 @@ struct _CallsSipOrigin
 
   /* Needed to handle shutdown correctly. See sip_callback and dispose method */
   gboolean is_nua_shutdown;
+  gboolean is_shutdown_success;
 
   CallsAccountState state;
 
   CallsSipMediaManager *media_manager;
 
   /* Account information */
-  CallsCredentials *credentials;
-  const gchar *protocol_prefix;
+  char *host;
+  char *user;
+  char *password;
+  char *display_name;
+  gint port;
+  char *transport_protocol;
+  gboolean auto_connect;
+  gboolean direct_mode;
   gint local_port;
+
+  const char *protocol_prefix;
+  char *address;
+  char *name;
 
   GList *calls;
   GHashTable *call_handles;
@@ -271,7 +290,16 @@ dial (CallsOrigin *origin,
 
   g_debug ("Calling `%s' from origin '%s'", address, name);
 
-  add_call (CALLS_SIP_ORIGIN (origin), address, FALSE, nh);
+  /* We don't require the user to input the prefix */
+  if (!g_str_has_prefix (address, "sip:") &&
+      !g_str_has_prefix (address, "sips:")) {
+    g_autofree char * address_prefix =
+      g_strconcat (self->protocol_prefix, ":", address, NULL);
+
+    add_call (CALLS_SIP_ORIGIN (origin), address_prefix, FALSE, nh);
+  } else {
+    add_call (CALLS_SIP_ORIGIN (origin), address, FALSE, nh);
+  }
 }
 
 static void
@@ -294,83 +322,24 @@ create_inbound (CallsSipOrigin *self,
 static void
 update_nua (CallsSipOrigin *self)
 {
-  gboolean use_sips = FALSE;
-  gboolean use_ipv6 = FALSE; /* TODO make configurable or use DNS to figure out if ipv6 is supported*/
-  gchar *ipv6_bind = "*";
-  gchar *ipv4_bind = "0.0.0.0";
-  g_autofree gchar *sip_url = NULL;
-  g_autofree gchar *sips_url = NULL;
-  g_autofree char *user = NULL;
-  g_autofree char *host = NULL;
-  g_autofree gchar *address = NULL;
+  g_autofree char *from_str = NULL;
 
   g_assert (CALLS_IS_SIP_ORIGIN (self));
-  g_assert (self->nua);
-
-  g_object_get (self->credentials,
-                "user", &user,
-                "host", &host,
-                NULL);
-
-  if (user && host) {
-    address = g_strconcat (self->protocol_prefix, ":", user, "@", host, NULL);
-
-    use_sips = check_sips (address);
-    use_ipv6 = check_ipv6 (host);
+  if (!self->nua) {
+    g_warning ("Cannot update nua stack, aborting");
+    return;
   }
 
-  if (self->local_port > 0) {
-    sip_url = g_strdup_printf ("sip:%s:%d",
-                               use_ipv6 ? ipv6_bind : ipv4_bind,
-                               self->local_port);
-    sips_url = g_strdup_printf ("sips:%s:%d",
-                                use_ipv6 ? ipv6_bind : ipv4_bind,
-                                self->local_port);
-  } else {
-    sip_url = g_strdup_printf ("sip:%s:*",
-                               use_ipv6 ? ipv6_bind : ipv4_bind);
-    sips_url = g_strdup_printf ("sips:%s:*",
-                                use_ipv6 ? ipv6_bind : ipv4_bind);
-  }
+  self->protocol_prefix = get_protocol_prefix (self->transport_protocol);
+
+  g_free (self->address);
+  self->address = g_strconcat (self->user, "@", self->host, NULL);
+  from_str = g_strconcat (self->protocol_prefix, ":", self->address, NULL);
 
   nua_set_params (self->nua,
-                    NUTAG_URL (sip_url),
-                    TAG_IF (use_sips, NUTAG_SIPS_URL (sips_url)),
-                    TAG_IF (address, SIPTAG_FROM_STR (address)),
-                    TAG_NULL ());
-}
-
-static void
-update_credentials (CallsSipOrigin *self)
-{
-  g_autofree char *protocol = NULL;
-
-  g_assert (CALLS_IS_SIP_ORIGIN (self));
-
-  g_debug ("Updating credentials");
-
-  g_object_get (self->credentials,
-                "protocol", &protocol,
-                NULL);
-
-  if (protocol == NULL) {
-    g_debug ("Protocol not set, falling back to 'UDP'");
-
-    g_object_set (self->credentials, "protocol", "UDP", NULL);
-    self->protocol_prefix = get_protocol_prefix ("UDP");
-  } else if (!protocol_is_valid (protocol)) {
-    g_warning ("Tried setting invalid protocol: '%s'\n"
-               "Falling back to default: '%s'",
-               protocol, "UDP");
-
-    g_object_set (self->credentials, "protocol", "UDP", NULL);
-    self->protocol_prefix = get_protocol_prefix ("UDP");
-  } else {
-    self->protocol_prefix = get_protocol_prefix (protocol);
-  }
-
-  if (self->nua)
-    update_nua (self);
+                  SIPTAG_FROM_STR (from_str),
+                  TAG_IF (self->display_name, NUTAG_M_DISPLAY (self->display_name)),
+                  TAG_NULL ());
 }
 
 
@@ -382,8 +351,6 @@ sip_authenticate (CallsSipOrigin *self,
   const gchar *scheme = NULL;
   const gchar *realm = NULL;
   g_autofree gchar *auth = NULL;
-  g_autofree char *user = NULL;
-  g_autofree char *password = NULL;
   sip_www_authenticate_t *www_auth = sip->sip_www_authenticate;
   sip_proxy_authenticate_t *proxy_auth = sip->sip_proxy_authenticate;
 
@@ -401,16 +368,11 @@ sip_authenticate (CallsSipOrigin *self,
   }
   g_debug ("need to authenticate to realm %s", realm);
 
-  g_object_get (self->credentials,
-                "user", &user,
-                "password", &password,
-                NULL);
-
   /* TODO handle authentication to different realms
    * https://source.puri.sm/Librem5/calls/-/issues/266
    */
   auth = g_strdup_printf ("%s:%s:%s:%s",
-                          scheme, realm, user, password);
+                          scheme, realm, self->user, self->password);
   nua_authenticate (nh, NUTAG_AUTH (auth), TAG_END ());
 }
 
@@ -776,8 +738,14 @@ sip_callback (nua_event_t   event,
   case nua_r_shutdown:
     /* see also deinit_sip () */
     g_debug ("response to nua_shutdown: %03d %s", status, phrase);
-    if (status == 200)
+    if (status == 200) {
       origin->is_nua_shutdown = TRUE;
+      origin->is_shutdown_success = TRUE;
+    }
+    else if (status == 500) {
+      origin->is_nua_shutdown = TRUE;
+      origin->is_shutdown_success = FALSE;
+    }
     break;
 
     /* Deprecated events */
@@ -802,33 +770,27 @@ sip_callback (nua_event_t   event,
 static nua_t *
 setup_nua (CallsSipOrigin *self)
 {
-  g_autofree gchar *address = NULL;
   nua_t *nua;
   gboolean use_sips = FALSE;
   gboolean use_ipv6 = FALSE; /* TODO make configurable or use DNS to figure out if ipv6 is supported*/
-  gchar *ipv6_bind = "*";
-  gchar *ipv4_bind = "0.0.0.0";
-  g_autofree gchar *sip_url = NULL;
-  g_autofree gchar *sips_url = NULL;
-  const gchar *uuid = NULL;
-  g_autofree gchar* urn_uuid = NULL;
-  g_autofree char *user = NULL;
-  g_autofree char *host = NULL;
+  const char *ipv6_bind = "*";
+  const char *ipv4_bind = "0.0.0.0";
+  const char *uuid = NULL;
+  g_autofree char *urn_uuid = NULL;
+  g_autofree char *sip_url = NULL;
+  g_autofree char *sips_url = NULL;
+  g_autofree char *from_str = NULL;
 
   uuid = nua_generate_instance_identifier (self->ctx->home);
   urn_uuid = g_strdup_printf ("urn:uuid:%s", uuid);
 
-  g_object_get (self->credentials,
-                "user", &user,
-                "host", &host,
-                NULL);
+  self->protocol_prefix = get_protocol_prefix (self->transport_protocol);
 
-  if (user && host) {
-    address = g_strconcat (self->protocol_prefix, ":", user, "@", host, NULL);
+  self->address = g_strconcat (self->user, "@", self->host, NULL);
+  from_str = g_strconcat (self->protocol_prefix, ":", self->address, NULL);
 
-    use_sips = check_sips (address);
-    use_ipv6 = check_ipv6 (host);
-  }
+  use_sips = check_sips (from_str);
+  use_ipv6 = check_ipv6 (self->host);
 
   if (self->local_port > 0) {
     sip_url = g_strdup_printf ("sip:%s:%d",
@@ -844,13 +806,26 @@ setup_nua (CallsSipOrigin *self)
                                 use_ipv6 ? ipv6_bind : ipv4_bind);
   }
 
+  /** For TLS nua_create() will error if NUTAG_URL includes ";transport=tls"
+   *  In that case NUTAG_SIPS_URL should be used and NUTAG_URL should be as usual
+   *  Since UDP is the default we only need to append the suffix in the TCP case
+   */
+  if (g_ascii_strcasecmp (self->transport_protocol, "TCP") == 0) {
+    char *temp = sip_url;
+
+    sip_url = g_strdup_printf ("%s;transport=%s", temp, self->transport_protocol);
+    g_free (temp);
+  }
+
+
+
   nua = nua_create (self->ctx->root,
                     sip_callback,
                     self,
                     NUTAG_USER_AGENT (APP_DATA_NAME),
                     NUTAG_URL (sip_url),
                     TAG_IF (use_sips, NUTAG_SIPS_URL (sips_url)),
-                    TAG_IF (address, SIPTAG_FROM_STR (address)),
+                    SIPTAG_FROM_STR (from_str),
                     NUTAG_ALLOW ("INVITE, ACK, BYE, CANCEL, OPTIONS, UPDATE"),
                     NUTAG_SUPPORTED ("replaces, gruu, outbound"),
                     NTATAG_MAX_FORWARDS (70),
@@ -868,31 +843,19 @@ setup_nua (CallsSipOrigin *self)
 static char *
 get_registrar_url (CallsSipOrigin *self)
 {
-  char *registrar_url = NULL;
-  g_autofree char *host = NULL;
-  gint port;
-
   g_assert (CALLS_IS_SIP_ORIGIN (self));
 
-  g_object_get (self->credentials,
-                "host", &host,
-                "port", &port,
-                NULL);
-
-  if (port > 0 && port <= 65535)
-    registrar_url =
-      g_strdup_printf ("%s:%s:%d", self->protocol_prefix, host, port);
+  if (self->port > 0 && self->port <= 65535)
+    return g_strdup_printf ("%s:%s:%d", self->protocol_prefix, self->host, self->port);
   else
-    registrar_url = g_strconcat (self->protocol_prefix, ":", host, NULL);
-
-  return registrar_url;
+    return g_strconcat (self->protocol_prefix, ":", self->host, NULL);
 }
 
 static CallsSipHandles *
 setup_sip_handles (CallsSipOrigin *self)
 {
   CallsSipHandles *oper;
-  g_autofree gchar *registrar_url = NULL;
+  g_autofree char *registrar_url = NULL;
 
   g_assert (CALLS_IS_SIP_ORIGIN (self));
 
@@ -916,34 +879,32 @@ setup_sip_handles (CallsSipOrigin *self)
 
 static void
 go_online (CallsAccount *account,
-           gboolean            online)
+           gboolean      online)
 {
   CallsSipOrigin *self;
 
   g_assert (CALLS_IS_ACCOUNT (account));
-  g_assert (CALLS_IS_ORIGIN (account));
   g_assert (CALLS_IS_SIP_ORIGIN (account));
 
   self = CALLS_SIP_ORIGIN (account);
 
+  if (!self->nua) {
+    g_warning ("Cannot go online: nua handle not initialized");
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACC_STATE]);
+    return;
+  }
+
   if (online) {
-    g_autofree char *user = NULL;
-    g_autofree char *display_name = NULL;
     g_autofree char *registrar_url = NULL;
 
     if (self->state == CALLS_ACCOUNT_ONLINE)
       return;
 
-    g_object_get (self->credentials,
-                  "user", &user,
-                  "display-name", &display_name,
-                  NULL);
-
     registrar_url = get_registrar_url (self);
 
     nua_register (self->oper->register_handle,
-                  NUTAG_M_USERNAME (user),
-                  TAG_IF (display_name, NUTAG_M_DISPLAY (display_name)),
+                  NUTAG_M_USERNAME (self->user),
+                  TAG_IF (self->display_name, NUTAG_M_DISPLAY (self->display_name)),
                   NUTAG_REGISTRAR (registrar_url),
                   TAG_END ());
 
@@ -956,57 +917,52 @@ go_online (CallsAccount *account,
   }
 }
 
+static const char *
+get_address (CallsAccount *account)
+{
+  CallsSipOrigin *self;
+
+  g_assert (CALLS_IS_ACCOUNT (account));
+  g_assert (CALLS_IS_SIP_ORIGIN (account));
+
+  self = CALLS_SIP_ORIGIN (account);
+
+  return self->address;
+}
+
 
 static void
 setup_account_for_direct_connection (CallsSipOrigin *self)
 {
-  g_autofree char *user = NULL;
-
   g_assert (CALLS_IS_SIP_ORIGIN (self));
 
-  g_object_get (self->credentials, "user", &user, NULL);
-
   /* honour username, if previously set */
-  if (user == NULL)
-    g_object_set (self->credentials,
-                  "user", g_get_user_name (),
-                   NULL);
+  if (self->user == NULL)
+    self->user = g_strdup (g_get_user_name ());
 
-  g_object_set (self->credentials,
-                "host", g_get_host_name (),
-                "password", NULL,
-                "protocol", "UDP",
-                NULL);
+  g_free (self->host);
+  self->host = g_strdup (g_get_host_name ());
+
+  g_clear_pointer (&self->password, g_free);
+
+  g_free (self->transport_protocol);
+  self->transport_protocol = g_strdup ("UDP");
 
   self->protocol_prefix = get_protocol_prefix ("UDP");
 
-  g_debug ("Account changed:\nuser: %s\nhost URL: %s",
-           user ?: g_get_user_name (), g_get_host_name ());
+  g_debug ("Account changed:\nuser: %s\nhost: %s",
+           self->user, self->host);
 }
 
 
 static gboolean
 is_account_complete (CallsSipOrigin *self)
 {
-  g_autofree char *host = NULL;
-  g_autofree char *user = NULL;
-  g_autofree char *password = NULL;
-  g_autofree char *protocol = NULL;
-
-  g_assert (CALLS_IS_SIP_ORIGIN (self));
-
-  g_object_get (self->credentials,
-                "host", &host,
-                "user", &user,
-                "password", &password,
-                "protocol", &protocol,
-                NULL);
-
   /* we need only need to check for password if needing to authenticate over a proxy/UAS */
-  if (user == NULL ||
-      (!self->use_direct_connection && password == NULL) ||
-      host == NULL ||
-      protocol == NULL)
+  if (self->user == NULL ||
+      (!self->use_direct_connection && self->password == NULL) ||
+      self->host == NULL ||
+      self->transport_protocol == NULL)
     return FALSE;
 
   return TRUE;
@@ -1017,8 +973,6 @@ static gboolean
 init_sip_account (CallsSipOrigin *self,
                   GError        **error)
 {
-  gboolean auto_connect = FALSE;
-
   if (self->use_direct_connection) {
     g_debug ("Direct connection case. Using user and hostname");
     setup_account_for_direct_connection (self);
@@ -1026,8 +980,8 @@ init_sip_account (CallsSipOrigin *self,
 
   if (!is_account_complete (self)) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                 "Must have completed account setup before calling"
-                 "init_sip_account ()"
+                 "Must have completed account setup before calling "
+                 "init_sip_account (). "
                  "Try again when account is setup");
 
     self->state = CALLS_ACCOUNT_NO_CREDENTIALS;
@@ -1059,9 +1013,7 @@ init_sip_account (CallsSipOrigin *self,
   else {
     self->state = CALLS_ACCOUNT_OFFLINE;
 
-    g_object_get (self->credentials, "auto-connect", &auto_connect, NULL);
-    /* try to go online */
-    if (auto_connect)
+    if (self->auto_connect)
       go_online (CALLS_ACCOUNT (self), TRUE);
   }
 
@@ -1071,6 +1023,49 @@ init_sip_account (CallsSipOrigin *self,
  err:
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACC_STATE]);
   return FALSE;
+}
+
+
+static gboolean
+deinit_sip_account (CallsSipOrigin *self)
+{
+  g_assert (CALLS_IS_SIP_ORIGIN (self));
+
+  if (self->state == CALLS_ACCOUNT_NULL)
+    return TRUE;
+
+  remove_calls (self, NULL);
+
+  if (self->nua) {
+    g_debug ("Clearing any handles");
+    g_clear_pointer (&self->oper->register_handle, nua_handle_destroy);
+    g_debug ("Requesting nua_shutdown ()");
+    self->is_nua_shutdown = FALSE;
+    self->is_shutdown_success = FALSE;
+    nua_shutdown (self->nua);
+    // need to wait for nua_r_shutdown event before calling nua_destroy ()
+    while (!self->is_nua_shutdown)
+      su_root_step (self->ctx->root, 100);
+
+    if (!self->is_shutdown_success) {
+      g_warning ("nua_shutdown() timed out. Cannot proceed");
+      return FALSE;
+    }
+    g_debug ("nua_shutdown() complete. Destroying nua handle");
+    nua_destroy (self->nua);
+    self->nua = NULL;
+  }
+
+  self->state = CALLS_ACCOUNT_NULL;
+  return TRUE;
+}
+
+
+static void
+on_network_changed (CallsSipOrigin *self)
+{
+  if (deinit_sip_account (self))
+    init_sip_account (self, NULL);
 }
 
 
@@ -1095,6 +1090,20 @@ supports_protocol (CallsOrigin *origin,
 
 
 static void
+update_name (CallsSipOrigin *self)
+{
+  g_assert (CALLS_IS_SIP_ORIGIN (self));
+
+  if (self->display_name && self->display_name[0] != '\0')
+    self->name = self->display_name;
+  else
+    self->name = self->user;
+
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_NAME]);
+}
+
+
+static void
 calls_sip_origin_set_property (GObject      *object,
                                guint         property_id,
                                const GValue *value,
@@ -1103,9 +1112,37 @@ calls_sip_origin_set_property (GObject      *object,
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
 
   switch (property_id) {
-  case PROP_ACC_CREDENTIALS:
-    self->credentials = g_value_get_object (value);
-    update_credentials (self);
+  case PROP_ACC_HOST:
+    g_free (self->host);
+    self->host = g_value_dup_string (value);
+    break;
+
+  case PROP_ACC_DISPLAY_NAME:
+    g_free (self->display_name);
+    self->display_name = g_value_dup_string (value);
+    break;
+
+  case PROP_ACC_USER:
+    g_free (self->user);
+    self->user = g_value_dup_string (value);
+    break;
+
+  case PROP_ACC_PASSWORD:
+    g_free (self->password);
+    self->password = g_value_dup_string (value);
+    break;
+
+  case PROP_ACC_PORT:
+    self->port = g_value_get_int (value);
+    break;
+
+  case PROP_ACC_PROTOCOL:
+    g_free (self->transport_protocol);
+    self->transport_protocol = g_value_dup_string (value);
+    break;
+
+  case PROP_ACC_AUTO_CONNECT:
+    self->auto_connect = g_value_get_boolean (value);
     break;
 
   case PROP_ACC_DIRECT:
@@ -1116,11 +1153,7 @@ calls_sip_origin_set_property (GObject      *object,
     self->ctx = g_value_get_pointer (value);
     break;
 
-  case PROP_ACC_STATE:
-    g_warning ("Setting the account state does not yet have any effect");
-    break;
-
-  case PROP_SIP_LOCAL_PORT:
+  case PROP_ACC_LOCAL_PORT:
     if (g_value_get_int (value) > 0 && g_value_get_int (value) < 1025) {
       g_warning ("Tried setting a privileged port as the local port to bind to: %d\n"
                  "Continue using old 'local-port' value: %d (using 0 let's the OS decide)",
@@ -1148,8 +1181,42 @@ calls_sip_origin_get_property (GObject      *object,
 
   switch (property_id) {
   case PROP_NAME:
-    g_object_get (self->credentials, "name", &name, NULL);
-    g_value_set_string (value, name);
+    g_value_set_string (value, self->name);
+    break;
+  case PROP_ACC_HOST:
+    g_value_set_string (value, self->host);
+    break;
+
+  case PROP_ACC_DISPLAY_NAME:
+    g_value_set_string (value, self->display_name);
+    break;
+
+  case PROP_ACC_USER:
+    g_value_set_string (value, self->user);
+    break;
+
+  case PROP_ACC_PASSWORD:
+    g_value_set_string (value, self->password);
+    break;
+
+  case PROP_ACC_PORT:
+    g_value_set_int (value, self->port);
+    break;
+
+  case PROP_ACC_PROTOCOL:
+    g_value_set_string (value, self->transport_protocol);
+    break;
+
+  case PROP_ACC_AUTO_CONNECT:
+    g_value_set_boolean (value, self->auto_connect);
+    break;
+
+  case PROP_ACC_DIRECT:
+    g_value_set_boolean (value, self->direct_mode);
+    break;
+
+  case PROP_ACC_LOCAL_PORT:
+    g_value_set_int (value, self->local_port);
     break;
 
   case PROP_CALLS:
@@ -1160,12 +1227,16 @@ calls_sip_origin_get_property (GObject      *object,
     g_value_set_enum (value, self->state);
     break;
 
-  case PROP_SIP_LOCAL_PORT:
-    g_value_set_int (value, self->local_port);
+  case PROP_ACC_ADDRESS:
+    g_value_set_string (value, get_address (CALLS_ACCOUNT (self)));
     break;
 
   case PROP_COUNTRY_CODE:
     g_value_set_string (value, NULL);
+    break;
+
+  case PROP_NUMERIC:
+    g_value_set_boolean (value, FALSE);
     break;
 
   default:
@@ -1195,10 +1266,9 @@ calls_sip_origin_constructed (GObject *object)
     g_warning ("Error initializing the SIP account: %s", error->message);
   }
 
-  self->media_manager = calls_sip_media_manager_default ();
+  update_name (self);
 
-  g_signal_connect_swapped (self->credentials, "account-updated",
-                            (GCallback) update_credentials, self);
+  self->media_manager = calls_sip_media_manager_default ();
 
   G_OBJECT_CLASS (calls_sip_origin_parent_class)->constructed (object);
 }
@@ -1209,27 +1279,10 @@ calls_sip_origin_dispose (GObject *object)
 {
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
 
-  if (self->state == CALLS_ACCOUNT_NULL)
-    return;
-
-  remove_calls (self, NULL);
-
   if (!self->use_direct_connection && self->state == CALLS_ACCOUNT_ONLINE)
     go_online (CALLS_ACCOUNT (self), FALSE);
 
-  if (self->nua) {
-    g_debug ("Requesting nua_shutdown ()");
-    nua_shutdown (self->nua);
-    // need to wait for nua_r_shutdown event before calling nua_destroy ()
-    while (!self->is_nua_shutdown)
-      su_root_step (self->ctx->root, 100);
-
-    g_debug ("nua_shutdown () complete. Destroying nua handle");
-    nua_destroy (self->nua);
-    self->nua = NULL;
-  }
-
-  self->state = CALLS_ACCOUNT_NULL;
+  deinit_sip_account (self);
 
   G_OBJECT_CLASS (calls_sip_origin_parent_class)->dispose (object);
 }
@@ -1240,7 +1293,6 @@ calls_sip_origin_finalize (GObject *object)
 {
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
 
-  g_object_unref (self->credentials);
   g_hash_table_destroy (self->call_handles);
 
   G_OBJECT_CLASS (calls_sip_origin_parent_class)->finalize (object);
@@ -1258,34 +1310,91 @@ calls_sip_origin_class_init (CallsSipOriginClass *klass)
   object_class->get_property = calls_sip_origin_get_property;
   object_class->set_property = calls_sip_origin_set_property;
 
+  props[PROP_ACC_HOST] =
+    g_param_spec_string ("host",
+                         "Host",
+                         "The host to connect to",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_HOST, props[PROP_ACC_HOST]);
+
+  props[PROP_ACC_USER] =
+    g_param_spec_string ("user",
+                         "User",
+                         "The username",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_USER, props[PROP_ACC_USER]);
+
+  props[PROP_ACC_PASSWORD] =
+    g_param_spec_string ("password",
+                         "Password",
+                         "The password",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_PASSWORD, props[PROP_ACC_PASSWORD]);
+
+  props[PROP_ACC_DISPLAY_NAME] =
+    g_param_spec_string ("display-name",
+                         "Display name",
+                         "The display name",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_DISPLAY_NAME, props[PROP_ACC_DISPLAY_NAME]);
+
+  props[PROP_ACC_PORT] =
+    g_param_spec_int ("port",
+                      "Port",
+                      "The port to connect to",
+                      0, 65535, 0,
+                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_PORT, props[PROP_ACC_PORT]);
+
+  props[PROP_ACC_PROTOCOL] =
+    g_param_spec_string ("transport-protocol",
+                         "Transport protocol",
+                         "The transport protocol to use for the connection",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_PROTOCOL, props[PROP_ACC_PROTOCOL]);
+
+  props[PROP_ACC_AUTO_CONNECT] =
+    g_param_spec_boolean ("auto-connect",
+                          "Auto connect",
+                          "Whether to connect automatically",
+                          TRUE,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ACC_AUTO_CONNECT, props[PROP_ACC_AUTO_CONNECT]);
+
+
   props[PROP_ACC_DIRECT] =
-    g_param_spec_boolean ("direct-connection",
-                          "Direct connection",
+    g_param_spec_boolean ("direct-mode",
+                          "Direct mode",
                           "Whether to use a direct connection (no SIP server)",
                           FALSE,
-                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ACC_DIRECT, props[PROP_ACC_DIRECT]);
 
-  props[PROP_SIP_CONTEXT] =
+  props[PROP_ACC_LOCAL_PORT] =
+    g_param_spec_int ("local-port",
+                      "Local port",
+                      "The local port to which the SIP stack binds to",
+                      0, 65535, 0,
+                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+  g_object_class_install_property (object_class, PROP_ACC_LOCAL_PORT, props[PROP_ACC_LOCAL_PORT]);
+
+ props[PROP_SIP_CONTEXT] =
     g_param_spec_pointer ("sip-context",
                           "SIP context",
                           "The SIP context (sofia) used for our sip handles",
                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
   g_object_class_install_property (object_class, PROP_SIP_CONTEXT, props[PROP_SIP_CONTEXT]);
 
-  props[PROP_SIP_LOCAL_PORT] =
-    g_param_spec_int ("local-port",
-                      "Local port",
-                      "The local port to which the SIP stack binds to",
-                      0, 65535, 0,
-                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-  g_object_class_install_property (object_class, PROP_SIP_LOCAL_PORT, props[PROP_SIP_LOCAL_PORT]);
-
-  g_object_class_override_property (object_class, PROP_ACC_CREDENTIALS, "account-credentials");
-  props[PROP_ACC_CREDENTIALS] = g_object_class_find_property (object_class, "account-credentials");
-
   g_object_class_override_property (object_class, PROP_ACC_STATE, "account-state");
   props[PROP_ACC_STATE] = g_object_class_find_property (object_class, "account-state");
+
+  g_object_class_override_property (object_class, PROP_ACC_ADDRESS, "address");
+  props[PROP_ACC_ADDRESS] = g_object_class_find_property (object_class, "address");
 
 #define IMPLEMENTS(ID, NAME) \
   g_object_class_override_property (object_class, ID, NAME);    \
@@ -1294,6 +1403,7 @@ calls_sip_origin_class_init (CallsSipOriginClass *klass)
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
   IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
+  IMPLEMENTS (PROP_NUMERIC, "numeric-addresses");
 
 #undef IMPLEMENTS
 }
@@ -1316,28 +1426,75 @@ static void
 calls_sip_origin_accounts_interface_init (CallsAccountInterface *iface)
 {
   iface->go_online = go_online;
+  iface->get_address = get_address;
 }
 
 
 static void
 calls_sip_origin_init (CallsSipOrigin *self)
 {
+  CallsNetworkWatch *nw = calls_network_watch_get_default ();
+
+  if (nw)
+    g_signal_connect_swapped (nw, "network-changed",
+                              G_CALLBACK (on_network_changed), self);
+
   self->call_handles = g_hash_table_new (NULL, NULL);
+
 }
 
-CallsSipOrigin *
-calls_sip_origin_new (CallsSipContext *sip_context,
-                      CallsCredentials *credentials,
-                      gint             local_port,
-                      gboolean         direct_connection)
+void
+calls_sip_origin_set_credentials (CallsSipOrigin *self,
+                                  const char     *host,
+                                  const char     *user,
+                                  const char     *password,
+                                  const char     *display_name,
+                                  const char     *transport_protocol,
+                                  gint            port,
+                                  gboolean        auto_connect)
 {
-  g_return_val_if_fail (sip_context, NULL);
-  g_return_val_if_fail (credentials, NULL);
+  g_return_if_fail (CALLS_IS_SIP_ORIGIN (self));
 
-  return g_object_new (CALLS_TYPE_SIP_ORIGIN,
-                       "sip-context", sip_context,
-                       "account-credentials", g_object_ref (credentials),
-                       "local-port", local_port,
-                       "direct-connection", direct_connection,
-                       NULL);
+  if (self->direct_mode) {
+    g_warning ("Not allowed to update credentials when using direct mode");
+    return;
+  }
+
+  g_return_if_fail (host);
+  g_return_if_fail (user);
+  g_return_if_fail (password);
+
+  if (transport_protocol)
+    g_return_if_fail (protocol_is_valid (transport_protocol));
+
+  g_free (self->host);
+  self->host = g_strdup (host);
+
+  g_free (self->user);
+  self->user = g_strdup (user);
+
+  g_free (self->password);
+  self->password = g_strdup (password);
+
+  g_clear_pointer (&self->display_name, g_free);
+  if (display_name)
+    self->display_name = g_strdup (display_name);
+
+  g_free (self->transport_protocol);
+  if (transport_protocol)
+    self->transport_protocol = g_strdup (transport_protocol);
+  else
+    self->transport_protocol = g_strdup ("UDP");
+
+  self->port = port;
+
+  update_name (self);
+
+  /* Propagate changes to nua stack */
+  update_nua (self);
+  /* TODO:
+   * We need to recreate the nua stack when the transport protocol changes
+   * because nua_set_params cannot be used to update NUTAG_URL and friends.
+   * This will get easier with https://gitlab.gnome.org/GNOME/calls/-/merge_requests/402
+   */
 }
