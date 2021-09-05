@@ -1,3 +1,15 @@
+gnome-calls (41~rc-1) experimental; urgency=medium
+
+  * d/control: Use correct phosh version in Breaks
+  * New upstream version 41~rc
+  * d/control: Update build dependencies
+  * d/control: Bump Standards-Version (no changes needed)
+  * ci: No need to use experimental anymore
+  * d/patches: Fix build for CI/debspawn
+  * d/patches: SIP: Explicitly bind to addresses
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 05 Sep 2021 19:04:44 +0200
+
 gnome-calls (41~alpha-1) experimental; urgency=medium
 
   * d/watch: Update for new upstream URL and versioning scheme
