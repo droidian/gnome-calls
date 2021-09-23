@@ -23,7 +23,7 @@ endif
 
 override_dh_auto_test:
 ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
-	xvfb-run ninja -C _build test
+	xvfb-run dh_auto_test
 endif
 
 # generate the manpages from the scripts using help2man
