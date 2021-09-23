@@ -22,9 +22,7 @@ ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES)),)
 endif
 
 override_dh_auto_test:
-ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
 	xvfb-run dh_auto_test
-endif
 
 # generate the manpages from the scripts using help2man
 execute_before_dh_installman:
