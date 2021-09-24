@@ -30,8 +30,8 @@ Build-Depends:
  modemmanager-dev,
  pkg-config,
  valac,
- xauth,
- xvfb,
+ xauth <!nocheck>,
+ xvfb <!nocheck>,
 Standards-Version: 4.6.0
 Homepage: https://gitlab.gnome.org/GNOME/calls
 Vcs-Browser: https://salsa.debian.org/DebianOnMobile-team/gnome-calls
