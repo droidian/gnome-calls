@@ -2,6 +2,10 @@
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
+# Ubuntu builds with symbolic-functions by default which causes plugin issues
+# https://gitlab.gnome.org/GNOME/calls/-/issues/334
+export DEB_LDFLAGS_MAINT_STRIP = -Wl,-Bsymbolic-functions
+
 ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES)),)
   CONFIGURE_OPTS+=-Dgtk_doc=true
 else
