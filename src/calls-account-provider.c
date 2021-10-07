@@ -22,95 +22,99 @@
  *
  */
 
+#define G_LOG_DOMAIN "CallsAccountProvider"
+
 #include "calls-account-provider.h"
 
 /**
  * SECTION:account-provider
- * @short_description: An interface for CallsProvider to use online accounts
- * @Title: CallsOnlineAccount
+ * @short_description: An interface for #CallsProvider using online accounts
+ * @Title: CallsAccountProvider
  *
- * #CallsAccountProvider is an interface that should be implemented by a
- * #CallsProvider when it provides accounts. See #CallsAccount and
- * #CallsCredentials.
+ * A provider for accounts.
  */
 
 G_DEFINE_INTERFACE (CallsAccountProvider, calls_account_provider, CALLS_TYPE_PROVIDER)
 
+enum {
+  WIDGET_EDIT_DONE,
+  LAST_SIGNAL,
+};
+static guint signals[LAST_SIGNAL];
 
 static void
 calls_account_provider_default_init (CallsAccountProviderInterface *iface)
 {
+  /* The account provider should emit this signal when the widget is not needed anymore */
+  signals[WIDGET_EDIT_DONE] =
+    g_signal_new ("widget-edit-done",
+                  G_TYPE_FROM_INTERFACE (iface),
+                  G_SIGNAL_RUN_FIRST,
+                  0, NULL, NULL, NULL,
+                  G_TYPE_NONE,
+                  0);
 }
 
-/**
- * calls_account_provider_add_account:
- * @self: A #CallsAccountProvider
- * @credentials: A #CallsCredentials
- *
- * Add an account.
- *
- * Returns: %TRUE if successfully added, %FALSE otherwise
- */
-gboolean
-calls_account_provider_add_account (CallsAccountProvider *self,
-                                    CallsCredentials     *credentials)
-{
-  CallsAccountProviderInterface *iface;
-
-  g_return_val_if_fail (CALLS_IS_ACCOUNT_PROVIDER (self), FALSE);
-
-  iface = CALLS_ACCOUNT_PROVIDER_GET_IFACE (self);
-  g_return_val_if_fail (iface->add_account != NULL, FALSE);
-
-  g_debug ("Trying to add account for %s", calls_credentials_get_name (credentials));
-
-  return iface->add_account (self, credentials);
-}
 
 /**
- * calls_account_provider_remove_account:
+ * calls_account_provider_get_account_widget:
  * @self: A #CallsAccountProvider
- * @credentials: A #CallsCredentials
  *
- * Removes an account.
- *
- * Returns: %TRUE if successfully removed, %FALSE otherwise
+ * Returns: (transfer none): A #GtkWidget for adding or editing account credentials.
  */
-gboolean
-calls_account_provider_remove_account (CallsAccountProvider *self,
-                                       CallsCredentials     *credentials)
-{
-  CallsAccountProviderInterface *iface;
-
-  g_return_val_if_fail (CALLS_IS_ACCOUNT_PROVIDER (self), FALSE);
-
-  iface = CALLS_ACCOUNT_PROVIDER_GET_IFACE (self);
-  g_return_val_if_fail (iface->remove_account != NULL, FALSE);
-
-  g_debug ("Trying to remove account from %s", calls_credentials_get_name (credentials));
-
-  return iface->remove_account (self, credentials);
-}
-
-/**
- * calls_account_provider_get_account:
- * @self: A #CallsAccountProvider
- * @credentials: A #CallsCredentials
- *
- * Get the account which is using #CallsCredentials
- */
-CallsAccount *
-calls_account_provider_get_account (CallsAccountProvider *self,
-                                    CallsCredentials     *credentials)
+GtkWidget *
+calls_account_provider_get_account_widget (CallsAccountProvider *self)
 {
   CallsAccountProviderInterface *iface;
 
   g_return_val_if_fail (CALLS_IS_ACCOUNT_PROVIDER (self), NULL);
 
   iface = CALLS_ACCOUNT_PROVIDER_GET_IFACE (self);
-  g_return_val_if_fail (iface->get_account != NULL, NULL);
+  g_return_val_if_fail (iface->get_account_widget, NULL);
 
-  g_debug ("Trying to get account from %s", calls_credentials_get_name (credentials));
+  return iface->get_account_widget (self);
+}
 
-  return iface->get_account (self, credentials);
+/**
+ * calls_account_provider_add_new_account:
+ * @self: A #CallsAccountProvider
+ *
+ * Prepares the #GtkWidget to add a new account (clear any forms).
+ * See calls_account_provider_get_account_widget().
+ *
+ * The caller is responsible for embedding the widget somewhere visible.
+ */
+void
+calls_account_provider_add_new_account (CallsAccountProvider *self)
+{
+  CallsAccountProviderInterface *iface;
+
+  g_return_if_fail (CALLS_IS_ACCOUNT_PROVIDER (self));
+
+  iface = CALLS_ACCOUNT_PROVIDER_GET_IFACE (self);
+  g_return_if_fail (iface->add_new_account);
+
+  iface->add_new_account (self);
+}
+
+/**
+ * calls_account_provider_edit_account:
+ * @self: A #CallsAccountProvider
+ * @account: A #CallsAccount to edit
+ *
+ * Prepares the #GtkWidget to edit the given @account (prepulate forms).
+ * See calls_account_provider_get_account_widget().
+ */
+void
+calls_account_provider_edit_account (CallsAccountProvider *self,
+                                     CallsAccount         *account)
+{
+  CallsAccountProviderInterface *iface;
+
+  g_return_if_fail (CALLS_IS_ACCOUNT_PROVIDER (self));
+
+  iface = CALLS_ACCOUNT_PROVIDER_GET_IFACE (self);
+  g_return_if_fail (iface->edit_account);
+
+  iface->edit_account (self, account);
 }

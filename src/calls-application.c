@@ -25,6 +25,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#define G_LOG_DOMAIN "CallsApplication"
+
 #include "config.h"
 #include "calls-dbus-manager.h"
 #include "calls-history-box.h"
@@ -38,6 +40,7 @@
 #include "calls-manager.h"
 #include "calls-settings.h"
 #include "calls-application.h"
+#include "calls-log.h"
 #include "version.h"
 
 #include <glib/gi18n.h>
@@ -78,6 +81,17 @@ static gboolean start_proper (CallsApplication *self);
 
 
 static gboolean
+cmd_verbose_cb (const char  *option_name,
+                const char  *value,
+                gpointer     data,
+                GError     **error)
+{
+  calls_log_increase_verbosity ();
+
+  return TRUE;
+}
+
+static gboolean
 calls_application_dbus_register (GApplication    *application,
                                  GDBusConnection *connection,
                                  const gchar     *object_path,
@@ -110,77 +124,60 @@ calls_application_dbus_unregister (GApplication    *application,
 }
 
 
-static gint
-handle_local_options (GApplication *application,
-                      GVariantDict *options)
+static void
+set_provider_names_action (GSimpleAction *action,
+                           GVariant      *parameter,
+                           gpointer       user_data)
 {
-  gboolean ok;
-  g_autoptr (GError) error = NULL;
-  const char *arg;
+  CallsManager *manager;
+  g_autofree const char **names = NULL;
+  g_autofree const char **loaded = NULL;
+  gsize length;
+  guint length_loaded;
 
-  g_debug ("Registering application");
-  ok = g_application_register (application, NULL, &error);
-  if (!ok) {
-    g_error ("Error registering application: %s",
-             error->message);
+  names = g_variant_get_strv (parameter, &length);
+  g_return_if_fail (names && *names);
+
+  manager = calls_manager_get_default ();
+  loaded = calls_manager_get_provider_names (manager, &length_loaded);
+
+  /* remove unwanted providers */
+  for (guint i = 0; i < length_loaded; i++) {
+    g_autofree char *provider = g_strdup (loaded[i]);
+    if (!g_strv_contains (names, provider))
+      calls_manager_remove_provider (manager, provider);
   }
 
-  ok = g_variant_dict_contains (options, "version");
-  if (ok) {
-    char * version = g_str_equal (VCS_TAG, "") ? PACKAGE_VERSION : VCS_TAG;
+  for (guint i = 0; i < length; i++) {
+    const char *name = names[i];
 
-    g_print ("%s %s\n", APP_DATA_NAME, version);
-    exit (0);
+    if (calls_manager_has_provider (manager, name))
+      continue;
+
+    g_debug ("Loading provider `%s'", name);
+    calls_manager_add_provider (manager, name);
   }
-
-  ok = g_variant_dict_lookup (options, "provider", "&s", &arg);
-  if (ok) {
-    g_action_group_activate_action (G_ACTION_GROUP (application),
-                                    "set-provider-name",
-                                    g_variant_new_string (arg));
-  } else {
-    if (!calls_manager_has_any_provider (calls_manager_get_default ()))
-      g_action_group_activate_action (G_ACTION_GROUP (application),
-                                      "set-provider-name",
-                                      g_variant_new_string (DEFAULT_PROVIDER_PLUGIN));
-  }
-
-  ok = g_variant_dict_contains (options, "daemon");
-  if (ok) {
-    g_action_group_activate_action (G_ACTION_GROUP (application),
-                                    "set-daemon",
-                                    NULL);
-  }
-
-  ok = g_variant_dict_lookup (options, "dial", "&s", &arg);
-  if (ok) {
-    g_action_group_activate_action (G_ACTION_GROUP (application),
-                                    "dial",
-                                    g_variant_new_string (arg));
-  }
-
-  return -1; // Continue processing signal
 }
 
 
 static void
-set_provider_name_action (GSimpleAction *action,
-                          GVariant      *parameter,
-                          gpointer       user_data)
+set_default_providers_action (GSimpleAction *action,
+                              GVariant      *parameter,
+                              gpointer       user_data)
 {
-  const char *name;
-
-  name = g_variant_get_string (parameter, NULL);
-  g_return_if_fail (name != NULL);
-
-  if (calls_manager_has_provider (calls_manager_get_default (), name)) {
-    g_warning ("Cannot add provider `%s' because it is already loaded",
-               name);
+  CallsApplication *self = CALLS_APPLICATION (user_data);
+  g_auto (GStrv) plugins = NULL;
+  /**
+   * Only add default providers when there are none added yet,
+   * This makes sure we're not resetting explicitly set providers
+   */
+  if (calls_manager_has_any_provider (calls_manager_get_default ()))
     return;
-  }
 
-  g_debug ("Start loading provider `%s'", name);
-  calls_manager_add_provider (calls_manager_get_default (), name);
+  plugins = calls_settings_get_autoload_plugins (self->settings);
+  for (guint i = 0; plugins[i] != NULL; i++) {
+    calls_manager_add_provider (calls_manager_get_default (), plugins[i]);
+  }
 }
 
 
@@ -313,6 +310,15 @@ copy_number (GSimpleAction *action,
 }
 
 static void
+show_accounts (GSimpleAction *action,
+               GVariant      *parameter,
+               gpointer       user_data)
+{
+  CallsApplication *app = CALLS_APPLICATION (g_application_get_default ());
+  calls_main_window_show_accounts_overview (app->main_window);
+}
+
+static void
 manager_state_changed_cb (GApplication *application)
 {
   GAction* dial_action = g_action_map_lookup_action (G_ACTION_MAP (application), "dial");
@@ -323,11 +329,28 @@ manager_state_changed_cb (GApplication *application)
 
 static const GActionEntry actions[] =
 {
-  { "set-provider-name", set_provider_name_action, "s" },
+  { "set-provider-names", set_provider_names_action, "as" },
+  { "set-default-providers", set_default_providers_action, NULL },
   { "set-daemon", set_daemon_action, NULL },
   { "dial", dial_action, "s" },
   { "copy-number", copy_number, "s"},
+  /* TODO About dialog { "about", show_about, NULL}, */
+  { "accounts", show_accounts, NULL},
 };
+
+
+static int
+calls_application_handle_local_options (GApplication *application,
+                                        GVariantDict *options)
+{
+  if (g_variant_dict_contains (options, "version")) {
+    g_print ("%s %s\n", APP_DATA_NAME, *VCS_TAG ? VCS_TAG : PACKAGE_VERSION);
+
+    return 0;
+  }
+
+  return -1;
+}
 
 
 static void
@@ -376,6 +399,55 @@ startup (GApplication *application)
                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }
 
+
+static int
+calls_application_command_line (GApplication            *application,
+                                GApplicationCommandLine *command_line)
+{
+  CallsApplication *self = CALLS_APPLICATION (application);
+  GVariantDict *options;
+  const char *arg;
+  g_autoptr (GVariant) providers = NULL;
+  g_auto(GStrv) arguments = NULL;
+  gint argc;
+
+  options = g_application_command_line_get_options_dict (command_line);
+
+  providers = g_variant_dict_lookup_value (options, "provider", G_VARIANT_TYPE_STRING_ARRAY);
+  if (providers) {
+    g_action_group_activate_action (G_ACTION_GROUP (application),
+                                    "set-provider-names",
+                                    providers);
+  } else {
+    g_action_group_activate_action (G_ACTION_GROUP (application),
+                                    "set-default-providers",
+                                    NULL);
+  }
+
+  if (g_variant_dict_contains (options, "daemon"))
+    g_action_group_activate_action (G_ACTION_GROUP (application),
+                                    "set-daemon", NULL);
+
+  if (g_variant_dict_lookup (options, "dial", "&s", &arg))
+    g_action_group_activate_action (G_ACTION_GROUP (application),
+                                    "dial", g_variant_new_string (arg));
+
+  arguments = g_application_command_line_get_arguments (command_line, &argc);
+
+  /* Keep only the first URI, if there are many */
+  for (guint i = 0; i < argc; i++)
+    if (g_str_has_prefix (arguments[i], "tel:") ||
+        g_str_has_prefix (arguments[i], "sip:") ||
+        g_str_has_prefix (arguments[i], "sips:")) {
+      g_free (self->uri);
+      self->uri = g_strdup (arguments[i]);
+      break;
+    }
+
+  g_application_activate (application);
+
+  return 0;
+}
 
 static void
 notify_window_visible_cb (GtkWidget       *window,
@@ -584,8 +656,9 @@ calls_application_class_init (CallsApplicationClass *klass)
 
   object_class->finalize = finalize;
 
-  application_class->handle_local_options = handle_local_options;
+  application_class->handle_local_options = calls_application_handle_local_options;
   application_class->startup = startup;
+  application_class->command_line = calls_application_command_line;
   application_class->activate = activate;
   application_class->open = app_open;
   application_class->dbus_register  = calls_application_dbus_register;
@@ -603,7 +676,7 @@ calls_application_init (CallsApplication *self)
   const GOptionEntry options[] = {
     {
       "provider", 'p', G_OPTION_FLAG_NONE,
-      G_OPTION_ARG_STRING, NULL,
+      G_OPTION_ARG_STRING_ARRAY, NULL,
       _("The name of the plugin to use for the call Provider"),
       _("PLUGIN")
     },
@@ -620,7 +693,13 @@ calls_application_init (CallsApplication *self)
       _("NUMBER")
     },
     {
-      "version", 'v', G_OPTION_FLAG_NONE,
+      "verbose", 'v', G_OPTION_FLAG_NO_ARG,
+      G_OPTION_ARG_CALLBACK, cmd_verbose_cb,
+      _("Enable verbose debug messages"),
+      NULL
+    },
+    {
+      "version", 0, G_OPTION_FLAG_NONE,
       G_OPTION_ARG_NONE, NULL,
       _("Print current version"),
       NULL
@@ -639,7 +718,7 @@ calls_application_new (void)
 {
   return g_object_new (CALLS_TYPE_APPLICATION,
                        "application-id", APP_ID,
-                       "flags", G_APPLICATION_HANDLES_OPEN,
+                       "flags", G_APPLICATION_HANDLES_OPEN | G_APPLICATION_HANDLES_COMMAND_LINE,
                        "register-session", TRUE,
                        NULL);
 }

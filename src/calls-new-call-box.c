@@ -22,6 +22,8 @@
  *
  */
 
+#define G_LOG_DOMAIN "CallsNewCallBox"
+
 #include "calls-application.h"
 #include "calls-new-call-box.h"
 #include "calls-ussd.h"
@@ -31,6 +33,12 @@
 #include <glib/gi18n.h>
 #include <handy.h>
 
+enum {
+  PROP_0,
+  PROP_NUMERIC_INPUT_ONLY,
+  PROP_LAST_PROP
+};
+static GParamSpec *props[PROP_LAST_PROP];
 
 struct _CallsNewCallBox
 {
@@ -41,12 +49,34 @@ struct _CallsNewCallBox
   GtkButton *backspace;
   HdyKeypad *keypad;
   GtkButton *dial;
+  GtkEntry  *address_entry;
+  HdyActionRow *result;
+  GtkButton *dial_result;
   GtkGestureLongPress *long_press_back_gesture;
 
   GList *dial_queue;
+
+  gboolean numeric_input_only;
 };
 
 G_DEFINE_TYPE (CallsNewCallBox, calls_new_call_box, GTK_TYPE_BOX);
+
+
+static CallsOrigin *
+get_selected_origin (CallsNewCallBox *self)
+{
+  g_autoptr (CallsOrigin) origin = NULL;
+  GListModel *model = hdy_combo_row_get_model (self->origin_list);
+  gint index = -1;
+
+  if (model)
+    index = hdy_combo_row_get_selected_index (self->origin_list);
+
+  if (model && index >= 0)
+    origin = g_list_model_get_item (model, index);
+
+  return origin;
+}
 
 
 static CallsOrigin *
@@ -56,7 +86,6 @@ get_origin (CallsNewCallBox *self,
   CallsApplication *app = CALLS_APPLICATION (g_application_get_default ());
   g_autoptr (CallsOrigin) origin = NULL;
   GListModel *model;
-  int index = -1;
   gboolean auto_use_def_origin =
     calls_application_get_use_default_origins_setting (app);
 
@@ -68,18 +97,60 @@ get_origin (CallsNewCallBox *self,
 
     origin = g_list_model_get_item (model, 0);
     return origin;
+
+  } else {
+    return get_selected_origin (self);
   }
-
-  model = hdy_combo_row_get_model (self->origin_list);
-
-  if (model)
-    index = hdy_combo_row_get_selected_index (self->origin_list);
-
-  if (model && index >= 0)
-    origin = g_list_model_get_item (model, index);
-
-  return origin;
 }
+
+
+static void
+address_activate_cb (CallsNewCallBox *self)
+{
+  CallsOrigin *origin = get_selected_origin (self);
+  const char *address = gtk_entry_get_text (self->address_entry);
+
+  if (origin && address && *address != '\0')
+    calls_origin_dial (origin, address);
+}
+
+
+static void
+address_changed_cb (CallsNewCallBox *self)
+{
+  const char *address = gtk_entry_get_text (self->address_entry);
+
+  gtk_widget_set_visible (GTK_WIDGET (self->result),
+                          address && *address != '\0');
+}
+
+
+static void
+set_numeric (CallsNewCallBox *self,
+             gboolean         enable)
+{
+  if (enable == self->numeric_input_only)
+    return;
+
+  g_debug ("Numeric input %sabled", enable ? "en" : "dis");
+
+  self->numeric_input_only = enable;
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_NUMERIC_INPUT_ONLY]);
+}
+
+
+static void
+notify_selected_index_cb (CallsNewCallBox *self)
+{
+  CallsOrigin *origin = get_selected_origin (self);
+  gboolean numeric_input = TRUE;
+
+  if (origin)
+    g_object_get (origin, "numeric-addresses", &numeric_input, NULL);
+
+  set_numeric (self, numeric_input);
+}
+
 
 
 static void
@@ -136,6 +207,18 @@ dial_clicked_cb (CallsNewCallBox *self)
     calls_main_window_dial (CALLS_MAIN_WINDOW (window), text);
   else
     calls_new_call_box_dial (self, text);
+}
+
+static void
+dial_result_clicked_cb (CallsNewCallBox *self)
+{
+  CallsOrigin *origin = get_selected_origin (self);
+  const char *address = gtk_entry_get_text (self->address_entry);
+
+  if (origin && address && *address != '\0')
+    calls_origin_dial (origin, address);
+  else
+    g_warning ("No suitable origin found. How was this even clicked?");
 }
 
 
@@ -204,50 +287,50 @@ origin_count_changed_cb (CallsNewCallBox *self)
   gtk_widget_set_sensitive (GTK_WIDGET (self->dial), n_items > 0);
 
   if (n_items)
-    hdy_combo_row_bind_name_model (self->origin_list, origins,
-                                   get_origin_name, self, NULL);
-  else
-    hdy_combo_row_bind_name_model (self->origin_list,
-                                   NULL, NULL, NULL, NULL);
+    dial_queued (self);
 
-  if (n_items)
-    hdy_combo_row_set_selected_index (self->origin_list, 0);
-
-  dial_queued (self);
+  notify_selected_index_cb (self);
 }
 
+
 static void
-provider_changed_cb (CallsNewCallBox *self)
+calls_new_call_box_get_property (GObject    *object,
+                                 guint       property_id,
+                                 GValue     *value,
+                                 GParamSpec *pspec)
 {
-  GListModel *origins;
+  CallsNewCallBox *self = CALLS_NEW_CALL_BOX (object);
 
-  g_assert (CALLS_IS_NEW_CALL_BOX (self));
+  switch (property_id) {
+  case PROP_NUMERIC_INPUT_ONLY:
+    g_value_set_boolean (value, self->numeric_input_only);
+    break;
 
-  origins = calls_manager_get_origins (calls_manager_get_default ());
-  if (origins) {
-    g_signal_connect_object (origins, "items-changed",
-                             G_CALLBACK (origin_count_changed_cb), self,
-                             G_CONNECT_SWAPPED);
-
-    origin_count_changed_cb (self);
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
   }
 }
 
 static void
 calls_new_call_box_init (CallsNewCallBox *self)
 {
+  GListModel *origins;
+
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  g_signal_connect_swapped (calls_manager_get_default (),
-                            "notify::provider",
-                            G_CALLBACK (provider_changed_cb),
-                            self);
-  provider_changed_cb (self);
+  origins = calls_manager_get_origins (calls_manager_get_default ());
+  hdy_combo_row_bind_name_model (self->origin_list, origins,
+                                 get_origin_name, self, NULL);
+
+  g_signal_connect_swapped (origins, "items-changed",
+                            G_CALLBACK (origin_count_changed_cb), self);
+  origin_count_changed_cb (self);
 }
 
 
 static void
-dispose (GObject *object)
+calls_new_call_box_dispose (GObject *object)
 {
   CallsNewCallBox *self = CALLS_NEW_CALL_BOX (object);
 
@@ -266,7 +349,8 @@ calls_new_call_box_class_init (CallsNewCallBoxClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  object_class->dispose = dispose;
+  object_class->get_property = calls_new_call_box_get_property;
+  object_class->dispose = calls_new_call_box_dispose;
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/new-call-box.ui");
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list_box);
@@ -275,9 +359,24 @@ calls_new_call_box_class_init (CallsNewCallBoxClass *klass)
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, long_press_back_gesture);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, keypad);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, dial);
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, address_entry);
+  gtk_widget_class_bind_template_callback (widget_class, address_activate_cb);
+  gtk_widget_class_bind_template_callback (widget_class, address_changed_cb);
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, result);
   gtk_widget_class_bind_template_callback (widget_class, dial_clicked_cb);
+  gtk_widget_class_bind_template_callback (widget_class, dial_result_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, backspace_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, long_press_back_cb);
+  gtk_widget_class_bind_template_callback (widget_class, notify_selected_index_cb);
+
+  props[PROP_NUMERIC_INPUT_ONLY] =
+    g_param_spec_boolean ("numeric-input-only",
+                          "Numeric input only",
+                          "Whether only numeric input is allowed (for the selected origin)",
+                          TRUE,
+                          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS | G_PARAM_EXPLICIT_NOTIFY);
+
+  g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
 

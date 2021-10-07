@@ -25,11 +25,13 @@
 #define G_LOG_DOMAIN "CallsSipProvider"
 
 #define SIP_ACCOUNT_FILE "sip-account.cfg"
+#define CALLS_PROTOCOL_SIP_STR "sip"
 
 #include "calls-account-provider.h"
-#include "calls-credentials.h"
 #include "calls-message-source.h"
 #include "calls-provider.h"
+#include "calls-secret-store.h"
+#include "calls-sip-account-widget.h"
 #include "calls-sip-enums.h"
 #include "calls-sip-origin.h"
 #include "calls-sip-provider.h"
@@ -68,12 +70,14 @@ struct _CallsSipProvider
   CallsProvider parent_instance;
 
   GListStore *origins;
-  GHashTable *credentials; /* key = credentials, value = origin */
   /* SIP */
   CallsSipContext *ctx;
   SipEngineState sip_state;
 
+  gboolean use_memory_backend;
   gchar *filename;
+
+  CallsSipAccountWidget *account_widget;
 };
 
 static void calls_sip_provider_message_source_interface_init (CallsMessageSourceInterface *iface);
@@ -85,47 +89,217 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED
  G_IMPLEMENT_INTERFACE_DYNAMIC (CALLS_TYPE_MESSAGE_SOURCE,
                                 calls_sip_provider_message_source_interface_init)
  G_IMPLEMENT_INTERFACE_DYNAMIC (CALLS_TYPE_ACCOUNT_PROVIDER,
-                                calls_sip_provider_account_provider_interface_init));
+                                calls_sip_provider_account_provider_interface_init))
 
+typedef struct {
+  CallsSipProvider *provider;
+  GKeyFile         *key_file;
+  char             *name;
+} SipOriginLoadData;
 
 static void
-calls_sip_provider_load_accounts (CallsSipProvider *self)
+on_origin_pw_looked_up (GObject      *source,
+                        GAsyncResult *result,
+                        gpointer      user_data)
 {
+  SipOriginLoadData *data;
   g_autoptr (GError) error = NULL;
-  g_autoptr (GKeyFile) key_file = g_key_file_new ();
-  gchar **groups = NULL;
+  g_autofree char *name = NULL;
+  g_autofree char *host = NULL;
+  g_autofree char *user = NULL;
+  g_autofree char *password = NULL;
+  g_autofree char *display_name = NULL;
+  g_autofree char *protocol = NULL;
+  gint port = 0;
+  gint local_port = 0;
+  gboolean auto_connect = TRUE;
+  gboolean direct_mode = FALSE;
 
-  g_assert (CALLS_IS_SIP_PROVIDER (self));
+  g_assert (user_data);
 
-  if (!g_key_file_load_from_file (key_file, self->filename, G_KEY_FILE_NONE, &error)) {
-    g_warning ("Error loading key file: %s", error->message);
+  data = user_data;
+
+  host = g_key_file_get_string (data->key_file, data->name, "Host", NULL);
+  user = g_key_file_get_string (data->key_file, data->name, "User", NULL);
+  display_name = g_key_file_get_string (data->key_file, data->name, "DisplayName", NULL);
+  protocol = g_key_file_get_string (data->key_file, data->name, "Protocol", NULL);
+  port = g_key_file_get_integer (data->key_file, data->name, "Port", NULL);
+  display_name = g_key_file_get_string (data->key_file, data->name, "DisplayName", NULL);
+  local_port = g_key_file_get_integer (data->key_file, data->name, "LocalPort", NULL);
+
+  if (g_key_file_has_key (data->key_file, data->name, "AutoConnect", NULL))
+    auto_connect = g_key_file_get_boolean (data->key_file, data->name, "AutoConnect", NULL);
+
+  if (protocol == NULL)
+    protocol = g_strdup ("UDP");
+
+  if (g_key_file_has_key (data->key_file, data->name, "DirectMode", NULL))
+    direct_mode = g_key_file_get_boolean (data->key_file, data->name, "DirectMode", NULL);
+
+  /* PW */
+  password = secret_password_lookup_finish (result, &error);
+  if (!direct_mode && error) {
+    g_warning ("Could not lookup password: %s", error->message);
     return;
   }
 
-  groups = g_key_file_get_groups (key_file, NULL);
+#define IS_NULL_OR_EMPTY(x)  ((x) == NULL || (x)[0] == '\0')
+  if (!direct_mode &&
+      (IS_NULL_OR_EMPTY (host) ||
+       IS_NULL_OR_EMPTY (user) ||
+       IS_NULL_OR_EMPTY (password))) {
+    g_warning ("Host, user and password must not be empty");
 
-  for (gsize i = 0; groups[i] != NULL; i++) {
-    g_autoptr (CallsCredentials) credentials = calls_credentials_new ();
-    gint local_port = 0;
-    gboolean direct_connection =
-      g_key_file_get_boolean (key_file, groups[i], "Direct", NULL);
+    return;
+  }
+#undef IS_NULL_OR_EMPTY
 
-    if (direct_connection) {
-      g_object_set (credentials, "name", groups[i], NULL);
+  calls_sip_provider_add_origin_full (data->provider,
+                                      host,
+                                      user,
+                                      password,
+                                      display_name,
+                                      protocol,
+                                      port,
+                                      auto_connect,
+                                      direct_mode,
+                                      local_port,
+                                      FALSE);
+}
+static void
+new_origin_from_keyfile_secret (CallsSipProvider *self,
+                                GKeyFile         *key_file,
+                                const char       *name)
+{
+  g_autofree char *host = NULL;
+  g_autofree char *user = NULL;
+  SipOriginLoadData *data;
 
-      local_port = g_key_file_get_integer (key_file, groups[i], "LocalPort", NULL);
-      /* direct connection mode, needs a local port set */
-      if (local_port == 0)
-        local_port = 5060;
-    } else {
-      calls_credentials_update_from_keyfile (credentials, key_file, groups[i]);
-    }
-    g_debug ("Adding origin for SIP account %s", groups[i]);
+  g_assert (CALLS_IS_SIP_PROVIDER (self));
+  g_assert (key_file);
+  g_assert (name);
 
-    calls_sip_provider_add_origin (self, g_steal_pointer (&credentials), local_port, direct_connection);
+  if (!g_key_file_has_group (key_file, name)) {
+    g_warning ("Keyfile has no group %s", name);
+    return;
   }
 
-  g_strfreev (groups);
+  host = g_key_file_get_string (key_file, name, "Host", NULL);
+  user = g_key_file_get_string (key_file, name, "User", NULL);
+
+  data = g_new0 (SipOriginLoadData, 1);
+  data->provider = self;
+  g_key_file_ref (key_file);
+  data->key_file = key_file;
+  data->name = g_strdup (name);
+
+  secret_password_lookup (calls_secret_get_schema (), NULL,
+                          on_origin_pw_looked_up, data,
+                          CALLS_SERVER_ATTRIBUTE, host,
+                          CALLS_USERNAME_ATTRIBUTE, user,
+                          CALLS_PROTOCOL_ATTRIBUTE, CALLS_PROTOCOL_SIP_STR,
+                          NULL);
+}
+
+
+static void
+on_origin_pw_cleared (GObject      *source,
+                      GAsyncResult *result,
+                      gpointer      user_data)
+{
+  g_autoptr (GError) error = NULL;
+
+  if (!secret_password_clear_finish (result, &error))
+    g_warning ("Could not delete the password in the keyring: %s",
+               error ? error->message : "No reason given");
+}
+
+
+static void
+origin_pw_delete_secret (CallsSipOrigin *origin)
+{
+  g_autofree char *host = NULL;
+  g_autofree char *user = NULL;
+
+  g_assert (CALLS_IS_SIP_ORIGIN (origin));
+
+  g_object_get (origin,
+                "host", &host,
+                "user", &user,
+                NULL);
+
+  secret_password_clear (calls_secret_get_schema (), NULL, on_origin_pw_cleared, NULL,
+                         CALLS_SERVER_ATTRIBUTE, host,
+                         CALLS_USERNAME_ATTRIBUTE, user,
+                         CALLS_PROTOCOL_ATTRIBUTE, CALLS_PROTOCOL_SIP_STR,
+                         NULL);
+}
+
+
+static void
+on_origin_pw_saved (GObject      *source,
+                    GAsyncResult *result,
+                    gpointer      user_data)
+{
+  g_autoptr (GError) error = NULL;
+
+  if (!secret_password_store_finish (result, &error)) {
+    g_warning ("Could not store the password in the keyring: %s",
+               error ? error->message : "No reason given");
+  }
+}
+
+
+static void
+origin_to_keyfile (CallsSipOrigin *origin,
+                   GKeyFile       *key_file,
+                   const char     *name)
+{
+  g_autofree char *host = NULL;
+  g_autofree char *user = NULL;
+  g_autofree char *password = NULL;
+  g_autofree char *display_name = NULL;
+  g_autofree char *protocol = NULL;
+  g_autofree char *label_secret = NULL;
+  gint port;
+  gint local_port;
+  gboolean auto_connect;
+  gboolean direct_mode;
+
+  g_assert (CALLS_IS_SIP_ORIGIN (origin));
+  g_assert (key_file);
+
+  g_object_get (origin,
+                "host", &host,
+                "user", &user,
+                "password", &password,
+                "display-name", &display_name,
+                "transport-protocol", &protocol,
+                "port", &port,
+                "auto-connect", &auto_connect,
+                "direct-mode", &direct_mode,
+                "local-port", &local_port,
+                NULL);
+
+  g_key_file_set_string (key_file, name, "Host", host);
+  g_key_file_set_string (key_file, name, "User", user);
+  g_key_file_set_string (key_file, name, "DisplayName", display_name ?: "");
+  g_key_file_set_string (key_file, name, "Protocol", protocol);
+  g_key_file_set_integer (key_file, name, "Port", port);
+  g_key_file_set_boolean (key_file, name, "AutoConnect", auto_connect);
+  g_key_file_set_boolean (key_file, name, "DirectMode", direct_mode);
+  g_key_file_set_integer (key_file, name, "LocalPort", local_port);
+
+  label_secret = g_strdup_printf ("Calls Password for %s",
+                                  calls_account_get_address (CALLS_ACCOUNT (origin)));
+
+  /* save to keyring */
+  secret_password_store (calls_secret_get_schema (), NULL, label_secret, password,
+                         NULL, on_origin_pw_saved, NULL,
+                         CALLS_SERVER_ATTRIBUTE, host,
+                         CALLS_USERNAME_ATTRIBUTE, user,
+                         CALLS_PROTOCOL_ATTRIBUTE, CALLS_PROTOCOL_SIP_STR,
+                         NULL);
 }
 
 
@@ -189,7 +363,7 @@ calls_sip_provider_deinit_sip (CallsSipProvider *self)
     su_root_destroy (self->ctx->root);
 
     if (su_home_unref (self->ctx->home) != 1)
-      g_error ("Error in su_home_unref ()");
+      g_warning ("Error in su_home_unref ()");
   }
   g_clear_pointer (&self->ctx, g_free);
 
@@ -276,19 +450,27 @@ calls_sip_provider_constructed (GObject *object)
 {
   CallsSipProvider *self = CALLS_SIP_PROVIDER (object);
   g_autoptr (GError) error = NULL;
-  gboolean auto_load_accounts = TRUE;
-  const gchar *env_do_not_auto_load;
+  const gchar *env_sip_test;
 
-  env_do_not_auto_load = g_getenv ("CALLS_SIP_DO_NOT_AUTOLOAD");
-  if (env_do_not_auto_load && env_do_not_auto_load[0] != '\0')
-    auto_load_accounts = FALSE;
+  env_sip_test = g_getenv ("CALLS_SIP_TEST");
+  if (env_sip_test && env_sip_test[0] != '\0')
+    self->use_memory_backend = TRUE;
 
   if (calls_sip_provider_init_sofia (self, &error)) {
-    if (auto_load_accounts)
-      calls_sip_provider_load_accounts (self);
-  }
-  else
+    if (!self->use_memory_backend) {
+      g_autoptr (GKeyFile) key_file = g_key_file_new ();
+
+      if (!g_key_file_load_from_file (key_file, self->filename, G_KEY_FILE_NONE, &error)) {
+        g_debug ("Error loading key file: %s", error->message);
+        goto out;
+      }
+      calls_sip_provider_load_accounts (self, key_file);
+    }
+  } else {
     g_warning ("Could not initialize sofia stack: %s", error->message);
+  }
+
+ out:
 
   G_OBJECT_CLASS (calls_sip_provider_parent_class)->constructed (object);
 }
@@ -301,9 +483,7 @@ calls_sip_provider_dispose (GObject *object)
 
   g_list_store_remove_all (self->origins);
   g_clear_object (&self->origins);
-
-  g_hash_table_remove_all (self->credentials);
-  g_clear_pointer (&self->credentials, g_hash_table_unref);
+  g_clear_object (&self->account_widget);
 
   g_clear_pointer (&self->filename, g_free);
 
@@ -351,84 +531,57 @@ calls_sip_provider_message_source_interface_init (CallsMessageSourceInterface *i
 {
 }
 
-static gboolean
-add_account (CallsAccountProvider *acc_provider,
-             CallsCredentials     *credentials)
+static void
+ensure_account_widget (CallsSipProvider *self)
 {
-  CallsSipProvider *self;
-
-  g_assert (CALLS_IS_ACCOUNT_PROVIDER (acc_provider));
-  g_assert (CALLS_IS_SIP_PROVIDER (acc_provider));
-  g_assert (CALLS_IS_CREDENTIALS (credentials));
-
-  self = CALLS_SIP_PROVIDER (acc_provider);
-
-  return !!calls_sip_provider_add_origin (self, credentials, 0, FALSE);
+  if (!self->account_widget) {
+    self->account_widget = calls_sip_account_widget_new (self);
+    g_object_ref_sink (self->account_widget);
+  }
 }
 
-static gboolean
-remove_account (CallsAccountProvider *acc_provider,
-                CallsCredentials     *credentials)
+static GtkWidget *
+get_account_widget (CallsAccountProvider *provider)
 {
-  CallsSipProvider *self;
-  CallsSipOrigin *origin;
-  guint position;
+  CallsSipProvider *self = CALLS_SIP_PROVIDER (provider);
 
-  g_assert (CALLS_IS_ACCOUNT_PROVIDER (acc_provider));
-  g_assert (CALLS_IS_SIP_PROVIDER (acc_provider));
-  g_assert (CALLS_IS_CREDENTIALS (credentials));
-
-  self = CALLS_SIP_PROVIDER (acc_provider);
-
-  origin = g_hash_table_lookup (self->credentials, credentials);
-
-  if (origin == NULL)
-    return FALSE;
-
-  if (!g_list_store_find (self->origins, origin, &position))
-    return FALSE;
-
-  g_hash_table_remove (self->credentials, credentials);
-  g_list_store_remove (self->origins, position);
-
-  return TRUE;
+  ensure_account_widget (self);
+  return GTK_WIDGET (self->account_widget);
 }
 
-static CallsAccount *
-get_account (CallsAccountProvider *acc_provider,
-             CallsCredentials     *credentials)
+static void
+add_new_account (CallsAccountProvider *provider)
 {
-  CallsSipProvider *self;
-  CallsSipOrigin *origin;
+  CallsSipProvider *self = CALLS_SIP_PROVIDER (provider);
 
-  g_assert (CALLS_IS_ACCOUNT_PROVIDER (acc_provider));
-  g_assert (CALLS_IS_SIP_PROVIDER (acc_provider));
-  g_assert (CALLS_IS_CREDENTIALS (credentials));
+  ensure_account_widget (self);
+  calls_sip_account_widget_set_origin (self->account_widget, NULL);
+}
 
-  self = CALLS_SIP_PROVIDER (acc_provider);
+static void
+edit_account (CallsAccountProvider *provider,
+              CallsAccount         *account)
+{
+  CallsSipProvider *self = CALLS_SIP_PROVIDER (provider);
 
-  origin = g_hash_table_lookup (self->credentials, credentials);
-  if (origin)
-    return CALLS_ACCOUNT (origin);
-  else
-    return NULL;
+  ensure_account_widget (self);
+  calls_sip_account_widget_set_origin (self->account_widget, CALLS_SIP_ORIGIN (account));
 }
 
 static void
 calls_sip_provider_account_provider_interface_init (CallsAccountProviderInterface *iface)
 {
-  iface->add_account = add_account;
-  iface->remove_account = remove_account;
-  iface->get_account = get_account;
+  iface->get_account_widget = get_account_widget;
+  iface->add_new_account = add_new_account;
+  iface->edit_account = edit_account;
 }
 
 static void
 calls_sip_provider_init (CallsSipProvider *self)
 {
+  g_autofree char *directory = NULL;
   const char *filename_env = g_getenv ("CALLS_SIP_ACCOUNT_FILE");
-
-  self->credentials =
-    g_hash_table_new_full (NULL, NULL, g_object_unref, g_object_unref);
+  const char *sip_test_env = g_getenv ("CALLS_SIP_TEST");
 
   self->origins = g_list_store_new (CALLS_TYPE_ORIGIN);
 
@@ -439,51 +592,148 @@ calls_sip_provider_init (CallsSipProvider *self)
                                        APP_DATA_NAME,
                                        SIP_ACCOUNT_FILE,
                                        NULL);
+
+  if (!sip_test_env || sip_test_env[0] == '\0') {
+    directory = g_path_get_dirname (self->filename);
+    if (g_mkdir_with_parents (directory, 0750) == -1) {
+      int err_save = errno;
+      g_warning ("Failed to create directory '%s': %d\n"
+                 "Can not store credentials persistently!",
+                 directory, err_save);
+    }
+  }
+
 }
 
 /**
  * calls_sip_provider_add_origin:
  * @self: A #CallsSipProvider
- * @credentials: A #CallsCredentials
- * @local_port: The local port to bind to or 0
- * @direct_connection: %TRUE to use a direct connection to peers, %FALSE otherwise
+ * @host: The host to connect to
+ * @user: The username to use
+ * @password: The password to use
+ * @display_name: The display name
+ * @transport_protocol: The transport protocol to use, can be one of "UDP", "TCP" or "TLS"
+ * @store_credentials: Whether to store credentials for this origin to disk
  *
- * Adds a new origin (SIP account). If @direct_connection is set
- * some properties of @credentials can be set automatically
- * (f.e. use the username and hostname).
+ * Adds a new origin (SIP account)
  *
  * Return: (transfer none): A #CallsSipOrigin
  */
 CallsSipOrigin *
 calls_sip_provider_add_origin (CallsSipProvider *self,
-                               CallsCredentials *credentials,
-                               gint              local_port,
-                               gboolean          direct_connection)
+                               const char       *host,
+                               const char       *user,
+                               const char       *password,
+                               const char       *display_name,
+                               const char       *transport_protocol,
+                               gint              port,
+                               gboolean          store_credentials)
+{
+  return calls_sip_provider_add_origin_full (self,
+                                             host,
+                                             user,
+                                             password,
+                                             display_name,
+                                             transport_protocol,
+                                             port,
+                                             TRUE,
+                                             FALSE,
+                                             0,
+                                             store_credentials);
+}
+
+/**
+ * calls_sip_provider_add_origin_full:
+ * @self: A #CallsSipProvider
+ * @host: The host to connect to
+ * @user: The username to use
+ * @password: The password to use
+ * @display_name: The display name
+ * @transport_protocol: The transport protocol to use, can be one of "UDP", "TCP" or "TLS"
+ * @auto_connect: Whether to automatically try going online
+ * @direct_mode: Whether to use direct connection mode. Useful when you don't want to
+ * connect to a SIP server. Mostly useful for testing and debugging.
+ * @store_credentials: Whether to store credentials for this origin to disk
+ *
+ * Adds a new origin (SIP account). If @direct_mode is %TRUE then @host, @user and
+ * @password do not have to be set.
+ *
+ * Return: (transfer none): A #CallsSipOrigin
+ */
+CallsSipOrigin *
+calls_sip_provider_add_origin_full (CallsSipProvider *self,
+                                    const char       *host,
+                                    const char       *user,
+                                    const char       *password,
+                                    const char       *display_name,
+                                    const char       *transport_protocol,
+                                    gint              port,
+                                    gboolean          auto_connect,
+                                    gboolean          direct_mode,
+                                    gint              local_port,
+                                    gboolean          store_credentials)
 {
   g_autoptr (CallsSipOrigin) origin = NULL;
+  g_autofree char *protocol = NULL;
 
   g_return_val_if_fail (CALLS_IS_SIP_PROVIDER (self), NULL);
-  g_return_val_if_fail (CALLS_IS_CREDENTIALS (credentials), NULL);
 
-  if (g_hash_table_contains (self->credentials, credentials)) {
-    g_autofree char *name = NULL;
-    g_object_get (credentials, "name", &name, NULL);
-
-    /* This could be a INFO level log once we have improved logging */
-    g_debug ("Cannot add credentials with name '%s' multiple times", name);
-    return NULL;
+  /* direct-mode is mostly useful for testing without a SIP server */
+  if (!direct_mode) {
+    g_return_val_if_fail (host, NULL);
+    g_return_val_if_fail (user, NULL);
+    g_return_val_if_fail (password, NULL);
   }
 
-  origin = calls_sip_origin_new (self->ctx,
-                                 credentials,
-                                 local_port,
-                                 direct_connection);
+  if (transport_protocol) {
+    g_return_val_if_fail (protocol_is_valid (transport_protocol), NULL);
 
-  g_hash_table_insert (self->credentials,
-                       g_object_ref (credentials), g_object_ref (origin));
+    protocol = g_ascii_strup (transport_protocol, -1);
+  }
+
+  origin = g_object_new (CALLS_TYPE_SIP_ORIGIN,
+                         "sip-context", self->ctx,
+                         "host", host,
+                         "user", user,
+                         "password", password,
+                         "display-name", display_name,
+                         "transport-protocol", protocol ?: "UDP",
+                         "port", port,
+                         "auto-connect", auto_connect,
+                         "direct-mode", direct_mode,
+                         "local-port", local_port,
+                         NULL);
+
   g_list_store_append (self->origins, origin);
 
+  if (store_credentials && !self->use_memory_backend)
+    calls_sip_provider_save_accounts_to_disk (self);
+
   return origin;
+}
+
+
+gboolean
+calls_sip_provider_remove_origin (CallsSipProvider *self,
+                                  CallsSipOrigin   *origin)
+{
+  guint position;
+
+  g_return_val_if_fail (CALLS_IS_SIP_PROVIDER (self), FALSE);
+  g_return_val_if_fail (CALLS_IS_SIP_ORIGIN (origin), FALSE);
+
+  if (g_list_store_find (self->origins, origin, &position)) {
+    g_object_ref (origin);
+    g_list_store_remove (self->origins, position);
+
+    if (!self->use_memory_backend) {
+      origin_pw_delete_secret (origin);
+      calls_sip_provider_save_accounts_to_disk (self);
+    }
+    g_object_unref (origin);
+    return TRUE;
+  }
+  return FALSE;
 }
 
 
@@ -492,6 +742,63 @@ calls_sip_provider_new (void)
 {
   return g_object_new (CALLS_TYPE_SIP_PROVIDER, NULL);
 }
+
+
+void
+calls_sip_provider_load_accounts (CallsSipProvider *self,
+                                  GKeyFile         *key_file)
+{
+  g_autoptr (GError) error = NULL;
+  g_auto (GStrv) groups = NULL;
+
+  g_return_if_fail (CALLS_IS_SIP_PROVIDER (self));
+  g_return_if_fail (key_file);
+
+  groups = g_key_file_get_groups (key_file, NULL);
+
+  for (gsize i = 0; groups[i] != NULL; i++) {
+    new_origin_from_keyfile_secret (self, key_file, groups[i]);
+  }
+}
+
+
+void
+calls_sip_provider_save_accounts (CallsSipProvider *self,
+                                  GKeyFile         *key_file)
+{
+  guint n_origins;
+
+  g_return_if_fail (CALLS_IS_SIP_PROVIDER (self));
+  g_return_if_fail (key_file);
+
+  n_origins = g_list_model_get_n_items (G_LIST_MODEL (self->origins));
+  for (guint i = 0; i < n_origins; i++) {
+    g_autoptr (CallsSipOrigin) origin =
+      g_list_model_get_item (G_LIST_MODEL (self->origins), i);
+    g_autofree char *group_name = g_strdup_printf ("sip-%02d", i);
+
+    origin_to_keyfile (origin, key_file, group_name);
+  }
+}
+
+
+gboolean
+calls_sip_provider_save_accounts_to_disk (CallsSipProvider *self)
+{
+  g_autoptr (GKeyFile) key_file = g_key_file_new ();
+  g_autoptr (GError) error = NULL;
+  gboolean saved = FALSE;
+
+  g_assert (CALLS_IS_SIP_PROVIDER (self));
+
+  calls_sip_provider_save_accounts (self, key_file);
+
+  if (!(saved = g_key_file_save_to_file (key_file, self->filename, &error)))
+    g_warning ("Error saving keyfile to file %s: %s", self->filename, error->message);
+
+  return saved;
+}
+
 
 
 G_MODULE_EXPORT void

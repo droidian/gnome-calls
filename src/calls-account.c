@@ -22,7 +22,6 @@
  *
  */
 
-#include "calls-credentials.h"
 #include "calls-account.h"
 #include "enum-types.h"
 
@@ -31,15 +30,8 @@
  * @short_description: An interface for online accounts
  * @Title: CallsAccount
  *
- * #CallsAccount is meant to be implemented by a #CallsOrigin when
- * the #CallsOrigin uses #CallsCredentials to connect to the internet.
+ * #CallsAccount is a type of #CallsOrigin for online accounts.
  */
-
-enum {
-  SIGNAL_ACCOUNT_STATE_CHANGED,
-  SIGNAL_LAST_SIGNAL
-};
-static guint signals[SIGNAL_LAST_SIGNAL];
 
 G_DEFINE_INTERFACE (CallsAccount, calls_account, CALLS_TYPE_ORIGIN)
 
@@ -47,28 +39,24 @@ G_DEFINE_INTERFACE (CallsAccount, calls_account, CALLS_TYPE_ORIGIN)
 static void
 calls_account_default_init (CallsAccountInterface *iface)
 {
-  signals[SIGNAL_ACCOUNT_STATE_CHANGED] =
-    g_signal_new ("account-state-changed",
-                  G_TYPE_FROM_INTERFACE (iface),
-                  G_SIGNAL_RUN_LAST,
-                  0, NULL, NULL, NULL,
-                  G_TYPE_NONE,
-                  2, CALLS_TYPE_ACCOUNT_STATE, CALLS_TYPE_ACCOUNT_STATE);
-
-  g_object_interface_install_property (iface,
-    g_param_spec_object ("account-credentials",
-                         "Account credentials",
-                         "The credentials to be used for authentication",
-                         CALLS_TYPE_CREDENTIALS,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
   g_object_interface_install_property (iface,
     g_param_spec_enum ("account-state",
                        "Account state",
                        "The state of the account",
                        CALLS_TYPE_ACCOUNT_STATE,
                        CALLS_ACCOUNT_NULL,
-                       G_PARAM_READABLE));
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS |
+                       G_PARAM_EXPLICIT_NOTIFY));
+
+  g_object_interface_install_property (iface,
+    g_param_spec_string ("address",
+                         "Address",
+                         "The address of this account",
+                         NULL,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_STRINGS |
+                         G_PARAM_EXPLICIT_NOTIFY));
 }
 
 /**
@@ -90,4 +78,42 @@ calls_account_go_online (CallsAccount *self,
   g_return_if_fail (iface->go_online != NULL);
 
   return iface->go_online (self, online);
+}
+
+/**
+ * calls_account_get_state:
+ * @self: A #CallsAccount
+ *
+ * Returns: The current #CallsAccountState of this account
+ */
+CallsAccountState
+calls_account_get_state (CallsAccount *self)
+{
+  CallsAccountState state;
+
+  g_return_val_if_fail (CALLS_IS_ACCOUNT (self), CALLS_ACCOUNT_NULL);
+
+  g_object_get (self, "account-state", &state, NULL);
+
+  return state;
+}
+
+/**
+ * calls_account_get_address:
+ * @self: A #CallsAccount
+ *
+ * Returns: The address under which this account can be reached.
+ * For example: alice@example.org for SIP and XMPP/Jingle or @alice:example.org for Matrix
+ */
+const char *
+calls_account_get_address (CallsAccount *self)
+{
+  CallsAccountInterface *iface;
+
+  g_return_val_if_fail (CALLS_IS_ACCOUNT (self), NULL);
+
+  iface = CALLS_ACCOUNT_GET_IFACE (self);
+  g_return_val_if_fail (iface->get_address, NULL);
+
+  return iface->get_address (self);
 }

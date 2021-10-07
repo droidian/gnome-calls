@@ -23,6 +23,7 @@
  */
 
 #include "calls-main-window.h"
+#include "calls-account-overview.h"
 #include "calls-origin.h"
 #include "calls-ussd.h"
 #include "calls-call-selector-item.h"
@@ -42,7 +43,7 @@
 
 struct _CallsMainWindow
 {
-  GtkApplicationWindow parent_instance;
+  HdyApplicationWindow parent_instance;
 
   GListModel *record_store;
 
@@ -54,6 +55,7 @@ struct _CallsMainWindow
   GtkRevealer *permanent_error_revealer;
   GtkLabel *permanent_error_label;
 
+  CallsAccountOverview *account_overview;
   CallsNewCallBox *new_call;
 
   GtkDialog  *ussd_dialog;
@@ -67,7 +69,7 @@ struct _CallsMainWindow
   GtkButton  *ussd_reply_button;
 };
 
-G_DEFINE_TYPE (CallsMainWindow, calls_main_window, GTK_TYPE_APPLICATION_WINDOW);
+G_DEFINE_TYPE (CallsMainWindow, calls_main_window, HDY_TYPE_APPLICATION_WINDOW);
 
 enum {
   PROP_0,
@@ -90,6 +92,8 @@ about_action (GSimpleAction *action,
     "Adrien Plazas <kekun.plazas@laposte.net>",
     "Bob Ham <rah@settrans.net>",
     "Guido Günther <agx@sigxcpu.org>",
+    "Julian Sparber <julian@sparber.net>",
+    "Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>",
     NULL
   };
 
@@ -114,7 +118,7 @@ about_action (GSimpleAction *action,
   gtk_show_about_dialog (GTK_WINDOW (self),
                          "artists", artists,
                          "authors", authors,
-                         "copyright", "Copyright © 2018 Purism",
+                         "copyright", "Copyright © 2018 - 2021 Purism",
                          "documenters", documenters,
                          "license-type", GTK_LICENSE_GPL_3_0,
                          "logo-icon-name", APP_ID,
@@ -426,6 +430,7 @@ dispose (GObject *object)
   CallsMainWindow *self = CALLS_MAIN_WINDOW (object);
 
   g_clear_object (&self->record_store);
+  g_clear_object (&self->account_overview);
 
   G_OBJECT_CLASS (calls_main_window_parent_class)->dispose (object);
 }
@@ -530,4 +535,18 @@ calls_main_window_dial (CallsMainWindow *self,
     {
       calls_new_call_box_dial (self->new_call, target);
     }
+}
+
+void
+calls_main_window_show_accounts_overview (CallsMainWindow *self)
+{
+  g_return_if_fail (CALLS_IS_MAIN_WINDOW (self));
+
+  if (self->account_overview == NULL) {
+    self->account_overview = calls_account_overview_new ();
+    gtk_window_set_transient_for (GTK_WINDOW (self->account_overview),
+                                  GTK_WINDOW (self));
+  }
+
+  gtk_window_present (GTK_WINDOW (self->account_overview));
 }

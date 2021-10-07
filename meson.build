@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '0.3.4',
+  version: '41.0',
   license: 'GPLv3+',
   meson_version: '>= 0.49.0',
   default_options: [
@@ -98,7 +98,7 @@ test_c_args = [
   '-Wtype-limits',
   '-Wunused-function',
   '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_64',
-  '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_68',
+  '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_70',
   # see https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/332
   '-DEDS_DISABLE_DEPRECATED',
 ]

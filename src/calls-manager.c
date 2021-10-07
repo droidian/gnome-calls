@@ -17,10 +17,13 @@
  * along with Calls. If not, see <http://www.gnu.org/licenses/>.
  *
  * Author: Julian Sparber <julian.sparber@puri.sm>
+ * Evangelos Ribeiro Tzaras <evangelos.tzaras@puri.sm>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  */
+
+#define G_LOG_DOMAIN "CallsManager"
 
 #include "config.h"
 
@@ -78,6 +81,7 @@ enum {
   USSD_ADDED,
   USSD_CANCELLED,
   USSD_STATE_CHANGED,
+  PROVIDERS_CHANGED,
   SIGNAL_LAST_SIGNAL,
 };
 static guint signals [SIGNAL_LAST_SIGNAL];
@@ -375,13 +379,16 @@ remove_provider (CallsManager *self,
 {
   GListModel *origins;
   guint n_items;
-  CallsProvider *provider;
+  g_autoptr (CallsProvider) provider = NULL;
 
   g_assert (CALLS_IS_MANAGER (self));
   g_assert (name);
 
   provider = g_hash_table_lookup (self->providers, name);
-  if (provider == NULL) {
+  if (provider) {
+    /* Hold a ref since g_hash_table_remove () might drop the last one */
+    g_object_ref (provider);
+  } else {
     g_warning ("Trying to remove provider %s which has not been found", name);
     return;
   }
@@ -406,6 +413,8 @@ remove_provider (CallsManager *self,
   update_protocols (self);
   update_state (self);
   rebuild_origins_by_protocols (self);
+
+  g_signal_emit (self, signals[PROVIDERS_CHANGED], 0);
 }
 
 static gboolean
@@ -522,6 +531,7 @@ add_provider (CallsManager *self, const gchar *name)
   n_items = g_list_model_get_n_items (origins);
   origin_items_changed_cb (origins, 0, 0, n_items, self);
 
+  g_signal_emit (self, signals[PROVIDERS_CHANGED], 0);
 }
 
 static void
@@ -656,6 +666,15 @@ calls_manager_class_init (CallsManagerClass *klass)
                   1,
                   CALLS_TYPE_USSD);
 
+  signals[PROVIDERS_CHANGED] =
+    g_signal_new ("providers-changed",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_FIRST,
+                  0,
+                  NULL, NULL, NULL,
+                  G_TYPE_NONE,
+                  0);
+
   props[PROP_STATE] =
     g_param_spec_enum ("state",
                        "state",
@@ -701,17 +720,19 @@ calls_manager_init (CallsManager *self)
                           self->contacts_provider, "country-code",
                           G_BINDING_DEFAULT);
 
-  // Prepend peas plugin search path
   peas = peas_engine_get_default ();
-  peas_engine_add_search_path (peas, PLUGIN_LIBDIR, NULL);
-  g_debug ("Scanning for plugins in `%s'", PLUGIN_LIBDIR);
 
   dir = g_getenv ("CALLS_PLUGIN_DIR");
   if (dir && dir[0] != '\0') {
+    /** Add the directory to the search path. prepend_search_path() does not work
+     * as expected. see https://gitlab.gnome.org/GNOME/libpeas/-/issues/19
+     */
     g_debug ("Adding %s to plugin search path", dir);
-    peas_engine_prepend_search_path (peas, dir, NULL);
+    peas_engine_add_search_path (peas, dir, NULL);
   }
 
+  peas_engine_add_search_path (peas, PLUGIN_LIBDIR, NULL);
+  g_debug ("Scanning for plugins in `%s'", PLUGIN_LIBDIR);
 }
 
 
@@ -787,58 +808,6 @@ calls_manager_is_modem_provider (CallsManager *self,
   return calls_provider_is_modem (provider);
 }
 
-/**
- * calls_manager_provder_add_accounts:
- * @self: A #CallsManager
- * @name: The name of the provider to add the account to
- * @credentials: A #CallsCredentials storing the credentials of the account
- *
- * Returns: %TRUE if account successfully added, %FALSE otherwise
- */
-gboolean
-calls_manager_provider_add_account (CallsManager     *self,
-                                    const char       *name,
-                                    CallsCredentials *credentials)
-{
-  CallsProvider *provider = NULL;
-
-  g_return_val_if_fail (CALLS_IS_MANAGER (self), FALSE);
-  g_return_val_if_fail (name, FALSE);
-  g_return_val_if_fail (CALLS_IS_CREDENTIALS (credentials), FALSE);
-
-  provider = g_hash_table_lookup (self->providers, name);
-  g_return_val_if_fail (CALLS_IS_PROVIDER (provider), FALSE);
-  g_return_val_if_fail (CALLS_IS_ACCOUNT_PROVIDER (provider), FALSE);
-
-  return calls_account_provider_add_account (CALLS_ACCOUNT_PROVIDER (provider),
-                                             credentials);
-}
-/**
- * calls_manager_provder_remove_accounts:
- * @self: A #CallsManager
- * @name: The name of the provider to add the account to
- * @credentials: A #CallsCredentials storing the credentials of the account
- *
- * Returns: %TRUE if account successfully removed, %FALSE otherwise
- */
-gboolean
-calls_manager_provider_remove_account (CallsManager     *self,
-                                       const char       *name,
-                                       CallsCredentials *credentials)
-{
-  CallsProvider *provider = NULL;
-
-  g_return_val_if_fail (CALLS_IS_MANAGER (self), FALSE);
-  g_return_val_if_fail (name, FALSE);
-  g_return_val_if_fail (CALLS_IS_CREDENTIALS (credentials), FALSE);
-
-  provider = g_hash_table_lookup (self->providers, name);
-  g_return_val_if_fail (CALLS_IS_PROVIDER (provider), FALSE);
-  g_return_val_if_fail (CALLS_IS_ACCOUNT_PROVIDER (provider), FALSE);
-
-  return calls_account_provider_remove_account (CALLS_ACCOUNT_PROVIDER (provider),
-                                                credentials);
-}
 
 CallsManagerState
 calls_manager_get_state (CallsManager *self)
@@ -974,4 +943,42 @@ calls_manager_has_any_provider (CallsManager *self)
   g_return_val_if_fail (CALLS_IS_MANAGER (self), FALSE);
 
   return !!g_hash_table_size (self->providers);
+}
+
+/**
+ * calls_manager_get_provider_names:
+ * @self: The #CallsManager
+ * @length: (optional) (out): the length of the returned array
+ *
+ * Retrieves the names of all providers loaded by @self, as an array.
+ *
+ * You should free the return value with g_free().
+ *
+ * Returns: (array length=length) (transfer container): a
+ * %NULL-terminated array containing the names of providers.
+ */
+const char **
+calls_manager_get_provider_names (CallsManager *self,
+                                  guint        *length)
+{
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
+
+  return (const char **) g_hash_table_get_keys_as_array (self->providers, length);
+}
+
+/**
+ * calls_manager_get_providers:
+ * @self: A #CallsManager
+ *
+ * Get the currently loaded providers
+ *
+ * Returns: (transfer container): A #GList of #CallsProvider.
+ * Use g_list_free() when done using the list.
+ */
+GList *
+calls_manager_get_providers (CallsManager *self)
+{
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
+
+  return g_hash_table_get_values (self->providers);
 }

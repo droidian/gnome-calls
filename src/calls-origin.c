@@ -33,7 +33,7 @@
  */
 
 
-G_DEFINE_INTERFACE (CallsOrigin, calls_origin, CALLS_TYPE_MESSAGE_SOURCE);
+G_DEFINE_INTERFACE (CallsOrigin, calls_origin, CALLS_TYPE_MESSAGE_SOURCE)
 
 enum {
   SIGNAL_CALL_ADDED,
@@ -69,6 +69,14 @@ calls_origin_default_init (CallsOriginInterface *iface)
                          "The country code of the origin, if any",
                          NULL,
                          G_PARAM_READABLE));
+
+  g_object_interface_install_property (
+    iface,
+    g_param_spec_boolean ("numeric-addresses",
+                          "Numeric addresses",
+                          "Whether this origin can only dial numeric addresses (aka numbers)",
+                          TRUE,
+                          G_PARAM_READABLE));
 
   signals[SIGNAL_CALL_ADDED] =
     g_signal_newv ("call-added",
@@ -113,6 +121,23 @@ DEFINE_ORIGIN_GETTER(name, char *, NULL);
  */
 DEFINE_ORIGIN_GETTER(calls, GList *, NULL);
 
+/**
+ * calls_origin_get_numeric_addresses:
+ * @self: a #CallsOrigin
+ *
+ * Returns: %TRUE if this origin can only dial numeric addresses (i.e. telephone numbers),
+ * %FALSE otherwise.
+ */
+gboolean
+calls_origin_get_numeric_addresses (CallsOrigin *origin)
+{
+  gboolean numeric;
+
+  g_return_val_if_fail (CALLS_IS_ORIGIN (origin), FALSE);
+
+  g_object_get (origin, "numeric-addresses", &numeric, NULL);
+  return numeric;
+}
 
 /**
  * calls_origin_foreach_call:
@@ -133,9 +158,7 @@ calls_origin_foreach_call(CallsOrigin *self,
   calls = calls_origin_get_calls (self);
 
   for (node = calls; node; node = node->next)
-    {
-      callback (param, CALLS_CALL (node->data), self);
-    }
+    callback (param, CALLS_CALL (node->data), self);
 }
 
 

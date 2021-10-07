@@ -24,22 +24,23 @@
 
 #pragma once
 
-#include <glib-object.h>
+#include "calls-account.h"
+#include "calls-account-provider.h"
+
+#include <handy.h>
+
 
 G_BEGIN_DECLS
 
-#define CALLS_TYPE_CREDENTIALS (calls_credentials_get_type ())
+#define CALLS_TYPE_ACCOUNT_ROW (calls_account_row_get_type ())
 
-G_DECLARE_FINAL_TYPE (CallsCredentials, calls_credentials, CALLS, CREDENTIALS, GObject);
+G_DECLARE_FINAL_TYPE (CallsAccountRow, calls_account_row, CALLS, ACCOUNT_ROW, HdyActionRow)
 
-
-CallsCredentials       *calls_credentials_new                     (void);
-gboolean                calls_credentials_update_from_keyfile     (CallsCredentials *self,
-                                                                   GKeyFile         *key_file,
-                                                                   const char       *name);
-void                    calls_credentials_set_name                (CallsCredentials *self,
-                                                                   const char       *name);
-const char             *calls_credentials_get_name                (CallsCredentials *self);
+CallsAccountRow      *calls_account_row_new              (CallsAccountProvider *provider,
+                                                          CallsAccount         *account);
+gboolean              calls_account_row_get_online       (CallsAccountRow      *self);
+void                  calls_account_row_set_online       (CallsAccountRow      *self,
+                                                          gboolean              online);
+CallsAccount         *calls_account_row_get_account      (CallsAccountRow      *self);
 
 G_END_DECLS
-
