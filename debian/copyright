@@ -13,6 +13,10 @@ Files: data/org.gnome.Calls.metainfo.xml
 Copyright: 2018-2021 Purism SPC
 License: CC0-1.0
 
+Files: data/screenshots/*
+Copyright: 2021 Purism SPC
+License: CC0-1.0
+
 Files: data/call-arrow*
  data/new-call-symbolic.svg
  data/org.gnome.Calls*svg
