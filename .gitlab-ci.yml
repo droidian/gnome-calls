@@ -16,7 +16,7 @@ build:native:
     paths:
       - _build
   variables:
-    COMMON_BUILD_OPTS: -Db_coverage=true --werror
+    COMMON_BUILD_OPTS: -Db_coverage=true
     BUILD_OPTS: -Dgtk_doc=true ${COMMON_BUILD_OPTS}
     WANT_BUILD_DEPS: "true"
   except:
@@ -28,7 +28,7 @@ build:native:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get -y update
     - apt-get -y install eatmydata
-    - eatmydata apt-get -y install lcov
+    - eatmydata apt-get -y install lcov ca-certificates appstream
     - '[ "${WANT_BUILD_DEPS}" != "true" ] || eatmydata apt-get -y build-dep .'
     - ulimit -c unlimited
   script:
@@ -75,16 +75,18 @@ check-po:
     - cd po/
     - intltool-update -m 2>&1 | grep -qs '/.*\.c' && { intltool-update -m; exit 1; } || exit 0
 
-validate-metadata:
+validate-metadata-pedantic:
   stage: test
   image: debian:bookworm
+  allow_failure: true
   tags: []
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get -y update
-    - apt-get -y install appstream-util
+    - apt-get -y install eatmydata ca-certificates
+    - eatmydata apt-get -y install appstream
   script:
-    - appstream-util validate data/org.gnome.Calls.metainfo.xml
+    - appstreamcli validate --pedantic data/org.gnome.Calls.metainfo.xml
 
 package-debian-bookworm:
   tags: []

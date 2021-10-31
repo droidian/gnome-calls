@@ -2,21 +2,40 @@
 <component type="desktop-application">
     <id>org.gnome.Calls</id>
     <metadata_license>CC0-1.0</metadata_license>
-    <project_license>GPL-3.0+</project_license>
+    <project_license>GPL-3.0-or-later</project_license>
     <name>Calls</name>
-    <summary>A phone dialer and call handler</summary>
+    <summary>Make phone and SIP calls</summary>
     
     <description>
-        <p>Calls is a simple, elegant phone dialer and call handler built using GTK+ 3.</p>
+      <p>Calls is a simple, elegant phone dialer and call handler for GNOME.
+      It can be used with a cellular modem for plain old telephone
+      calls as well as VoIP calls using the SIP protocol.</p>
     </description>
 
     <url type="homepage">https://gitlab.gnome.org/GNOME/calls</url>
     <url type="bugtracker">https://gitlab.gnome.org/GNOME/calls/issues</url>
+    <url type="translate">https://l10n.gnome.org/module/calls/</url>
     
     <project_group>GNOME</project_group>
-    <developer_name>Bob Ham</developer_name>
-    <developer_name>Evangelos Ribeiro Tzaras</developer_name>
-    <developer_name>Julian Sparber</developer_name>
+    <launchable type="desktop-id">org.gnome.Calls.desktop</launchable>
+    <translation type="gettext">calls</translation>
+
+    <screenshots>
+      <screenshot type="default">
+        <!-- Translators: A screenshot description. -->
+        <caption>Placing a call</caption>
+        <image type="source" width="720" height="1296">https://gitlab.gnome.org/GNOME/calls/raw/master/data/screenshots/calling.png</image>
+      </screenshot>
+      <screenshot>
+        <!-- Translators: A screenshot description. -->
+        <caption>The call history</caption>
+        <image type="source" width="720" height="1296">https://gitlab.gnome.org/GNOME/calls/raw/master/data/screenshots/history.png</image>
+      </screenshot>
+    </screenshots>
+
+    <requires>
+      <display_length compare="ge">360</display_length>
+    </requires>
 
     <recommends>
         <control>pointing</control>
@@ -26,62 +45,49 @@
 
     <kudos>
         <kudo>ModernToolkit</kudo>
+        <kudo>Notifications</kudo>
     </kudos>
 
     <categories>
         <category>Audio</category>
     </categories>
 
-    <mimetypes>
-        <mimetype>x-scheme-handler/tel</mimetype>
-        <mimetype>x-scheme-handler/sip</mimetype>
-        <mimetype>x-scheme-handler/sips</mimetype>
-    </mimetypes>
+    <provides>
+        <mediatype>x-scheme-handler/tel</mediatype>
+        <mediatype>x-scheme-handler/sip</mediatype>
+        <mediatype>x-scheme-handler/sips</mediatype>
+        <dbus type="user">org.gnome.Calls</dbus>
+    </provides>
 
-    <content_rating type="oars-1.1">
-        <content_attribute id="violence-cartoon">none</content_attribute>
-        <content_attribute id="violence-fantasy">none</content_attribute>
-        <content_attribute id="violence-realistic">none</content_attribute>
-        <content_attribute id="violence-bloodshed">none</content_attribute>
-        <content_attribute id="violence-sexual">none</content_attribute>
-        <content_attribute id="violence-desecration">none</content_attribute>
-        <content_attribute id="violence-slavery">none</content_attribute>
-        <content_attribute id="violence-worship">none</content_attribute>
-        <content_attribute id="drugs-alcohol">none</content_attribute>
-        <content_attribute id="drugs-narcotics">none</content_attribute>
-        <content_attribute id="drugs-tobacco">none</content_attribute>
-        <content_attribute id="sex-nudity">none</content_attribute>
-        <content_attribute id="sex-themes">none</content_attribute>
-        <content_attribute id="sex-homosexuality">none</content_attribute>
-        <content_attribute id="sex-prostitution">none</content_attribute>
-        <content_attribute id="sex-adultery">none</content_attribute>
-        <content_attribute id="sex-appearance">none</content_attribute>
-        <content_attribute id="language-profanity">none</content_attribute>
-        <content_attribute id="language-humor">none</content_attribute>
-        <content_attribute id="language-discrimination">none</content_attribute>
-        <content_attribute id="social-chat">none</content_attribute>
-        <content_attribute id="social-info">none</content_attribute>
-        <content_attribute id="social-audio">intense</content_attribute>
-        <content_attribute id="social-location">none</content_attribute>
-        <content_attribute id="social-contacts">none</content_attribute>
-        <content_attribute id="money-purchasing">none</content_attribute>
-        <content_attribute id="money-gambling">none</content_attribute>
-    </content_rating>
+    <content_rating type="oars-1.1"/>
 
     <releases>
-      <release version="41.rc" date="2021-09-02">
+      <release version="41.1" data="2021-10-30">
+        <description>
+          <p>
+            GNOME Calls 41.1 release brings updated translations, fixes for the
+            SIP plugin and the wrong timestamp being shown in the call history
+            and makes it easier to use SIP for telephony by not requiring the user
+            to enter a domain when dialing.
+          </p>
+          <p>
+            It also improves stability by fixing crashes and reduces logspam
+            in some cases.
+          </p>
+        </description>
+      </release>
+      <release version="41.0" date="2021-09-18">
+        <description>SIP plugin bugfixes.</description>
+      </release>
+      <release version="41~rc" date="2021-09-02">
         <description>SIP Plugin polish and bugfixes.</description>
       </release>
-      <release version="41.beta" date="2021-08-14">
+      <release version="41~beta" date="2021-08-14">
         <description>SIP Plugin usable from the UI.</description>
       </release>
-      <release version="41.alpha" date="2021-07-16">
+      <release version="41~alpha" date="2021-07-16">
         <description>First GNOME release</description>
       </release>
     </releases>
 
-    <custom>
-        <value key="Purism::form_factor">workstation</value>
-        <value key="Purism::form_factor">mobile</value>
-    </custom>
 </component>

@@ -32,6 +32,7 @@
 #include "calls-contacts-provider.h"
 #include "calls-manager.h"
 #include "calls-provider.h"
+#include "calls-settings.h"
 #include "calls-ussd.h"
 
 #include "enum-types.h"
@@ -57,8 +58,7 @@ struct _CallsManager
   CallsContactsProvider *contacts_provider;
 
   CallsManagerState state;
-  CallsCall *primary_call;
-  char *country_code;
+  CallsSettings *settings;
 };
 
 G_DEFINE_TYPE (CallsManager, calls_manager, G_TYPE_OBJECT);
@@ -66,7 +66,6 @@ G_DEFINE_TYPE (CallsManager, calls_manager, G_TYPE_OBJECT);
 enum {
   PROP_0,
   PROP_STATE,
-  PROP_COUNTRY_CODE,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -200,11 +199,6 @@ add_call (CallsManager *self, CallsCall *call, CallsOrigin *origin)
   g_return_if_fail (CALLS_IS_CALL (call));
 
   g_signal_emit (self, signals[SIGNAL_CALL_ADD], 0, call, origin);
-
-  if (self->primary_call == NULL)
-    self->primary_call = call;
-  else
-    calls_call_hang_up (call);
 }
 
 static void
@@ -216,9 +210,6 @@ remove_call (CallsManager *self, CallsCall *call, gchar *reason, CallsOrigin *or
 
   /* We ignore the reason for now, because it doesn't give any usefull information */
   g_signal_emit (self, signals[SIGNAL_CALL_REMOVE], 0, call, origin);
-
-  if (self->primary_call == call)
-    self->primary_call = NULL;
 }
 
 static void
@@ -258,20 +249,16 @@ update_country_code_cb (CallsOrigin  *origin,
                         GParamSpec   *pspec,
                         CallsManager *self)
 {
-  CallsApplication *app;
   g_autofree char *country_code = NULL;
 
   g_assert (CALLS_IS_MANAGER (self));
-  app = CALLS_APPLICATION (g_application_get_default ());
 
   g_object_get (G_OBJECT (origin), "country-code", &country_code, NULL);
 
-  if (country_code && g_strcmp0 (country_code, self->country_code) == 0)
+  if (!country_code || !*country_code)
     return;
 
-  g_free (self->country_code);
-  self->country_code = country_code;
-  calls_application_set_country_code_setting (app, country_code);
+  calls_settings_set_country_code (self->settings, country_code);
 }
 
 static void
@@ -547,35 +534,12 @@ calls_manager_get_property (GObject    *object,
     g_value_set_enum (value, calls_manager_get_state (self));
     break;
 
-  case PROP_COUNTRY_CODE:
-    g_value_set_string (value, self->country_code);
-    break;
-
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
   }
 }
 
-static void
-calls_manager_set_property (GObject      *object,
-                            guint         property_id,
-                            const GValue *value,
-                            GParamSpec   *pspec)
-{
-  CallsManager *self = CALLS_MANAGER (object);
-
-  switch (property_id) {
-  case PROP_COUNTRY_CODE:
-    g_free (self->country_code);
-    self->country_code = g_value_dup_string (value);
-    break;
-
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-    break;
-  }
-}
 
 static void
 calls_manager_finalize (GObject *object)
@@ -584,7 +548,7 @@ calls_manager_finalize (GObject *object)
 
   g_clear_object (&self->origins);
   g_clear_object (&self->contacts_provider);
-  g_clear_pointer (&self->country_code, g_free);
+  g_clear_object (&self->settings);
 
   g_clear_pointer (&self->providers, g_hash_table_unref);
   g_clear_pointer (&self->origins_by_protocol, g_hash_table_unref);
@@ -600,7 +564,6 @@ calls_manager_class_init (CallsManagerClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->get_property = calls_manager_get_property;
-  object_class->set_property = calls_manager_set_property;
   object_class->finalize = calls_manager_finalize;
 
   signals[SIGNAL_CALL_ADD] =
@@ -683,12 +646,6 @@ calls_manager_class_init (CallsManagerClass *klass)
                        CALLS_MANAGER_STATE_NO_PROVIDER,
                        G_PARAM_READABLE | G_PARAM_EXPLICIT_NOTIFY);
 
-  props[PROP_COUNTRY_CODE] = g_param_spec_string ("country-code",
-                                                  "country code",
-                                                  "The default country code to use",
-                                                  NULL,
-                                                  G_PARAM_READWRITE);
-
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
@@ -700,7 +657,6 @@ calls_manager_init (CallsManager *self)
   const gchar *dir;
 
   self->state = CALLS_MANAGER_STATE_NO_PROVIDER;
-  self->primary_call = NULL;
   self->providers = g_hash_table_new_full (g_str_hash,
                                            g_str_equal,
                                            g_free,
@@ -714,11 +670,9 @@ calls_manager_init (CallsManager *self)
   self->origins = g_list_store_new (calls_origin_get_type ());
   self->supported_protocols = g_ptr_array_new_full (5, g_free);
 
+  self->settings = calls_settings_new ();
   // Load the contacts provider
-  self->contacts_provider = calls_contacts_provider_new ();
-  g_object_bind_property (self, "country-code",
-                          self->contacts_provider, "country-code",
-                          G_BINDING_DEFAULT);
+  self->contacts_provider = calls_contacts_provider_new (self->settings);
 
   peas = peas_engine_get_default ();
 
@@ -981,4 +935,13 @@ calls_manager_get_providers (CallsManager *self)
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
 
   return g_hash_table_get_values (self->providers);
+}
+
+
+CallsSettings *
+calls_manager_get_settings (CallsManager *self)
+{
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
+
+  return self->settings;
 }
