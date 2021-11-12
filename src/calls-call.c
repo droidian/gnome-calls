@@ -349,6 +349,20 @@ calls_call_get_protocol (CallsCall *self)
 }
 
 /**
+ * calls_call_can_dtmf:
+ * @self: a #CallsCall
+ *
+ * Returns: %TRUE if this call supports DTMF, %FALSE otherwise
+ */
+gboolean
+calls_call_can_dtmf (CallsCall *self)
+{
+  g_return_val_if_fail (CALLS_IS_CALL (self), FALSE);
+
+  return CALLS_CALL_GET_CLASS (self)->tone_start != calls_call_real_tone_start;
+}
+
+/**
  * calls_call_tone_start:
  * @self: a #CallsCall
  * @key: which tone to start
