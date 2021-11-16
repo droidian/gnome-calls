@@ -348,17 +348,6 @@ calls_call_get_protocol (CallsCall *self)
   return CALLS_CALL_GET_CLASS (self)->get_protocol (self);
 }
 
-static inline gboolean
-tone_key_is_valid (gchar key)
-{
-  return
-       (key >= '0' && key <= '9')
-    || (key >= 'A' && key <= 'D')
-    ||  key == '*'
-    ||  key == '#';
-}
-
-
 /**
  * calls_call_tone_start:
  * @self: a #CallsCall
@@ -375,7 +364,7 @@ calls_call_tone_start (CallsCall *self,
                        gchar      key)
 {
   g_return_if_fail (CALLS_IS_CALL (self));
-  g_return_if_fail (tone_key_is_valid (key));
+  g_return_if_fail (dtmf_tone_key_is_valid (key));
 
   CALLS_CALL_GET_CLASS (self)->tone_start (self, key);
 }
@@ -414,7 +403,7 @@ calls_call_tone_stop (CallsCall *self,
                       gchar      key)
 {
   g_return_if_fail (CALLS_IS_CALL (self));
-  g_return_if_fail (tone_key_is_valid (key));
+  g_return_if_fail (dtmf_tone_key_is_valid (key));
 
   CALLS_CALL_GET_CLASS (self)->tone_stop (self, key);
 }
