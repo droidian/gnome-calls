@@ -38,7 +38,6 @@
 #include "calls-call-window.h"
 #include "calls-main-window.h"
 #include "calls-manager.h"
-#include "calls-settings.h"
 #include "calls-application.h"
 #include "calls-log.h"
 #include "version.h"
@@ -46,7 +45,6 @@
 #include <glib/gi18n.h>
 #include <handy.h>
 #include <libcallaudio.h>
-#include <libebook-contacts/libebook-contacts.h>
 
 /**
  * SECTION: calls-application
@@ -62,13 +60,11 @@ struct _CallsApplication
   GtkApplication parent_instance;
 
   gboolean          daemon;
-  CallsManager     *manager;
   CallsRinger      *ringer;
   CallsNotifier    *notifier;
   CallsRecordStore *record_store;
   CallsMainWindow  *main_window;
   CallsCallWindow  *call_window;
-  CallsSettings    *settings;
   CallsDBusManager *dbus_manager;
 
   char             *uri;
@@ -165,18 +161,19 @@ set_default_providers_action (GSimpleAction *action,
                               GVariant      *parameter,
                               gpointer       user_data)
 {
-  CallsApplication *self = CALLS_APPLICATION (user_data);
+  CallsManager *manager = calls_manager_get_default ();
+  CallsSettings *settings = calls_manager_get_settings (manager);
   g_auto (GStrv) plugins = NULL;
   /**
    * Only add default providers when there are none added yet,
    * This makes sure we're not resetting explicitly set providers
    */
-  if (calls_manager_has_any_provider (calls_manager_get_default ()))
+  if (calls_manager_has_any_provider (manager))
     return;
 
-  plugins = calls_settings_get_autoload_plugins (self->settings);
+  plugins = calls_settings_get_autoload_plugins (settings);
   for (guint i = 0; plugins[i] != NULL; i++) {
-    calls_manager_add_provider (calls_manager_get_default (), plugins[i]);
+    calls_manager_add_provider (manager, plugins[i]);
   }
 }
 
@@ -255,44 +252,47 @@ extract_dial_string (const char *number)
 
 
 static void
+call_number (CallsApplication *self,
+             const char       *number)
+{
+  g_autofree char *dial_string = NULL;
+  gboolean number_ok;
+
+ number_ok = check_dial_number (number);
+ if (!number_ok) {
+   g_warning ("Dial number `%s' is not a valid dial string",
+              number);
+   return;
+ }
+
+ dial_string = extract_dial_string (number);
+ if (!dial_string) {
+   return;
+ }
+
+ g_debug ("Dialing dial string `%s' extracted from number `%s'",
+          dial_string, number);
+
+ start_proper (self);
+
+ calls_main_window_dial (self->main_window,
+                         dial_string);
+
+}
+
+
+static void
 dial_action (GSimpleAction *action,
              GVariant      *parameter,
              gpointer       user_data)
 {
   CallsApplication *self = CALLS_APPLICATION (user_data);
   const char *number;
-  gboolean number_ok;
-  g_autofree char *dial_string = NULL;
 
   number = g_variant_get_string (parameter, NULL);
   g_return_if_fail (number != NULL);
 
-  if (g_str_has_prefix (number, "sip:") ||
-      g_str_has_prefix (number, "sips:")) {
-    dial_string = g_strdup (number);
-    goto proper;
-  }
-
-  number_ok = check_dial_number (number);
-  if (!number_ok) {
-    g_warning ("Dial number `%s' is not a valid dial string",
-               number);
-    return;
-  }
-
-  dial_string = extract_dial_string (number);
-  if (!dial_string) {
-    return;
-  }
-
-  g_debug ("Dialing dial string `%s' extracted from number `%s'",
-           dial_string, number);
-
- proper:
-  start_proper (self);
-
-  calls_main_window_dial (self->main_window,
-                          dial_string);
+  call_number (self, number);
 }
 
 static void
@@ -358,8 +358,6 @@ startup (GApplication *application)
 {
   g_autoptr (GtkCssProvider) provider = NULL;
   g_autoptr (GError) error = NULL;
-  CallsApplication *self = CALLS_APPLICATION (application);
-  CallsManager *manager;
 
   G_APPLICATION_CLASS (calls_application_parent_class)->startup (application);
 
@@ -378,14 +376,7 @@ startup (GApplication *application)
                                    G_N_ELEMENTS (actions),
                                    application);
 
-  self->settings = calls_settings_new ();
-  g_assert (self->settings != NULL);
-
-  manager = calls_manager_get_default ();
-  g_object_bind_property (self->settings, "country-code",
-                          manager, "country-code",
-                          G_BINDING_SYNC_CREATE);
-  g_signal_connect_swapped (manager,
+  g_signal_connect_swapped (calls_manager_get_default (),
                             "notify::state",
                             G_CALLBACK (manager_state_changed_cb),
                             application);
@@ -527,35 +518,23 @@ static void
 open_tel_uri (CallsApplication *self,
               const char       *uri)
 {
-  g_autoptr (EPhoneNumber) number = NULL;
-  g_autoptr (GError) error = NULL;
-  g_autofree char *dial_str = NULL;
-  g_autofree char *country_code = NULL;
-
-  g_object_get (calls_manager_get_default (),
-                "country-code", &country_code,
-                NULL);
+  const char *number = NULL;
 
   g_debug ("Opening tel URI `%s'", uri);
 
-  number = e_phone_number_from_string (uri, country_code, &error);
-  if (!number) {
+  number = &uri[4]; // tel:NUMBER
+  if (!number || number[0] == '\0') {
     g_autofree char *msg =
-      g_strdup_printf (_("Tried dialing unparsable tel URI `%s'"), uri);
+      g_strdup_printf (_("Tried invalid tel URI `%s'"), uri);
 
     g_signal_emit_by_name (calls_manager_get_default (),
                            "error",
                            msg);
-    g_warning ("Ignoring unparsable tel URI `%s': %s",
-               uri, error->message);
+    g_warning ("Ignoring invalid tel URI `%s'", uri);
     return;
   }
 
-  dial_str = e_phone_number_to_string
-    (number, E_PHONE_NUMBER_FORMAT_E164);
-
-  calls_main_window_dial (self->main_window,
-                          dial_str);
+  call_number (self, number);
 }
 
 static void
@@ -641,7 +620,6 @@ finalize (GObject *object)
   g_clear_object (&self->record_store);
   g_clear_object (&self->ringer);
   g_clear_object (&self->notifier);
-  g_clear_object (&self->settings);
   g_free (self->uri);
 
   G_OBJECT_CLASS (calls_application_parent_class)->finalize (object);
@@ -677,7 +655,7 @@ calls_application_init (CallsApplication *self)
     {
       "provider", 'p', G_OPTION_FLAG_NONE,
       G_OPTION_ARG_STRING_ARRAY, NULL,
-      _("The name of the plugin to use for the call Provider"),
+      _("The name of the plugin to use as a call provider"),
       _("PLUGIN")
     },
     {
@@ -689,7 +667,7 @@ calls_application_init (CallsApplication *self)
     {
       "dial", 'l', G_OPTION_FLAG_NONE,
       G_OPTION_ARG_STRING, NULL,
-      _("Dial a number"),
+      _("Dial a telephone number"),
       _("NUMBER")
     },
     {
@@ -721,38 +699,4 @@ calls_application_new (void)
                        "flags", G_APPLICATION_HANDLES_OPEN | G_APPLICATION_HANDLES_COMMAND_LINE,
                        "register-session", TRUE,
                        NULL);
-}
-
-gboolean
-calls_application_get_use_default_origins_setting (CallsApplication *self)
-{
-  g_return_val_if_fail (CALLS_IS_APPLICATION (self), FALSE);
-
-  return calls_settings_get_use_default_origins (self->settings);
-}
-
-void
-calls_application_set_use_default_origins_setting (CallsApplication *self,
-                                                   gboolean enabled)
-{
-  g_return_if_fail (CALLS_IS_APPLICATION (self));
-
-  calls_settings_set_use_default_origins (self->settings, enabled);
-}
-
-char *
-calls_application_get_country_code_setting (CallsApplication *self)
-{
-  g_return_val_if_fail (CALLS_IS_APPLICATION (self), FALSE);
-
-  return calls_settings_get_country_code (self->settings);
-}
-
-void
-calls_application_set_country_code_setting (CallsApplication *self,
-                                            const char       *country_code)
-{
-  g_return_if_fail (CALLS_IS_APPLICATION (self));
-
-  calls_settings_set_country_code (self->settings, country_code);
 }

@@ -269,13 +269,14 @@ dial (CallsOrigin *origin,
   CallsSipOrigin *self;
   nua_handle_t *nh;
   g_autofree char *name = NULL;
+  g_autofree char *dial_target = NULL;
 
   g_assert (CALLS_ORIGIN (origin));
   g_assert (CALLS_IS_SIP_ORIGIN (origin));
 
   name = calls_origin_get_name (origin);
 
-  if (address == NULL) {
+  if (!address || !*address) {
     g_warning ("Tried dialing on origin '%s' without an address",
                name);
     return;
@@ -288,17 +289,23 @@ dial (CallsOrigin *origin,
                    SOATAG_ACTIVE_AUDIO (SOA_ACTIVE_SENDRECV),
                    TAG_END ());
 
+  /* Make sure @host is in the dial target */
+  if (g_strstr_len (address, -1, "@"))
+    dial_target = g_strdup (address);
+  else
+    dial_target = g_strconcat (address, "@", self->host, NULL);
+
   g_debug ("Calling `%s' from origin '%s'", address, name);
 
   /* We don't require the user to input the prefix */
   if (!g_str_has_prefix (address, "sip:") &&
       !g_str_has_prefix (address, "sips:")) {
-    g_autofree char * address_prefix =
-      g_strconcat (self->protocol_prefix, ":", address, NULL);
+    g_autofree char * target_with_prefix =
+      g_strconcat (self->protocol_prefix, ":", dial_target, NULL);
 
-    add_call (CALLS_SIP_ORIGIN (origin), address_prefix, FALSE, nh);
+    add_call (CALLS_SIP_ORIGIN (origin), target_with_prefix, FALSE, nh);
   } else {
-    add_call (CALLS_SIP_ORIGIN (origin), address, FALSE, nh);
+    add_call (CALLS_SIP_ORIGIN (origin), dial_target, FALSE, nh);
   }
 }
 
@@ -317,29 +324,6 @@ create_inbound (CallsSipOrigin *self,
   self->oper->call_handle = handle;
 
   add_call (self, address, TRUE, handle);
-}
-
-static void
-update_nua (CallsSipOrigin *self)
-{
-  g_autofree char *from_str = NULL;
-
-  g_assert (CALLS_IS_SIP_ORIGIN (self));
-  if (!self->nua) {
-    g_warning ("Cannot update nua stack, aborting");
-    return;
-  }
-
-  self->protocol_prefix = get_protocol_prefix (self->transport_protocol);
-
-  g_free (self->address);
-  self->address = g_strconcat (self->user, "@", self->host, NULL);
-  from_str = g_strconcat (self->protocol_prefix, ":", self->address, NULL);
-
-  nua_set_params (self->nua,
-                  SIPTAG_FROM_STR (from_str),
-                  TAG_IF (self->display_name, NUTAG_M_DISPLAY (self->display_name)),
-                  TAG_NULL ());
 }
 
 
@@ -425,6 +409,10 @@ sip_r_register (int              status,
     g_debug ("REGISTER successful");
     origin->state = CALLS_ACCOUNT_ONLINE;
     nua_get_params (nua, TAG_ANY (), TAG_END());
+    if (sip->sip_contact && sip->sip_contact->m_url && sip->sip_contact->m_url->url_host) {
+      calls_sip_media_manager_set_session_ip (origin->media_manager,
+                                              sip->sip_contact->m_url->url_host);
+    }
 
   } else if (status == 401 || status == 407) {
     sip_authenticate (origin, nh, sip);
@@ -513,18 +501,37 @@ sip_i_state (int              status,
     CALLS_EMIT_MESSAGE (origin, "DNS error", GTK_MESSAGE_ERROR);
   }
   /* XXX making some assumptions about the received SDP message here...
-   * namely: that there is only the session wide connection c= line
-   * and no individual connections per media stream.
-   * also: rtcp port = rtp port + 1
+   * namely: rtcp port = rtp port + 1
    */
   if (r_sdp) {
-    GList *codecs =
+    g_autoptr (GList) codecs =
       calls_sip_media_manager_get_codecs_from_sdp (origin->media_manager,
                                                    r_sdp->sdp_media);
+    const char *session_ip = NULL;
+    const char *media_ip = NULL;
+
+    if (!codecs) {
+      g_warning ("No common codecs in SDP. Hanging up");
+      calls_call_hang_up (CALLS_CALL (call));
+      return;
+    }
+
+    if (r_sdp->sdp_connection && r_sdp->sdp_connection->c_address)
+      session_ip = r_sdp->sdp_connection->c_address;
+
+    if (r_sdp->sdp_media && r_sdp->sdp_media->m_connections &&
+        r_sdp->sdp_media->m_connections->c_address)
+      media_ip = r_sdp->sdp_media->m_connections->c_address;
+
+    if (!session_ip && !media_ip) {
+      g_warning ("Could not determine IP of remote peer. Hanging up");
+      calls_call_hang_up (CALLS_CALL (call));
+      return;
+    }
 
     calls_sip_call_set_codecs (call, codecs);
     calls_sip_call_setup_remote_media_connection (call,
-                                                  r_sdp->sdp_connection->c_address,
+                                                  media_ip ? : session_ip,
                                                   r_sdp->sdp_media->m_port,
                                                   r_sdp->sdp_media->m_port + 1);
   }
@@ -784,8 +791,10 @@ setup_nua (CallsSipOrigin *self)
 
   if (!sip_test_env || sip_test_env[0] == '\0') {
     CallsNetworkWatch *nw = calls_network_watch_get_default ();
-    ipv4_bind = calls_network_watch_get_ipv4 (nw);
-    ipv6_bind = calls_network_watch_get_ipv6 (nw);
+    if (nw) {
+      ipv4_bind = calls_network_watch_get_ipv4 (nw);
+      ipv6_bind = calls_network_watch_get_ipv6 (nw);
+    }
   }
 
   uuid = nua_generate_instance_identifier (self->ctx->home);
@@ -1069,7 +1078,7 @@ deinit_sip_account (CallsSipOrigin *self)
 
 
 static void
-on_network_changed (CallsSipOrigin *self)
+recreate_sip (CallsSipOrigin *self)
 {
   if (deinit_sip_account (self))
     init_sip_account (self, NULL);
@@ -1442,9 +1451,14 @@ calls_sip_origin_init (CallsSipOrigin *self)
 {
   const char *sip_test_env = g_getenv ("CALLS_SIP_TEST");
 
-  if (!sip_test_env || sip_test_env[0] == '\0')
-    g_signal_connect_swapped (calls_network_watch_get_default (), "network-changed",
-                              G_CALLBACK (on_network_changed), self);
+  if (!sip_test_env || sip_test_env[0] == '\0') {
+    CallsNetworkWatch *nw = calls_network_watch_get_default ();
+    if (nw)
+      g_signal_connect_swapped (calls_network_watch_get_default (), "network-changed",
+                                G_CALLBACK (recreate_sip), self);
+    else
+      g_warning ("Network watch unavailable. Unable to detect network changes.");
+  }
 
   self->call_handles = g_hash_table_new (NULL, NULL);
 
@@ -1495,13 +1509,5 @@ calls_sip_origin_set_credentials (CallsSipOrigin *self,
 
   self->port = port;
 
-  update_name (self);
-
-  /* Propagate changes to nua stack */
-  update_nua (self);
-  /* TODO:
-   * We need to recreate the nua stack when the transport protocol changes
-   * because nua_set_params cannot be used to update NUTAG_URL and friends.
-   * This will get easier with https://gitlab.gnome.org/GNOME/calls/-/merge_requests/402
-   */
+  recreate_sip (self);
 }

@@ -70,12 +70,14 @@ search_view_prepare_cb (FolksSearchView *view,
     g_warning ("Failed to prepare Folks search view: %s", error->message);
 }
 
+
 static void
 notify_name (CallsBestMatch *self)
 {
   g_object_notify_by_pspec (G_OBJECT (self),
                             props[PROP_NAME]);
 }
+
 
 static void
 notify_avatar (CallsBestMatch *self)
@@ -84,10 +86,11 @@ notify_avatar (CallsBestMatch *self)
                             props[PROP_AVATAR]);
 }
 
+
 static void
 update_best_match (CallsBestMatch *self)
 {
-  g_autoptr (GeeSortedSet) individuals = folks_search_view_get_individuals (self->view);
+  GeeSortedSet *individuals = folks_search_view_get_individuals (self->view);
   FolksIndividual *best_match = NULL;
   gboolean notify_has_individual = FALSE;
 
@@ -132,7 +135,6 @@ set_property (GObject      *object,
               GParamSpec   *pspec)
 {
   CallsBestMatch *self = CALLS_BEST_MATCH (object);
-  const char *country_code;
 
   switch (property_id) {
   case PROP_PHONE_NUMBER:
@@ -140,15 +142,12 @@ set_property (GObject      *object,
     break;
 
   case PROP_COUNTRY_CODE:
-    country_code = g_value_get_string (value);
-    if (country_code) {
-      g_free (self->country_code);
-      self->country_code = g_strdup (country_code);
+    g_free (self->country_code);
+    self->country_code = g_value_dup_string (value);
 
-      if (self->phone_number) {
-        g_autofree char *number = g_strdup (self->phone_number);
-        calls_best_match_set_phone_number (self, number);
-      }
+    if (self->phone_number) {
+      g_autofree char *number = g_strdup (self->phone_number);
+      calls_best_match_set_phone_number (self, number);
     }
     break;
 
@@ -157,6 +156,7 @@ set_property (GObject      *object,
     break;
   }
 }
+
 
 static void
 get_property (GObject      *object,
@@ -269,9 +269,6 @@ calls_best_match_class_init (CallsBestMatchClass *klass)
 static void
 calls_best_match_init (CallsBestMatch *self)
 {
-  g_object_bind_property (calls_manager_get_default (), "country-code",
-                          self, "country-code",
-                          G_BINDING_SYNC_CREATE);
 }
 
 
@@ -291,6 +288,7 @@ calls_best_match_has_individual (CallsBestMatch *self)
   return !!self->best_match;
 }
 
+
 const char *
 calls_best_match_get_phone_number (CallsBestMatch *self)
 {
@@ -299,25 +297,15 @@ calls_best_match_get_phone_number (CallsBestMatch *self)
   return self->phone_number;
 }
 
+
 void
 calls_best_match_set_phone_number (CallsBestMatch *self,
-                                   const char    *phone_number)
+                                   const char     *phone_number)
 {
-  g_autoptr (EPhoneNumber) number = NULL;
   g_autoptr (CallsPhoneNumberQuery) query = NULL;
-  g_autoptr (GError) error = NULL;
-  gboolean have_country_code_now = FALSE;
 
   g_return_if_fail (CALLS_IS_BEST_MATCH (self));
   g_return_if_fail (phone_number);
-
-  have_country_code_now = !!self->country_code;
-
-  if (self->phone_number == phone_number &&
-      self->had_country_code_last_time == have_country_code_now)
-    return;
-
-  self->had_country_code_last_time = have_country_code_now;
 
   g_clear_pointer (&self->phone_number, g_free);
 
@@ -338,23 +326,17 @@ calls_best_match_set_phone_number (CallsBestMatch *self,
       g_object_notify_by_pspec (G_OBJECT (self), props[PROP_PHONE_NUMBER]);
       return;
     }
-    number = e_phone_number_from_string (phone_number, self->country_code, &error);
+    query = calls_phone_number_query_new (phone_number, self->country_code);
+    self->view = folks_search_view_new (folks_individual_aggregator_dup (), FOLKS_QUERY (query));
 
-    if (!number) {
-      g_warning ("Failed to convert %s to a phone number: %s", phone_number, error->message);
-    } else {
-      query = calls_phone_number_query_new (number);
-      self->view = folks_search_view_new (folks_individual_aggregator_dup (), FOLKS_QUERY (query));
+    g_signal_connect_swapped (self->view,
+                              "individuals-changed-detailed",
+                              G_CALLBACK (update_best_match),
+                              self);
 
-      g_signal_connect_swapped (self->view,
-                                "individuals-changed-detailed",
-                                G_CALLBACK (update_best_match),
-                                self);
-
-      folks_search_view_prepare (FOLKS_SEARCH_VIEW (self->view),
-                                 (GAsyncReadyCallback) search_view_prepare_cb,
-                                 NULL);
-    }
+    folks_search_view_prepare (FOLKS_SEARCH_VIEW (self->view),
+                               (GAsyncReadyCallback) search_view_prepare_cb,
+                               NULL);
   }
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_PHONE_NUMBER]);
