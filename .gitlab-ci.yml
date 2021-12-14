@@ -9,6 +9,7 @@ stages:
 
 variables:
   L5_DOCKER_IMAGE: debian:bookworm
+  GIT_SUBMODULE_STRATEGY: normal
 
 build:native:
   stage: build
@@ -28,7 +29,7 @@ build:native:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get -y update
     - apt-get -y install eatmydata
-    - eatmydata apt-get -y install lcov ca-certificates appstream
+    - eatmydata apt-get -y install gcovr ca-certificates appstream
     - '[ "${WANT_BUILD_DEPS}" != "true" ] || eatmydata apt-get -y build-dep .'
     - ulimit -c unlimited
   script:
@@ -46,7 +47,7 @@ test:native:
     - xvfb-run -s -noreset ninja -C _build test
     - cp _build/src/libcalls-vala.a.p/*.c _build
     - ninja -C _build coverage
-  coverage: '/^\s+lines\.+:\s+([\d.]+\%)\s+/'
+  coverage: '/^lines:\s+([\d.]+\%)\s+/'
 
 build-gtkdoc:
   extends: build:native
@@ -69,28 +70,11 @@ check-po:
     - apt-get -y update
     - apt-get -y install intltool
   script:
-    # barf on untranslated C files. Seems intltool
+    # barf on untranslated C or UI files. Seems intltool
     # can't be told to exit with non-zero exit status
     # in this case
     - cd po/
-    - intltool-update -m 2>&1 | grep -qs '/.*\.c' && { intltool-update -m; exit 1; } || exit 0
-
-validate-metadata-pedantic:
-  stage: test
-  image: debian:bookworm
-  allow_failure: true
-  tags: []
-  before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt-get -y update
-    - apt-get -y install eatmydata ca-certificates
-    - eatmydata apt-get -y install appstream
-  script:
-    - appstreamcli validate --pedantic data/org.gnome.Calls.metainfo.xml
-
-package-debian-bookworm:
-  tags: []
-  extends: .l5-build-debian-package
+    - intltool-update -m 2>&1 | grep -qs '/.*\.\(c|ui\)' && { intltool-update -m; exit 1; } || exit 0
 
 package-deb-pureos-byzantium:arm64:
   variables:
@@ -123,12 +107,21 @@ package-deb-pureos-byzantium:arm64:
       - 'repo.tar'
       - '.flatpak-builder/build/${FLATPAK_MODULE}/_flatpak_build/meson-logs/meson-log.txt'
       - '.flatpak-builder/build/${FLATPAK_MODULE}/_flatpak_build/meson-logs/testlog.txt'
+    reports:
+      junit: '.flatpak-builder/build/${FLATPAK_MODULE}/_flatpak_build/meson-logs/testlog.junit.xml'
     expire_in: 14 days
   cache:
-    key: "$CI_JOB_NAME"
-    paths:
-      - '.flatpak-builder/downloads'
-      - '.flatpak-builder/git'
+    - key: "$CI_JOB_NAME"
+      paths:
+        - '.flatpak-builder/downloads'
+        - '.flatpak-builder/git'
+    - key: "$CI_JOB_NAME"
+      paths:
+        - '.flatpak-builder/cache'
+        - '.flatpak-builder/ccache'
+  except:
+    variables:
+      - $PKG_ONLY == "1"
 
 flatpak:master:
   extends: .flatpak

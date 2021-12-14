@@ -1,3 +1,9 @@
+gnome-calls (42~alpha.0-1) experimental; urgency=medium
+
+  * New upstream version 42~alpha.0
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Tue, 14 Dec 2021 14:19:20 +0100
+
 gnome-calls (41.1-2) unstable; urgency=medium
 
   * d/patches: Patch out possibly flaky test

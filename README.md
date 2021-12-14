@@ -1,5 +1,4 @@
 # Calls
-[![Code coverage](https://gitlab.gnome.org/GNOME/calls/badges/master/coverage.svg)](https://gitlab.gnome.org/GNOME/calls/commits/master)
 
 A phone dialer and call handler.
 
@@ -34,75 +33,100 @@ with `-Ggtk_doc=true`
     ninja -C _build
     ninja -C _build calls-doc
 
-## Running
-Calls has a variety of backends.  The default backend is "mm", which
-utilises ModemManager.  To choose a different backend, use the -p
-command-line option.  For example, to run with the dummy backend and
-some useful debugging output:
+## Running from the source tree
 
-    export G_MESSAGES_DEBUG=all
-    /usr/local/bin/gnome-calls -p dummy
+The most comfortable way to run from the source tree is by using the provided
+run script which sets up the environment for you:
 
-If using ModemManager, Calls will wait for ModemManager to appear on
-D-Bus and then wait for usable modems to appear.  The UI will be
-inactive and display a status message until a usable modem appears.
+    _build/run
 
-### Running from the build directory
-You can run calls without having to install it by executing the run script in
-the build folder, i.e. `_build/run`. This script will setup the needed environment
-and start Calls.
+## Debugging
 
-### Call provider backends
-Call provider backends are compiled as plugins and can be loaded and unloaded at runtime
-using the `-p` command line flag, followed by the plugin name.
+When trying to understand issues in applications debugging logs are invaluable
+tools. Enable debug logging by invoking Calls with `-vvv` arguments.
 
-Setting the `CALLS_PLUGIN_DIR` environment variable will include the specified
-directory in the plugin search path. F.e.
+In the case of crashes you should provide a backtrace where possible.
+If your system is using systemd you may find
+[this guide](https://developer.puri.sm/Librem5/Development_Environment/Boards/Troubleshooting/Debugging.html)
+useful.
 
-    export CALLS_PLUGIN_DIR=_build/plugins/
-    /usr/local/bin/gnome-calls -p dummy
+For backend specific debugging, please see the sections below.
 
+## Call provider backends
+
+Calls uses libpeas to support runtime loadable plugins which we call "providers".
+Calls currently ships four different plugins:
+
+- mm: The ModemManager plugin used for cellular modems
+- sip: The SIP plugin for VoIP
+- dummy: A dummy plugin
+- ofono: The oFono plugin used for cellular modems (not in active development)
+
+By default Calls will load the `mm` and `sip` plugins.
+If you want to load other plugins you may specify the `-p <PLUGIN>` argument
+(you can pass multiple `-p` arguments) when invoking calls, f.e.
+
+    _build/run -p sip -p dummy
+    /usr/bin/gnome-calls -p mm
+
+Every plugins uses the following concepts:
+- CallsProvider: The principal abstraction of a library allowing to place and
+receive calls.
+- CallsOrigin: Originates calls. Represents a single modem or VoIP account.
+- CallsCall: A call.
+
+There is a one to many relation between provider and origins and between origins
+and calls. F.e. you have one SIP provider managing multiple SIP accounts (=origins)
+each of which can have multiple active calls (not yet implemented).
+
+### ModemManager
+
+This is the default backend for cellular calls. It uses `libmm-glib` to
+talk to ModemManager over DBus. It currently only supports one modem and
+one active call at a time.
+
+#### Debugging
+
+You can monitor the ModemManager messages on the DBus as follows:
+
+    gdbus monitor --system --dest org.freedesktop.ModemManager1
+
+For complete debugging logs you can set ModemManager's log verbosity to DEBUG as follows:
+
+    mmcli -G DEBUG
+
+and inspect the logs on a systemd based system with:
+
+    journalctl -u ModemManager.service
+
+For more information see [here](https://modemmanager.org/docs/modemmanager/debugging/)
+
+### SIP
+
+This plugin uses the libsofia-sip library for SIP signalling and
+GStreamer for media handling. It supports multiple SIP accounts and
+currently one active call at a time (subject to change).
+
+#### Debugging
+
+You can print the sent and received SIP messages by setting the environment variable
+`TPORT_LOG=1`. To test the audio quality you can use one of the various public
+reachable echo test services, f.e. echo@conference.sip2sip.info. Please note that
+the SIP plugin currently doesn't support DTMF, which is used for some test
+services for navigating through a menu.
+
+If one or both sides can't hear any audio at all it is likely that the audio
+packets are not reaching the desired destination.
+
+### Dummy
+
+This plugin is mostly useful for development purposes and work on the UI
+as it allows simulating both outgoing and incoming calls. To trigger an
+incoming call you should send a `USR1` signal to the calls process:
+
+    kill -SIGUSR1 $(pidof gnome-calls)
 
 ### oFono
-There is also an oFono backend, "ofono".  This was the first backend
-developed but has been superceded by the ModemManager backend so it
-may suffer from a lack of attention.
 
-The ofono backend depends on oFono Modem objects being present on
-D-Bus.  To run oFono with useful output:
-
-    sudo OFONO_AT_DEBUG=1 ofonod -n -d
-
-The test programs within the [oFono source
-tree](https://git.kernel.org/pub/scm/network/ofono/ofono.git) are
-useful to bring up a modem to a suitable state.  For example:
-
-    cd $OFONO_SOURCE/test
-    ./list-modems
-    ./enable-modem /sim7100
-    ./online-modem /sim7100
-
-Then run Calls:
-
-    /usr/bin/gnome-calls -p ofono
-
-
-#### Phonesim
-One can also make use of the oFono modem simulator, phonesim (in the
-ofono-phonesim package in Debian):
-
-    ofono-phonesim -p 12345 -gui /usr/local/share/phonesim/default.xml
-
-then, ensuring /etc/ofono/phonesim.conf has appropriate contents like:
-
-    [phonesim]
-    Address=127.0.0.1
-    Port=12345
-
-run oFono as above, then:
-
-    cd $OFONO_SOURCE/test
-    ./enable-modem /phonesim
-    ./online-modem /phonesim
-
-And again run Calls.
+This plugin is not in active development anymore, so your mileage may vary.
+See [here](ofono.md) for more information.

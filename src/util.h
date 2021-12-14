@@ -141,6 +141,10 @@ gboolean calls_find_in_store (GListModel *list,
 const char* get_protocol_from_address (const char *target);
 const char* get_protocol_from_address_with_fallback (const char *target);
 
+gboolean dtmf_tone_key_is_valid (char key);
+const char *get_call_icon_symbolic_name (gboolean inbound,
+                                         gboolean missed);
+
 G_END_DECLS
 
 #endif /* CALLS__UTIL_H__ */

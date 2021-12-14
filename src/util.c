@@ -254,3 +254,47 @@ get_protocol_from_address_with_fallback (const char *target)
 
   return protocol;
 }
+
+/**
+ * dtmf_tone_is_valid:
+ * @key:
+ *
+ * Checks if @key is a valid DTMF keytone
+ *
+ * Returns: %TRUE if @key is 0-9, A-D, * or #, %FALSE otherwise
+ */
+gboolean
+dtmf_tone_key_is_valid (gchar key)
+{
+  return
+    (key >= '0' && key <= '9')
+    || (key >= 'A' && key <= 'D')
+    ||  key == '*'
+    ||  key == '#';
+}
+
+
+static const char * const type_icon_name[] = {
+  "call-arrow-outgoing-symbolic",
+  "call-arrow-outgoing-missed-symbolic",
+  "call-arrow-incoming-symbolic",
+  "call-arrow-incoming-missed-symbolic",
+};
+
+/**
+ * get_call_icon_type_name:
+ * @inbound: Whether the call was inbound
+ * @missed: Whether the call was missed
+ *
+ * Returns: (transfer null): The icon symbolic name to use in the history, etc
+ */
+const char *
+get_call_icon_symbolic_name (gboolean inbound,
+                             gboolean missed)
+{
+  guint index = 0;
+
+  index = ((inbound) << 1) + missed;
+
+  return type_icon_name[index];
+}

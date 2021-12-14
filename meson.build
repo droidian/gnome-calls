@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '41.1',
+  version: '42.alpha.0',
   license: 'GPLv3+',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -47,6 +47,11 @@ full_localedir = join_paths(prefix, localedir)
 full_calls_plugin_libdir = join_paths(prefix, libdir, calls_name, 'plugins')
 # Path to plugins inside the build dir, used for testing
 full_calls_plugin_builddir = join_paths(builddir, 'plugins')
+
+libcall_ui_dep = dependency('call-ui',
+  fallback:  ['libcall-ui', 'libcall_ui_dep'],
+  default_options: ['tests=false', 'examples=false', 'gtk_doc=false'],
+)
 
 config_data = configuration_data()
 config_data.set_quoted('APP_ID', calls_id)
