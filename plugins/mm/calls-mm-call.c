@@ -37,7 +37,7 @@ struct _CallsMMCall
 {
   GObject parent_instance;
   MMCall *mm_call;
-  GString *number;
+  GString *id;
   CallsCallState state;
   gchar *disconnect_reason;
 };
@@ -76,11 +76,11 @@ change_state (CallsMMCall    *self,
 
 
 static void
-notify_number_cb (CallsMMCall *self,
-                  const gchar *number)
+notify_id_cb (CallsMMCall *self,
+              const gchar *id)
 {
-  g_string_assign (self->number, number);
-  g_object_notify (G_OBJECT (self), "number");
+  g_string_assign (self->id, id);
+  g_object_notify (G_OBJECT (self), "id");
 }
 
 
@@ -101,7 +101,7 @@ static const struct CallsMMCallStateReasonMap STATE_REASON_MAP[] = {
   row (ACCEPTED,             N_("Call accepted")),
   row (TERMINATED,           N_("Call ended")),
   row (REFUSED_OR_BUSY,      N_("Call disconnected (busy or call refused)")),
-  row (ERROR,                N_("Call disconnected (wrong number or network problem)")),
+  row (ERROR,                N_("Call disconnected (wrong id or network problem)")),
   row (AUDIO_SETUP_FAILED,   N_("Call disconnected (error setting up audio channel)")),
   row (TRANSFERRED,          N_("Call transferred")),
   row (DEFLECTED,            N_("Call deflected")),
@@ -192,11 +192,11 @@ state_changed_cb (CallsMMCall       *self,
 }
 
 static const char *
-calls_mm_call_get_number (CallsCall *call)
+calls_mm_call_get_id (CallsCall *call)
 {
   CallsMMCall *self = CALLS_MM_CALL (call);
 
-  return self->number->str;
+  return self->id->str;
 }
 
 static CallsCallState
@@ -243,7 +243,7 @@ operation_cb (MMCall                      *mm_call,
   if (!ok)
     {
       g_warning ("Error %s ModemManager call to `%s': %s",
-                 data->desc, data->self->number->str, error->message);
+                 data->desc, data->self->id->str, error->message);
       CALLS_ERROR (data->self, error);
     }
 
@@ -275,7 +275,7 @@ DEFINE_OPERATION(start, calls_mm_call_start_call, "starting outgoing call");
 
 
 static void
-calls_mm_call_tone_start (CallsCall *call, gchar key)
+calls_mm_call_send_dtmf_tone (CallsCall *call, gchar key)
 {
   CallsMMCall *self = CALLS_MM_CALL (call);
   struct CallsMMOperationData *data;
@@ -324,11 +324,11 @@ constructed (GObject *object)
   MMCallState state;
 
   g_signal_connect_swapped (gdbus_call, "notify::number",
-                            G_CALLBACK (notify_number_cb), self);
+                            G_CALLBACK (notify_id_cb), self);
   g_signal_connect_swapped (gdbus_call, "state-changed",
                             G_CALLBACK (state_changed_cb), self);
 
-  notify_number_cb (self, mm_call_get_number (self->mm_call));
+  notify_id_cb (self, mm_call_get_number (self->mm_call));
 
   state = mm_call_get_state (self->mm_call);
   state_changed_cb (self,
@@ -363,7 +363,7 @@ finalize (GObject *object)
   CallsMMCall *self = CALLS_MM_CALL (object);
 
   g_free (self->disconnect_reason);
-  g_string_free (self->number, TRUE);
+  g_string_free (self->id, TRUE);
 
   G_OBJECT_CLASS (calls_mm_call_parent_class)->finalize (object);
 }
@@ -380,13 +380,13 @@ calls_mm_call_class_init (CallsMMCallClass *klass)
   object_class->dispose = dispose;
   object_class->finalize = finalize;
 
-  call_class->get_number = calls_mm_call_get_number;
+  call_class->get_id = calls_mm_call_get_id;
   call_class->get_state = calls_mm_call_get_state;
   call_class->get_inbound = calls_mm_call_get_inbound;
   call_class->get_protocol = calls_mm_call_get_protocol;
   call_class->answer = calls_mm_call_answer;
   call_class->hang_up = calls_mm_call_hang_up;
-  call_class->tone_start = calls_mm_call_tone_start;
+  call_class->send_dtmf_tone = calls_mm_call_send_dtmf_tone;
 
   props[PROP_MM_CALL] = g_param_spec_object ("mm-call",
                                              "MM call",
@@ -405,7 +405,7 @@ calls_mm_call_message_source_interface_init (CallsMessageSourceInterface *iface)
 static void
 calls_mm_call_init (CallsMMCall *self)
 {
-  self->number = g_string_new (NULL);
+  self->id = g_string_new (NULL);
 }
 
 

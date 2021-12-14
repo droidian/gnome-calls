@@ -31,7 +31,7 @@ calls_includes = [ top_include, src_include ]
 
 calls_deps = [ dependency('gobject-2.0', version: '>= 2.58'),
                dependency('gtk+-3.0'),
-               dependency('libhandy-1', version: '>= 1.1.90'),
+               dependency('libhandy-1', version: '>= 1.4.0'),
                dependency('libfeedback-0.0'),
                dependency('libpeas-1.0'),
                dependency('gom-1.0'),
@@ -39,6 +39,7 @@ calls_deps = [ dependency('gobject-2.0', version: '>= 2.58'),
                dependency('folks'),
                dependency('libcallaudio-0.1'),
                dependency('libsecret-1'),
+               libcall_ui_dep
              ]
 
 calls_vala_deps = [
@@ -87,10 +88,8 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-ussd.c',
                        'calls-origin.c', 'calls-origin.h',
                        'calls-provider.c', 'calls-provider.h',
-                       'calls-call-display.c', 'calls-call-display.h',
                        'calls-call-selector-item.c', 'calls-call-selector-item.h',
                        'calls-call-window.c', 'calls-call-window.h',
-                       'calls-encryption-indicator.c', 'calls-encryption-indicator.h',
                        'calls-history-box.c', 'calls-history-box.h',
                        'calls-new-call-box.c', 'calls-new-call-box.h',
                        'calls-main-window.c', 'calls-main-window.h',
@@ -115,6 +114,7 @@ calls_sources = files(['calls-message-source.c', 'calls-message-source.h',
                        'calls-settings.c', 'calls-settings.h',
                        'calls-secret-store.c', 'calls-secret-store.h',
                        'calls-network-watch.c', 'calls-network-watch.h',
+                       'calls-ui-call-data.c', 'calls-ui-call-data.h',
                       ]) + calls_generated_sources
 
 calls_config_data = config_data

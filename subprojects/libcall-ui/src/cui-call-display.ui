@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Generated with glade 3.22.0 -->
-<interface>
+<interface domain="call-ui">
   <requires lib="gtk+" version="3.20"/>
-  <template class="CallsCallDisplay" parent="GtkOverlay">
+  <template class="CuiCallDisplay" parent="GtkOverlay">
     <property name="visible">True</property>
+    <property name="sensitive">False</property>
     <property name="can_focus">False</property>
     <child>
       <object class="GtkBox">
@@ -14,16 +15,19 @@
         <property name="margin_right">12</property>
         <property name="margin_top">12</property>
         <property name="orientation">vertical</property>
-        <property name="vexpand">True</property>
+        <property name="vexpand">False</property>
+        <property name="valign">center</property>
         <property name="visible">True</property>
         <property name="width_request">300</property>
         <property name="sensitive" bind-source="dial_pad_revealer" bind-property="reveal-child" bind-flags="invert-boolean|bidirectional|sync-create"/>
+        <property name="spacing">12</property>
         <child>
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
-            <property name="vexpand">True</property>
+            <property name="vexpand">False</property>
+            <property name="valign">center</property>
             <child>
               <object class="GtkLabel" id="incoming_phone_call">
                 <property name="visible">False</property>
@@ -45,7 +49,7 @@
                     <property name="can_focus">False</property>
                     <property name="margin_top">6</property>
                     <property name="margin_bottom">6</property>
-                    <property name="ellipsize">end</property>
+                    <property name="ellipsize">middle</property>
                     <attributes>
                       <attribute name="weight" value="bold"/>
                       <attribute name="scale" value="1.6"/>
@@ -58,7 +62,7 @@
                     <property name="can_focus">False</property>
                     <property name="margin_top">4</property>
                     <property name="margin_bottom">4</property>
-                    <property name="ellipsize">end</property>
+                    <property name="ellipsize">middle</property>
                   </object>
                 </child>
                 <child>
@@ -311,7 +315,7 @@
           </object>
         </child>
         <child>
-          <object class="CallsEncryptionIndicator" id="encryption_indicator">
+          <object class="CuiEncryptionIndicator" id="encryption_indicator">
             <property name="can_focus">False</property>
             <property name="margin_top">30</property>
             <property name="margin_bottom">20</property>
@@ -335,7 +339,7 @@
                 <property name="visible">True</property>
                 <property name="width_request">150</property>
                 <property name="hexpand">True</property>
-                <signal name="clicked" handler="hang_up_clicked_cb" swapped="no"/>
+                <signal name="clicked" handler="on_hang_up_clicked" swapped="no"/>
                 <style>
                   <class name="destructive-action"/>
                   <class name="image-button"/>
@@ -366,7 +370,7 @@
                 <property name="width_request">150</property>
                 <property name="hexpand">True</property>
                 <property name="margin_left">12</property>
-                <signal name="clicked" handler="answer_clicked_cb" swapped="no"/>
+                <signal name="clicked" handler="on_answer_clicked" swapped="no"/>
                 <style>
                   <class name="suggested-action"/>
                   <class name="image-button"/>
@@ -387,6 +391,9 @@
             </child>
           </object>
         </child>
+        <style>
+          <class name="call-ui-display"/>
+        </style>
       </object>
     </child>
     <child type="overlay">
@@ -418,7 +425,7 @@
                 <child>
                   <object class="GtkEntry" id="keypad_entry">
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
+                    <property name="can_focus">True</property>
                     <property name="hexpand">True</property>
                     <property name="xalign">0.5</property>
                     <signal name="delete-text" handler="block_delete_cb"/>
@@ -429,7 +436,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="HdyKeypad" id="keypad">
+                  <object class="CuiKeypad" id="keypad">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="column_spacing">16</property>
