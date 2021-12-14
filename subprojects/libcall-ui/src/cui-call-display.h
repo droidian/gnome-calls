@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2018 Purism SPC
+ * Copyright (C) 2021 Purism SPC
  *
- * This file is part of Calls.
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * Calls is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -16,28 +16,24 @@
  * You should have received a copy of the GNU General Public License
  * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Author: Bob Ham <bob.ham@puri.sm>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
- *
+ * Author: Guido Günther <agx@sigxcpu.org>
  */
 
-#ifndef CALLS_CALL_DISPLAY_H__
-#define CALLS_CALL_DISPLAY_H__
+#pragma once
 
-#include "calls-call.h"
+#include "cui-call.h"
 
 #include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
-#define CALLS_TYPE_CALL_DISPLAY (calls_call_display_get_type ())
+#define CUI_TYPE_CALL_DISPLAY (cui_call_display_get_type ())
 
-G_DECLARE_FINAL_TYPE (CallsCallDisplay, calls_call_display, CALLS, CALL_DISPLAY, GtkOverlay);
+G_DECLARE_FINAL_TYPE (CuiCallDisplay, cui_call_display, CUI, CALL_DISPLAY, GtkOverlay);
 
-CallsCallDisplay *calls_call_display_new (CallsCall             *call);
-CallsCall        *calls_call_display_get_call (CallsCallDisplay *self);
+CuiCallDisplay *cui_call_display_new        (CuiCall *call);
+void            cui_call_display_set_call   (CuiCallDisplay *self,
+                                             CuiCall        *call);
+CuiCall        *cui_call_display_get_call   (CuiCallDisplay *self);
 
 G_END_DECLS
-
-#endif /* CALLS_CALL_DISPLAY_H__ */

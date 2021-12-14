@@ -100,6 +100,102 @@ on_handle_call_hangup (CallsDBusCallsCall    *skeleton,
   return TRUE;
 }
 
+static gboolean
+(avatar_loadable_icon_transform_to_image_path) (GBinding *binding,
+                                                const GValue *from_value,
+                                                GValue *to_value,
+                                                gpointer user_data)
+{
+  GLoadableIcon *icon = G_LOADABLE_ICON (g_value_get_object(from_value));
+
+  if (icon == NULL) {
+    g_value_set_string (to_value, NULL);
+    return TRUE;
+  }
+
+  if (G_IS_FILE_ICON (icon)) {
+    GFile *file = g_file_icon_get_file (G_FILE_ICON (icon));
+
+    g_value_take_string (to_value, g_file_get_path (file));
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+
+static gboolean
+on_handle_call_send_dtmf (CallsDBusCallsCall    *skeleton,
+                          GDBusMethodInvocation *invocation,
+                          const char            *dtmf_tone,
+                          CallsCall             *call)
+{
+  g_return_val_if_fail (CALLS_DBUS_IS_CALLS_CALL (skeleton), FALSE);
+  g_return_val_if_fail (CALLS_IS_CALL (call), FALSE);
+
+  if (!calls_call_can_dtmf (call)) {
+    g_dbus_method_invocation_return_error (invocation,
+                                           G_IO_ERROR,
+                                           G_IO_ERROR_FAILED,
+                                           "This call is not DTMF capable");
+    return TRUE;
+  }
+
+  if (!dtmf_tone || !*dtmf_tone) {
+    g_dbus_method_invocation_return_error (invocation,
+                                           G_IO_ERROR,
+                                           G_IO_ERROR_FAILED,
+                                           "Cannot send empty DTMF tone");
+    return TRUE;
+  }
+
+  if (dtmf_tone[1] != '\0') {
+    g_dbus_method_invocation_return_error (invocation,
+                                           G_IO_ERROR,
+                                           G_IO_ERROR_FAILED,
+                                           "Key '%s' must be a single valid tone",
+                                           dtmf_tone);
+    return TRUE;
+  }
+
+  if (!dtmf_tone_key_is_valid (*dtmf_tone)) {
+    g_dbus_method_invocation_return_error (invocation,
+                                           G_IO_ERROR,
+                                           G_IO_ERROR_FAILED,
+                                           "The key %s is not a valid DTMF tone",
+                                           dtmf_tone);
+    return TRUE;
+  }
+
+  if (calls_call_get_state (call) != CALLS_CALL_STATE_ACTIVE) {
+    g_dbus_method_invocation_return_error (invocation,
+                                           G_IO_ERROR,
+                                           G_IO_ERROR_FAILED,
+                                           "Can't send DTMF tone because call is inactive");
+    return TRUE;
+  }
+
+  calls_call_send_dtmf_tone (call, *dtmf_tone);
+  calls_dbus_calls_call_complete_send_dtmf (skeleton, invocation);
+
+  return TRUE;
+}
+
+
+static gboolean
+on_handle_call_silence (CallsDBusCallsCall    *skeleton,
+                        GDBusMethodInvocation *invocation,
+                        CallsCall             *call)
+{
+  g_return_val_if_fail (CALLS_DBUS_IS_CALLS_CALL (skeleton), FALSE);
+  g_return_val_if_fail (CALLS_IS_CALL (call), FALSE);
+
+  calls_call_silence_ring (call);
+
+  calls_dbus_calls_call_complete_silence (skeleton, invocation);
+  return TRUE;
+}
+
 
 static void
 call_added_cb (CallsDBusManager *self, CallsCall *call)
@@ -121,11 +217,14 @@ call_added_cb (CallsDBusManager *self, CallsCall *call)
   g_object_connect (iface,
                     "object_signal::handle-accept", G_CALLBACK (on_handle_call_accept), call,
                     "object_signal::handle-hangup", G_CALLBACK (on_handle_call_hangup), call,
+                    "object-signal::handle-send_dtmf", G_CALLBACK (on_handle_call_send_dtmf), call,
+                    "object_signal::handle-silence", G_CALLBACK (on_handle_call_silence), call,
                     NULL);
   g_object_bind_property (call, "state", iface, "state", G_BINDING_SYNC_CREATE);
   g_object_bind_property (call, "inbound", iface, "inbound", G_BINDING_SYNC_CREATE);
-  g_object_bind_property (call, "number", iface, "id", G_BINDING_SYNC_CREATE);
+  g_object_bind_property (call, "id", iface, "id", G_BINDING_SYNC_CREATE);
   g_object_bind_property (call, "protocol", iface, "protocol", G_BINDING_SYNC_CREATE);
+  g_object_set (iface, "can-dtmf", calls_call_can_dtmf (call), NULL);
   /* TODO: once calls supports encryption */
   calls_dbus_calls_call_set_encrypted (iface, FALSE);
 
@@ -133,7 +232,11 @@ call_added_cb (CallsDBusManager *self, CallsCall *call)
   match = calls_call_get_contact (call);
   if (calls_best_match_has_individual (match)) {
     g_object_bind_property (match, "name", iface, "display-name", G_BINDING_SYNC_CREATE);
-    /* TODO: avatar once https://source.puri.sm/Librem5/calls/-/issues/161 is fixed */
+    g_object_bind_property_full (match, "avatar",
+                                 iface, "image-path",
+                                 G_BINDING_SYNC_CREATE,
+                                 avatar_loadable_icon_transform_to_image_path,
+                                 NULL, NULL, NULL);
   }
   g_object_set_data_full (G_OBJECT (object), "contact", g_steal_pointer (&match), g_object_unref);
 

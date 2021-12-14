@@ -31,7 +31,6 @@
 #include "calls-dbus-manager.h"
 #include "calls-history-box.h"
 #include "calls-new-call-box.h"
-#include "calls-encryption-indicator.h"
 #include "calls-ringer.h"
 #include "calls-notifier.h"
 #include "calls-record-store.h"
@@ -42,6 +41,7 @@
 #include "calls-log.h"
 #include "version.h"
 
+#include <call-ui.h>
 #include <glib/gi18n.h>
 #include <handy.h>
 #include <libcallaudio.h>
@@ -358,15 +358,24 @@ startup (GApplication *application)
 {
   g_autoptr (GtkCssProvider) provider = NULL;
   g_autoptr (GError) error = NULL;
+#if HDY_CHECK_VERSION(1, 5, 0)
+  HdyStyleManager *style_manager;
+#endif
 
   G_APPLICATION_CLASS (calls_application_parent_class)->startup (application);
 
   hdy_init ();
 
+#if HDY_CHECK_VERSION(1, 5, 0)
+  style_manager = hdy_style_manager_get_default ();
+
+  hdy_style_manager_set_color_scheme (style_manager, HDY_COLOR_SCHEME_PREFER_LIGHT);
+#endif
+
   if (!call_audio_init (&error))
-    {
-      g_warning ("Failed to init libcallaudio: %s", error->message);
-    }
+    g_warning ("Failed to init libcallaudio: %s", error->message);
+
+  cui_init (TRUE);
 
   g_set_prgname (APP_ID);
   g_set_application_name (_("Calls"));
@@ -439,6 +448,15 @@ calls_application_command_line (GApplication            *application,
 
   return 0;
 }
+
+static void
+app_shutdown (GApplication *application)
+{
+  cui_uninit ();
+
+  G_APPLICATION_CLASS (calls_application_parent_class)->shutdown (application);
+}
+
 
 static void
 notify_window_visible_cb (GtkWidget       *window,
@@ -637,12 +655,12 @@ calls_application_class_init (CallsApplicationClass *klass)
   application_class->handle_local_options = calls_application_handle_local_options;
   application_class->startup = startup;
   application_class->command_line = calls_application_command_line;
+  application_class->shutdown = app_shutdown;
   application_class->activate = activate;
   application_class->open = app_open;
   application_class->dbus_register  = calls_application_dbus_register;
   application_class->dbus_unregister  = calls_application_dbus_unregister;
 
-  g_type_ensure (CALLS_TYPE_ENCRYPTION_INDICATOR);
   g_type_ensure (CALLS_TYPE_HISTORY_BOX);
   g_type_ensure (CALLS_TYPE_NEW_CALL_BOX);
 }
