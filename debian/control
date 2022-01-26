@@ -40,7 +40,8 @@ Rules-Requires-Root: no
 
 Package: gnome-calls
 Architecture: any
-Breaks: phosh (<< 0.13.0)
+Breaks: phosh (<< 0.14.1-2~)
+Replaces: phosh (<< 0.14.1-2~)
 Depends:
  callaudiod,
  gstreamer1.0-plugins-good,
