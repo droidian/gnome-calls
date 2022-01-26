@@ -24,6 +24,7 @@
 
 #define G_LOG_DOMAIN "CallsSipMediaManager"
 
+#include "calls-settings.h"
 #include "calls-sip-media-manager.h"
 #include "gst-rfc3551.h"
 
@@ -39,40 +40,89 @@
  * shall also manage the #CallsSipMediaPipeline objects that are in use.
  */
 
-enum {
-  PROP_0,
-  PROP_SESSION_IP,
-  PROP_LAST_PROP
-};
-static GParamSpec *props[PROP_LAST_PROP];
-
 typedef struct _CallsSipMediaManager
 {
   GObject parent;
 
-  char *session_ip;
-  GList *supported_codecs;
+  int            address_family;
+  struct         addrinfo hints;
+
+  CallsSettings *settings;
+  GList         *preferred_codecs;
 } CallsSipMediaManager;
 
 G_DEFINE_TYPE (CallsSipMediaManager, calls_sip_media_manager, G_TYPE_OBJECT);
 
 
-static void
-calls_sip_media_manager_set_property (GObject      *object,
-                                      guint         property_id,
-                                      const GValue *value,
-                                      GParamSpec   *pspec)
+static const char *
+get_address_family_string (CallsSipMediaManager *self,
+                           const char           *ip)
 {
-  CallsSipMediaManager *self = CALLS_SIP_MEDIA_MANAGER (object);
+  struct addrinfo *result = NULL;
+  const char *family;
 
-  switch (property_id) {
-  case PROP_SESSION_IP:
-    calls_sip_media_manager_set_session_ip (self, g_value_get_string (value));
-    break;
+  if (getaddrinfo (ip, NULL, &self->hints, &result) != 0) {
+    g_warning ("Cannot parse session IP %s", ip);
+    return NULL;
+  }
 
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-    break;
+  /* check if IP is IPv4 or IPv6. We need to specify this in the c= line of SDP */
+  self->address_family = result->ai_family;
+
+  if (result->ai_family == AF_INET)
+    family = "IP4";
+  else if (result->ai_family == AF_INET6)
+    family = "IP6";
+  else
+    family = NULL;
+
+  freeaddrinfo (result);
+
+  return family;
+}
+
+
+static void
+on_notify_preferred_audio_codecs (CallsSipMediaManager *self)
+{
+  GList *supported_codecs;
+  g_auto (GStrv) settings_codec_preference = NULL;
+
+  g_assert (CALLS_IS_SIP_MEDIA_MANAGER (self));
+
+  g_clear_list (&self->preferred_codecs, NULL);
+  supported_codecs = media_codecs_get_candidates ();
+
+  if (!supported_codecs) {
+    g_warning ("There aren't any supported codecs installed on your system");
+    return;
+  }
+
+  settings_codec_preference = calls_settings_get_preferred_audio_codecs (self->settings);
+
+  if (!settings_codec_preference) {
+    g_debug ("No audio codec preference set. Using all supported codecs");
+    self->preferred_codecs = supported_codecs;
+    return;
+  }
+
+  for (guint i = 0; settings_codec_preference[i] != NULL; i++) {
+    MediaCodecInfo *codec = media_codec_by_name (settings_codec_preference[i]);
+
+    if (!codec) {
+      g_debug ("Did not find audio codec %s", settings_codec_preference[i]);
+      continue;
+    }
+    if (media_codec_available_in_gst (codec))
+      self->preferred_codecs = g_list_append (self->preferred_codecs, codec);
+  }
+
+  if (!self->preferred_codecs) {
+    g_warning ("Cannot satisfy audio codec preference, "
+               "falling back to all supported codecs");
+    self->preferred_codecs = supported_codecs;
+  } else {
+    g_list_free (supported_codecs);
   }
 }
 
@@ -83,8 +133,8 @@ calls_sip_media_manager_finalize (GObject *object)
   CallsSipMediaManager *self = CALLS_SIP_MEDIA_MANAGER (object);
   gst_deinit ();
 
-  g_list_free (self->supported_codecs);
-  g_free (self->session_ip);
+  g_list_free (self->preferred_codecs);
+  g_object_unref (self->settings);
 
   G_OBJECT_CLASS (calls_sip_media_manager_parent_class)->finalize (object);
 }
@@ -95,17 +145,7 @@ calls_sip_media_manager_class_init (CallsSipMediaManagerClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->set_property = calls_sip_media_manager_set_property;
   object_class->finalize = calls_sip_media_manager_finalize;
-
-  props[PROP_SESSION_IP] =
-    g_param_spec_string ("session-ip",
-                         "Session IP",
-                         "The public IP used as the session line in SDP",
-                         NULL,
-                         G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS);
-
-  g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
 
@@ -114,7 +154,16 @@ calls_sip_media_manager_init (CallsSipMediaManager *self)
 {
   gst_init (NULL, NULL);
 
-  self->supported_codecs = media_codecs_get_candidates ();
+  self->settings = calls_settings_new ();
+  g_signal_connect_swapped (self->settings,
+                            "notify::preferred-audio-codecs",
+                            G_CALLBACK (on_notify_preferred_audio_codecs),
+                            self);
+  on_notify_preferred_audio_codecs (self);
+
+  /* Hints are used with getaddrinfo() when setting the session IP */
+  self->hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG | AI_NUMERICHOST;
+  self->hints.ai_family = AF_UNSPEC;
 }
 
 
@@ -146,6 +195,7 @@ calls_sip_media_manager_default (void)
  */
 char *
 calls_sip_media_manager_get_capabilities (CallsSipMediaManager *self,
+                                          const char           *own_ip,
                                           guint                 port,
                                           gboolean              use_srtp,
                                           GList                *supported_codecs)
@@ -154,6 +204,7 @@ calls_sip_media_manager_get_capabilities (CallsSipMediaManager *self,
   g_autoptr (GString) media_line = NULL;
   g_autoptr (GString) attribute_lines = NULL;
   GList *node;
+  const char *address_family_string;
 
   g_return_val_if_fail (CALLS_IS_SIP_MEDIA_MANAGER (self), NULL);
 
@@ -185,12 +236,16 @@ calls_sip_media_manager_get_capabilities (CallsSipMediaManager *self,
   g_string_append_printf (attribute_lines, "a=rtcp:%d\r\n", port + 1);
 
  done:
-  if (self->session_ip && *self->session_ip)
+  if (own_ip && *own_ip)
+    address_family_string = get_address_family_string (self, own_ip);
+
+  if (own_ip && *own_ip && address_family_string)
     return g_strdup_printf ("v=0\r\n"
-                            "s=%s\r\n"
+                            "c=IN %s %s\r\n"
                             "%s\r\n"
                             "%s\r\n",
-                            self->session_ip,
+                            address_family_string,
+                            own_ip,
                             media_line->str,
                             attribute_lines->str);
   else
@@ -214,15 +269,17 @@ calls_sip_media_manager_get_capabilities (CallsSipMediaManager *self,
  */
 char *
 calls_sip_media_manager_static_capabilities (CallsSipMediaManager *self,
+                                             const char           *own_ip,
                                              guint                 port,
                                              gboolean              use_srtp)
 {
   g_return_val_if_fail (CALLS_IS_SIP_MEDIA_MANAGER (self), NULL);
 
   return calls_sip_media_manager_get_capabilities (self,
+                                                   own_ip,
                                                    port,
                                                    use_srtp,
-                                                   self->supported_codecs);
+                                                   self->preferred_codecs);
 }
 
 
@@ -245,7 +302,7 @@ calls_sip_media_manager_codec_candidates (CallsSipMediaManager *self)
 {
   g_return_val_if_fail (CALLS_IS_SIP_MEDIA_MANAGER (self), NULL);
 
-  return self->supported_codecs;
+  return self->preferred_codecs;
 }
 
 
@@ -288,15 +345,3 @@ calls_sip_media_manager_get_codecs_from_sdp (CallsSipMediaManager *self,
 }
 
 
-void
-calls_sip_media_manager_set_session_ip (CallsSipMediaManager *self,
-                                        const char           *session_ip)
-{
-  g_return_if_fail (CALLS_IS_SIP_MEDIA_MANAGER (self));
-
-  g_clear_pointer (&self->session_ip, g_free);
-  if (session_ip && *session_ip) {
-    g_debug ("Setting session IP to %s", session_ip);
-    self->session_ip = g_strdup (session_ip);
-  }
-}

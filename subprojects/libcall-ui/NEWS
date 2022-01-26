@@ -1,0 +1,16 @@
+libcall-ui
+----------
+Released: January 2022
+* Initial release with call-display, keypad and dialpad widgets
+* UI translations:
+	Danial Behzadi (fa)
+	Daniel Șerbănescu (ro)
+	Enrico Nicoletto (pt_BR)
+	Fabio Tomat (fur)
+	Hugo Carvalho (pt)
+	Jordi Mas i Hernandez (ca)
+	Lian Begett (de)
+	Luna Jernberg (sv)
+	Nathan Follens (nl)
+	Rafael Fontenelle (pt_BR)
+	Yuri Chornoivan (uk)

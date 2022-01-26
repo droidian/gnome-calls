@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Purism SPC
+ * Copyright (C) 2021, 2022 Purism SPC
  *
  * This file is part of Calls.
  *
@@ -20,20 +20,32 @@
  *   Bob Ham <bob.ham@puri.sm>
  *   Mohammed Sadiq <sadiq@sadiqpk.org>
  *   Julian Sparber <julian@sparber.net>
+ *   Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
+#define G_LOG_DOMAIN "CallsContactsProvider"
+
+#include "calls-contacts-provider.h"
+#include "calls-best-match.h"
 
 #include <gee-0.8/gee.h>
 #include <folks/folks.h>
 #include <libebook-contacts/libebook-contacts.h>
 
-#include "calls-contacts-provider.h"
-#include "calls-best-match.h"
+#define DBUS_BUS_NAME "org.gnome.Contacts"
+
+
+/**
+ * SECTION:calls-contacts-provider
+ * @short_description: Provides contact information
+ * @Title: CallsContactsProvider
+ *
+ * This object tracks contacts reported by libfolks,
+ * allow to perform contact lookups and provides functions
+ * for adding new contacts.
+ */
 
 
 typedef struct
@@ -43,6 +55,7 @@ typedef struct
   gpointer               user_data;
 } IdleData;
 
+
 struct _CallsContactsProvider
 {
   GObject                    parent_instance;
@@ -51,6 +64,10 @@ struct _CallsContactsProvider
   CallsSettings             *settings;
 
   GHashTable                *best_matches;
+
+  guint                      bus_watch_id;
+  GDBusActionGroup          *contacts_action_group;
+  gboolean                   can_add_contacts;
 };
 
 G_DEFINE_TYPE (CallsContactsProvider, calls_contacts_provider, G_TYPE_OBJECT)
@@ -58,6 +75,7 @@ G_DEFINE_TYPE (CallsContactsProvider, calls_contacts_provider, G_TYPE_OBJECT)
 enum {
   PROP_0,
   PROP_SETTINGS,
+  PROP_CAN_ADD_CONTACTS,
   PROP_LAST_PROP
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -68,6 +86,7 @@ enum {
   SIGNAL_LAST_SIGNAL,
 };
 static guint signals[SIGNAL_LAST_SIGNAL];
+
 
 static void folks_remove_contact (CallsContactsProvider *self,
                                   FolksIndividual       *individual);
@@ -84,6 +103,7 @@ folks_individual_has_phone_numbers (FolksIndividual *individual)
   return !gee_collection_get_is_empty (GEE_COLLECTION (phone_numbers));
 }
 
+
 static void
 folks_individual_property_changed_cb (CallsContactsProvider *self,
                                       GParamSpec            *pspec,
@@ -92,6 +112,7 @@ folks_individual_property_changed_cb (CallsContactsProvider *self,
   if (!folks_individual_has_phone_numbers (individual))
     folks_remove_contact (self, individual);
 }
+
 
 static int
 do_on_idle (IdleData *data)
@@ -104,6 +125,7 @@ do_on_idle (IdleData *data)
     return G_SOURCE_REMOVE;
   }
 }
+
 
 static void
 folks_add_contact (CallsContactsProvider *self,
@@ -155,6 +177,7 @@ folks_individuals_changed_cb (CallsContactsProvider *self,
                                                   self);
 }
 
+
 static void
 folks_prepare_cb (GObject      *obj,
                   GAsyncResult *res,
@@ -167,6 +190,55 @@ folks_prepare_cb (GObject      *obj,
   if (error)
     g_warning ("Failed to load Folks contacts: %s", error->message);
 }
+
+
+static void
+on_contacts_actions_updated (CallsContactsProvider *self)
+{
+  const char *contact_action_name = "new-contact-data";
+
+  g_assert (CALLS_IS_CONTACTS_PROVIDER (self));
+
+  if (self->can_add_contacts)
+    return;
+
+  if (g_action_group_has_action (G_ACTION_GROUP (self->contacts_action_group),
+                                 contact_action_name) &&
+      g_action_group_get_action_enabled (G_ACTION_GROUP (self->contacts_action_group),
+                                         contact_action_name)) {
+    g_debug ("Can add contacts");
+
+    self->can_add_contacts = TRUE;
+    g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CAN_ADD_CONTACTS]);
+  }
+}
+
+
+static void
+on_contacts_appeared (GDBusConnection    *connection,
+                      const char         *name,
+                      const char         *owner_name,
+                      gpointer            user_data)
+{
+  CallsContactsProvider *self;
+  g_autoptr (GError) error = NULL;
+
+  g_assert (CALLS_IS_CONTACTS_PROVIDER (user_data));
+
+  self = user_data;
+  g_clear_object (&self->contacts_action_group);
+  self->contacts_action_group = g_dbus_action_group_get (connection,
+                                                         name,
+                                                         "/org/gnome/Contacts");
+
+  g_signal_connect_swapped (self->contacts_action_group,
+                            "action-added",
+                            G_CALLBACK (on_contacts_actions_updated),
+                            self);
+
+  on_contacts_actions_updated (self);
+}
+
 
 static void
 calls_contacts_provider_set_property (GObject      *object,
@@ -189,10 +261,32 @@ calls_contacts_provider_set_property (GObject      *object,
 
 
 static void
+calls_contacts_provider_get_property (GObject    *object,
+                                      guint       property_id,
+                                      GValue     *value,
+                                      GParamSpec *pspec)
+{
+  CallsContactsProvider *self = CALLS_CONTACTS_PROVIDER (object);
+
+  switch (property_id) {
+  case PROP_CAN_ADD_CONTACTS:
+    g_value_set_boolean (value, calls_contacts_provider_get_can_add_contacts (self));
+    break;
+
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
+}
+
+
+static void
 calls_contacts_provider_finalize (GObject *object)
 {
   CallsContactsProvider *self = CALLS_CONTACTS_PROVIDER (object);
 
+  g_clear_handle_id (&self->bus_watch_id, g_bus_unwatch_name);
+  g_clear_object (&self->contacts_action_group);
   g_clear_object (&self->folks_aggregator);
   g_clear_object (&self->settings);
   g_clear_pointer (&self->best_matches, g_hash_table_unref);
@@ -206,9 +300,18 @@ calls_contacts_provider_class_init (CallsContactsProviderClass *klass)
 {
   GObjectClass *object_class  = G_OBJECT_CLASS (klass);
 
+  object_class->get_property = calls_contacts_provider_get_property;
   object_class->set_property = calls_contacts_provider_set_property;
   object_class->finalize = calls_contacts_provider_finalize;
 
+  /**
+   * CallsContactsProvider::added:
+   * @self: The #CallsContactsProvider instance
+   * @individual: A #FolksIndividual
+   *
+   * This signal is emitted when the backend reports a new contact
+   * having been added.
+   */
   signals[SIGNAL_ADDED] =
    g_signal_new ("added",
                  G_TYPE_FROM_CLASS (klass),
@@ -218,7 +321,14 @@ calls_contacts_provider_class_init (CallsContactsProviderClass *klass)
                  G_TYPE_NONE,
                  1,
                  FOLKS_TYPE_INDIVIDUAL);
-
+  /**
+   * CallsContactsProvider::removed:
+   * @self: The #CallsContactsProvider instance
+   * @individual: A #FolksIndividual
+   *
+   * This signal is emitted when the backend reports a contact
+   * having been removed.
+   */
   signals[SIGNAL_REMOVED] =
    g_signal_new ("removed",
                  G_TYPE_FROM_CLASS (klass),
@@ -229,6 +339,12 @@ calls_contacts_provider_class_init (CallsContactsProviderClass *klass)
                  1,
                  FOLKS_TYPE_INDIVIDUAL);
 
+  /**
+   * CallsContactsProvider::settings:
+   *
+   * The settings are used to get the country code
+   * which is used for contact lookups.
+   */
   props[PROP_SETTINGS] =
     g_param_spec_object ("settings",
                          "settings",
@@ -236,6 +352,18 @@ calls_contacts_provider_class_init (CallsContactsProviderClass *klass)
                          CALLS_TYPE_SETTINGS,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
+
+  /**
+   * CallsContactsProvider::can-add-contacts:
+   *
+   * Whether we can add contacts or not.
+   */
+  props[PROP_CAN_ADD_CONTACTS] =
+    g_param_spec_boolean ("can-add-contacts",
+                          "Can add contacts",
+                          "Whether we can add contacts",
+                          FALSE,
+                          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
@@ -265,7 +393,16 @@ calls_contacts_provider_init (CallsContactsProvider *self)
                                               g_str_equal,
                                               g_free,
                                               g_object_unref);
+
+  self->bus_watch_id = g_bus_watch_name (G_BUS_TYPE_SESSION,
+                                         DBUS_BUS_NAME,
+                                         G_BUS_NAME_WATCHER_FLAGS_AUTO_START,
+                                         on_contacts_appeared,
+                                         NULL,
+                                         self,
+                                         NULL);
 }
+
 
 CallsContactsProvider *
 calls_contacts_provider_new (CallsSettings *settings)
@@ -324,6 +461,17 @@ calls_contacts_provider_lookup_id (CallsContactsProvider *self,
   return g_steal_pointer (&best_match);
 }
 
+/**
+ * calls_contacts_provider_consume_iter_on_idle:
+ * @iter: A #GeeIterator
+ * @callback: A callback to be called on all items of @iter
+ * @user_data: A pointer to be passed to the @callback
+ *
+ * Queue's processing of all #FolksIndividual items of @iter with @callback one
+ * individual per event loop iteration. Can be used to split up operating
+ * on potentially large set of individuals to prevent the
+ * event loop from being blocked for too long making the UI unresponsive.
+ */
 void
 calls_contacts_provider_consume_iter_on_idle (GeeIterator *iter,
                                               IdleCallback callback,
@@ -339,3 +487,57 @@ calls_contacts_provider_consume_iter_on_idle (GeeIterator *iter,
                    data,
                    g_free);
 }
+
+/**
+ * calls_contacts_provider_get_can_add_contacts:
+ * @self: The #CallsContactsProvider
+ *
+ * Returns: %TRUE if contacts can be added, %FALSE otherwise
+ */
+gboolean
+calls_contacts_provider_get_can_add_contacts (CallsContactsProvider *self)
+{
+  g_return_val_if_fail (CALLS_IS_CONTACTS_PROVIDER (self), FALSE);
+
+  return self->can_add_contacts;
+}
+
+/**
+ * calls_contacts_provider_add_new_contact:
+ * @self: The #CallsContactsProvider
+ * @phone_number: The phone number of the new contact
+ *
+ * Opens GNOME contacts and prepopulates the phone number for a new contact
+ * to be added.
+ */
+void
+calls_contacts_provider_add_new_contact (CallsContactsProvider *self,
+                                         const char            *phone_number)
+{
+  GVariant *contact_parameter;
+  GVariantBuilder contact_builder;
+  CallsBestMatch *best_match;
+
+  g_return_if_fail (CALLS_IS_CONTACTS_PROVIDER (self));
+  g_return_if_fail (phone_number || *phone_number);
+  g_return_if_fail (self->can_add_contacts);
+
+  best_match = g_hash_table_lookup (self->best_matches, phone_number);
+  if (best_match && calls_best_match_has_individual (best_match)) {
+    g_warning ("Cannot add contact. Contact '%s' with number '%s' already exists",
+               calls_best_match_get_name (best_match), phone_number);
+    return;
+  }
+
+  g_variant_builder_init (&contact_builder, G_VARIANT_TYPE_ARRAY);
+  g_variant_builder_add (&contact_builder, "(ss)",
+                         "phone-numbers",
+                         phone_number);
+  contact_parameter = g_variant_builder_end (&contact_builder);
+
+  g_action_group_activate_action (G_ACTION_GROUP (self->contacts_action_group),
+                                  "new-contact-data",
+                                  contact_parameter);
+}
+
+#undef DBUS_BUS_NAME

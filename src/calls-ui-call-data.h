@@ -1,3 +1,27 @@
+/*
+ * Copyright (C) 2021, 2022 Purism SPC
+ *
+ * This file is part of Calls.
+ *
+ * Calls is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Calls is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Author: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ */
+
 #pragma once
 
 #include "calls-call.h"
@@ -11,7 +35,8 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (CallsUiCallData, calls_ui_call_data, CALLS, UI_CALL_DATA, GObject)
 
-CallsUiCallData         *calls_ui_call_data_new       (CallsCall       *call);
-CallsCall               *calls_ui_call_data_get_call  (CallsUiCallData *self);
+CallsUiCallData         *calls_ui_call_data_new               (CallsCall       *call);
+CallsCall               *calls_ui_call_data_get_call          (CallsUiCallData *self);
+CuiCallState             calls_call_state_to_cui_call_state   (CallsCallState   state);
 
 G_END_DECLS

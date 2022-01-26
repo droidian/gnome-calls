@@ -27,13 +27,12 @@
 
 #pragma once
 
+#include "calls-best-match.h"
 #include "calls-settings.h"
 
-#include <glib-object.h>
 #include <folks/folks.h>
+#include <glib-object.h>
 #include <libebook-contacts/libebook-contacts.h>
-
-#include "calls-best-match.h"
 
 G_BEGIN_DECLS
 
@@ -57,5 +56,8 @@ CallsBestMatch         *calls_contacts_provider_lookup_id            (CallsConta
 void                    calls_contacts_provider_consume_iter_on_idle (GeeIterator           *iter,
                                                                       IdleCallback           callback,
                                                                       gpointer               user_data);
+gboolean                calls_contacts_provider_get_can_add_contacts (CallsContactsProvider *self);
+void                    calls_contacts_provider_add_new_contact      (CallsContactsProvider *self,
+                                                                      const char            *phone_number);
 
 G_END_DECLS

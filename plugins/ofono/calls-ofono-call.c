@@ -35,14 +35,7 @@ struct _CallsOfonoCall
 {
   GObject parent_instance;
   GDBOVoiceCall *voice_call;
-  gchar *id;
-  gchar *name;
-  CallsCallState state;
   gchar *disconnect_reason;
-  /* `inbound` is derived from `state` at construction time.
-   * If the call was already somehow accepted and thus state=active,
-   * then it's not possible to know the correct value for `inbound`. */
-  gboolean inbound;
 };
 
 static void calls_ofono_call_message_source_interface_init (CallsMessageSourceInterface *iface);
@@ -54,7 +47,6 @@ G_DEFINE_TYPE_WITH_CODE (CallsOfonoCall, calls_ofono_call, CALLS_TYPE_CALL,
 enum {
   PROP_0,
   PROP_VOICE_CALL,
-  PROP_PROPERTIES,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -64,57 +56,6 @@ enum {
   SIGNAL_LAST_SIGNAL,
 };
 static guint signals [SIGNAL_LAST_SIGNAL];
-
-static void
-change_state (CallsOfonoCall *self,
-              CallsCallState  state)
-{
-  CallsCallState old_state = self->state;
-
-  if (old_state == state)
-    {
-      return;
-    }
-
-  self->state = state;
-  g_object_notify (G_OBJECT (self), "state");
-  g_signal_emit_by_name (CALLS_CALL (self),
-                         "state-changed",
-                         state,
-                         old_state);
-}
-
-static const char *
-calls_ofono_call_get_id (CallsCall *call)
-{
-  CallsOfonoCall *self = CALLS_OFONO_CALL (call);
-
-  return self->id;
-}
-
-static const char *
-calls_ofono_call_get_name (CallsCall *call)
-{
-  CallsOfonoCall *self = CALLS_OFONO_CALL (call);
-
-  return self->name;
-}
-
-static CallsCallState
-calls_ofono_call_get_state (CallsCall *call)
-{
-  CallsOfonoCall *self = CALLS_OFONO_CALL (call);
-
-  return self->state;
-}
-
-static gboolean
-calls_ofono_call_get_inbound (CallsCall *call)
-{
-  CallsOfonoCall *self = CALLS_OFONO_CALL (call);
-
-  return self->inbound;
-}
 
 static const char *
 calls_ofono_call_get_protocol (CallsCall *call)
@@ -139,12 +80,13 @@ operation_cb (GDBOVoiceCall                 *voice_call,
   g_autoptr (GError) error = NULL;
 
   ok = data->finish_func (voice_call, res, &error);
-  if (!ok)
-    {
-      g_warning ("Error %s oFono voice call to `%s': %s",
-                 data->desc, data->self->id, error->message);
-      CALLS_ERROR (data->self, error);
-    }
+  if (!ok) {
+    g_warning ("Error %s oFono voice call to `%s': %s",
+               data->desc,
+               calls_call_get_id (CALLS_CALL (data->self)),
+               error->message);
+    CALLS_ERROR (data->self, error);
+  }
 
   g_object_unref (data->self);
   g_free (data);
@@ -191,36 +133,13 @@ static void
 calls_ofono_call_send_dtmf_tone (CallsCall *call, gchar key)
 {
   CallsOfonoCall *self = CALLS_OFONO_CALL (call);
-  if (self->state != CALLS_CALL_STATE_ACTIVE)
-    {
-      g_warning ("Tone start requested for non-active call to `%s'",
-                 self->id);
-      return;
-    }
+  if (calls_call_get_state (call) != CALLS_CALL_STATE_ACTIVE) {
+    g_warning ("Tone start requested for non-active call to `%s'",
+               calls_call_get_id (call));
+    return;
+  }
 
   g_signal_emit_by_name (self, "tone", key);
-}
-
-
-static void
-set_properties (CallsOfonoCall *self,
-                GVariant       *call_props)
-{
-  const gchar *str = NULL;
-
-  g_return_if_fail (call_props != NULL);
-
-  g_variant_lookup (call_props, "LineIdentification", "s", &self->id);
-  g_variant_lookup (call_props, "Name", "s", &self->name);
-
-  g_variant_lookup (call_props, "State", "&s", &str);
-  g_return_if_fail (str != NULL);
-  calls_call_state_parse_nick (&self->state, str);
-
-  if (self->state == CALLS_CALL_STATE_INCOMING)
-    {
-      self->inbound = TRUE;
-    }
 }
 
 
@@ -238,10 +157,6 @@ set_property (GObject      *object,
       (&self->voice_call, GDBO_VOICE_CALL (g_value_get_object (value)));
     break;
 
-  case PROP_PROPERTIES:
-    set_properties (self, g_value_get_variant (value));
-    break;
-
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -257,18 +172,15 @@ property_changed_cb (CallsOfonoCall *self,
   gchar *str = NULL;
   CallsCallState state;
   gboolean ok;
+  g_autofree char *text = g_variant_print (value, TRUE);
 
-  {
-    gchar *text = g_variant_print (value, TRUE);
-    g_debug ("Property `%s' for oFono call to `%s' changed to: %s",
-             name, self->id, text);
-    g_free (text);
-  }
+  g_debug ("Property `%s' for oFono call to `%s' changed to: %s",
+           name,
+           calls_call_get_id (CALLS_CALL (self)),
+           text);
 
   if (g_strcmp0 (name, "State") != 0)
-    {
-      return;
-    }
+    return;
 
   g_variant_get (value, "v", &str_var);
   g_variant_get (str_var, "&s", &str);
@@ -276,15 +188,11 @@ property_changed_cb (CallsOfonoCall *self,
 
   ok = calls_call_state_parse_nick (&state, str);
   if (ok)
-    {
-      change_state (self, state);
-    }
+    calls_call_set_state (CALLS_CALL (self), state);
   else
-    {
-      g_warning ("Could not parse new state `%s'"
-                 " of oFono call to `%s'",
-                 str, self->id);
-    }
+    g_warning ("Could not parse new state `%s'"
+               " of oFono call to `%s'",
+               str, calls_call_get_id (CALLS_CALL (self)));
 
   g_variant_unref (str_var);
 }
@@ -336,8 +244,6 @@ finalize (GObject *object)
   CallsOfonoCall *self = CALLS_OFONO_CALL (object);
 
   g_free (self->disconnect_reason);
-  g_free (self->name);
-  g_free (self->id);
 
   G_OBJECT_CLASS (calls_ofono_call_parent_class)->finalize (object);
 }
@@ -355,10 +261,6 @@ calls_ofono_call_class_init (CallsOfonoCallClass *klass)
   object_class->dispose = dispose;
   object_class->finalize = finalize;
 
-  call_class->get_id = calls_ofono_call_get_id;
-  call_class->get_name = calls_ofono_call_get_name;
-  call_class->get_state = calls_ofono_call_get_state;
-  call_class->get_inbound = calls_ofono_call_get_inbound;
   call_class->get_protocol = calls_ofono_call_get_protocol;
   call_class->answer = calls_ofono_call_answer;
   call_class->hang_up = calls_ofono_call_hang_up;
@@ -371,15 +273,6 @@ calls_ofono_call_class_init (CallsOfonoCallClass *klass)
                          GDBO_TYPE_VOICE_CALL,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
   g_object_class_install_property (object_class, PROP_VOICE_CALL, props[PROP_VOICE_CALL]);
-
-  props[PROP_PROPERTIES] =
-    g_param_spec_variant ("properties",
-                          "Properties",
-                          "The a{sv} dictionary of properties for the voice call object",
-                          G_VARIANT_TYPE_ARRAY,
-                          NULL,
-                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
-  g_object_class_install_property (object_class, PROP_PROPERTIES, props[PROP_PROPERTIES]);
 
   signals[SIGNAL_TONE] =
     g_signal_newv ("tone",
@@ -404,14 +297,37 @@ calls_ofono_call_init (CallsOfonoCall *self)
 
 CallsOfonoCall *
 calls_ofono_call_new (GDBOVoiceCall *voice_call,
-                      GVariant      *properties)
+                      GVariant      *call_props)
 {
+  const char *state_str = NULL;
+  const char *name = NULL;
+  const char *id = NULL;
+  CallsCallState state = CALLS_CALL_STATE_UNKNOWN;
+  gboolean inbound = FALSE;
+
   g_return_val_if_fail (GDBO_IS_VOICE_CALL (voice_call), NULL);
-  g_return_val_if_fail (properties != NULL, NULL);
+  g_return_val_if_fail (call_props != NULL, NULL);
+
+  g_variant_lookup (call_props, "LineIdentification", "s", &id);
+  g_variant_lookup (call_props, "Name", "s", &name);
+
+  g_variant_lookup (call_props, "State", "&s", &state_str);
+  if (state_str)
+    calls_call_state_parse_nick (&state, state_str);
+
+  /* `inbound` is derived from `state` at construction time.
+   * If the call was already somehow accepted and thus state=active,
+   * then it's not possible to know the correct value for `inbound`. */
+  if (state == CALLS_CALL_STATE_INCOMING)
+    inbound = TRUE;
 
   return g_object_new (CALLS_TYPE_OFONO_CALL,
                        "voice-call", voice_call,
-                       "properties", properties,
+                       "properties", call_props,
+                       "id", id,
+                       "name", name,
+                       "inbound", inbound,
+                       "state", state,
                        NULL);
 }
 

@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '42.alpha.0',
+  version: '42.beta.0',
   license: 'GPLv3+',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -92,6 +92,7 @@ test_c_args = [
   '-Wformat-security',
   '-Winit-self',
   '-Wmaybe-uninitialized',
+  '-Wmisleading-indentation',
   '-Wmissing-include-dirs',
   '-Wmissing-noreturn',
   '-Wnested-externs',
@@ -106,6 +107,9 @@ test_c_args = [
   '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_70',
   # see https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/332
   '-DEDS_DISABLE_DEPRECATED',
+  # in preparation for the switch to Gtk4 we should make sure not to use deprecated symbols
+  '-DGDK_DISABLE_DEPRECATED',
+  '-DGTK_DISABLE_DEPRECATED',
 ]
 
 if get_option('buildtype') != 'plain'

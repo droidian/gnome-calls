@@ -1,5 +1,5 @@
 project('libcall-ui', 'c',
-          version: '0.0.0',
+          version: '0.0.1',
           license: 'LGPLv2.1+',
     meson_version: '>= 0.50.0',
   default_options: [ 'warning_level=1', 'buildtype=debugoptimized', 'c_std=gnu11' ],
@@ -110,6 +110,7 @@ summary = [
   '',
   '        Tests: @0@'.format(get_option('tests')),
   'Documentation: @0@'.format(get_option('gtk_doc')),
+  ' Install i18n: @0@'.format(get_option('install-i18n')),
   '-----------',
 ]
 
