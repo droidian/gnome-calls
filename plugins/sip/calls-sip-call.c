@@ -50,6 +50,7 @@
 enum {
   PROP_0,
   PROP_CALL_HANDLE,
+  PROP_IP,
   PROP_LAST_PROP
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -57,12 +58,11 @@ static GParamSpec *props[PROP_LAST_PROP];
 struct _CallsSipCall
 {
   GObject parent_instance;
-  gchar *id;
-  gboolean inbound;
-  CallsCallState state;
 
   CallsSipMediaManager *manager;
   CallsSipMediaPipeline *pipeline;
+
+  char *ip;
 
   guint lport_rtp;
   guint lport_rtcp;
@@ -117,41 +117,6 @@ try_setting_up_media_pipeline (CallsSipCall *self)
   return TRUE;
 }
 
-static const char *
-calls_sip_call_get_id (CallsCall *call)
-{
-  CallsSipCall *self = CALLS_SIP_CALL (call);
-
-  return self->id;
-}
-
-
-static CallsCallState
-calls_sip_call_get_state (CallsCall *call)
-{
-  CallsSipCall *self = CALLS_SIP_CALL (call);
-
-  return self->state;
-}
-
-
-static gboolean
-calls_sip_call_get_inbound (CallsCall *call)
-{
-  CallsSipCall *self = CALLS_SIP_CALL (call);
-
-  return self->inbound;
-}
-
-
-static const char *
-calls_sip_call_get_protocol (CallsCall *call)
-{
-  CallsSipCall *self = CALLS_SIP_CALL (call);
-
-  return get_protocol_from_address (self->id);
-}
-
 
 static void
 calls_sip_call_answer (CallsCall *call)
@@ -167,7 +132,7 @@ calls_sip_call_answer (CallsCall *call)
 
   g_assert (self->nh);
 
-  if (self->state != CALLS_CALL_STATE_INCOMING) {
+  if (calls_call_get_state (CALLS_CALL (self)) != CALLS_CALL_STATE_INCOMING) {
     g_warning ("Call must be in 'incoming' state in order to answer");
     return;
   }
@@ -176,6 +141,7 @@ calls_sip_call_answer (CallsCall *call)
   calls_sip_call_setup_local_media_connection (self, local_port, local_port + 1);
 
   local_sdp = calls_sip_media_manager_get_capabilities (self->manager,
+                                                        self->ip,
                                                         local_port,
                                                         FALSE,
                                                         self->codecs);
@@ -188,7 +154,7 @@ calls_sip_call_answer (CallsCall *call)
                SOATAG_AF (SOA_AF_IP4_IP6),
                TAG_END ());
 
-  calls_sip_call_set_state (self, CALLS_CALL_STATE_ACTIVE);
+  calls_call_set_state (CALLS_CALL (self), CALLS_CALL_STATE_ACTIVE);
 }
 
 
@@ -202,7 +168,7 @@ calls_sip_call_hang_up (CallsCall *call)
 
   self = CALLS_SIP_CALL (call);
 
-  switch (self->state) {
+  switch (calls_call_get_state (call)) {
   case CALLS_CALL_STATE_DIALING:
     nua_cancel (self->nh, TAG_END ());
     g_debug ("Hanging up on outgoing ringing call");
@@ -224,7 +190,8 @@ calls_sip_call_hang_up (CallsCall *call)
     break;
 
   default:
-    g_warning ("Hanging up not possible in state %d", self->state);
+    g_warning ("Hanging up not possible in state %d",
+               calls_call_get_state (call));
   }
 }
 
@@ -240,6 +207,11 @@ calls_sip_call_set_property (GObject      *object,
   switch (property_id) {
   case PROP_CALL_HANDLE:
     self->nh = g_value_get_pointer (value);
+    break;
+
+  case PROP_IP:
+    g_free (self->ip);
+    self->ip = g_value_dup_string (value);
     break;
 
   default:
@@ -274,14 +246,13 @@ calls_sip_call_finalize (GObject *object)
 {
   CallsSipCall *self = CALLS_SIP_CALL (object);
 
-  g_free (self->id);
-
   if (self->pipeline) {
     calls_sip_media_pipeline_stop (self->pipeline);
     g_clear_object (&self->pipeline);
   }
   g_clear_pointer (&self->codecs, g_list_free);
   g_clear_pointer (&self->remote, g_free);
+  g_clear_pointer (&self->ip, g_free);
 
   G_OBJECT_CLASS (calls_sip_call_parent_class)->finalize (object);
 }
@@ -297,10 +268,6 @@ calls_sip_call_class_init (CallsSipCallClass *klass)
   object_class->set_property = calls_sip_call_set_property;
   object_class->finalize = calls_sip_call_finalize;
 
-  call_class->get_id = calls_sip_call_get_id;
-  call_class->get_state = calls_sip_call_get_state;
-  call_class->get_inbound = calls_sip_call_get_inbound;
-  call_class->get_protocol = calls_sip_call_get_protocol;
   call_class->answer = calls_sip_call_answer;
   call_class->hang_up = calls_sip_call_hang_up;
 
@@ -309,7 +276,14 @@ calls_sip_call_class_init (CallsSipCallClass *klass)
                           "NUA handle",
                           "The used NUA handler",
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-  g_object_class_install_property (object_class, PROP_CALL_HANDLE, props[PROP_CALL_HANDLE]);
+
+  props[PROP_IP] =
+    g_param_spec_string ("own-ip",
+                         "Own IP",
+                         "Own IP for media and SDP",
+                         NULL,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT);
+  g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
 
@@ -396,55 +370,17 @@ calls_sip_call_activate_media (CallsSipCall *self,
 CallsSipCall *
 calls_sip_call_new (const gchar  *id,
                     gboolean      inbound,
+                    const char   *own_ip,
                     nua_handle_t *handle)
 {
-  CallsSipCall *call;
+  g_return_val_if_fail (id, NULL);
 
-  g_return_val_if_fail (id != NULL, NULL);
-
-  call = g_object_new (CALLS_TYPE_SIP_CALL,
+  return g_object_new (CALLS_TYPE_SIP_CALL,
+                       "id", id,
+                       "inbound", inbound,
+                       "own-ip", own_ip,
                        "nua-handle", handle,
                        NULL);
-
-  call->id = g_strdup (id);
-  call->inbound = inbound;
-
-  if (inbound)
-    call->state = CALLS_CALL_STATE_INCOMING;
-  else
-    call->state = CALLS_CALL_STATE_DIALING;
-
-  return call;
-}
-
-/**
- * calls_sip_call_set_state:
- * @self: A #CallsSipCall
- * @state: The new #CallsCallState to set
- *
- * Sets the new call state and emits the state-changed signal
- */
-void
-calls_sip_call_set_state (CallsSipCall   *self,
-                          CallsCallState  state)
-{
-  CallsCallState old_state;
-
-  g_return_if_fail (CALLS_IS_CALL (self));
-  g_return_if_fail (CALLS_IS_SIP_CALL (self));
-
-  old_state = self->state;
-
-  if (old_state == state) {
-    return;
-  }
-
-  self->state = state;
-  g_object_notify (G_OBJECT (self), "state");
-  g_signal_emit_by_name (CALLS_CALL (self),
-                         "state-changed",
-                         state,
-                         old_state);
 }
 
 /**

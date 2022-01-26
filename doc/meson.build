@@ -2,7 +2,7 @@ if get_option('gtk_doc')
 
 subdir('xml')
 
-glib_prefix = dependency('glib-2.0').get_pkgconfig_variable('prefix')
+glib_prefix = dependency('glib-2.0').get_variable(pkgconfig : 'prefix')
 glib_docpath = join_paths(glib_prefix, 'share', 'gtk-doc', 'html')
 docpath = join_paths(get_option('datadir'), 'gtk-doc', 'html')
 
@@ -25,10 +25,10 @@ endif
 gnome.gtkdoc('calls',
            main_xml: 'calls-docs.xml',
             src_dir: [
-                       join_paths(meson.source_root(), 'src'),
-                       join_paths(meson.build_root(), 'src'),
-                       join_paths(meson.build_root(), 'src/dbus'),
-                       join_paths(meson.build_root(), 'plugins/ofono/libgdbofono'),
+                       join_paths(meson.project_source_root(), 'src'),
+                       join_paths(meson.project_build_root(), 'src'),
+                       join_paths(meson.project_build_root(), 'src/dbus'),
+                       join_paths(meson.project_build_root(), 'plugins/ofono/libgdbofono'),
                      ],
        dependencies: calls_doc_deps,
           scan_args: [

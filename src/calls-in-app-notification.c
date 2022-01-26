@@ -32,7 +32,7 @@ struct _CallsInAppNotification
 
   GtkLabel *label;
 
-  gint timeout;
+  guint timeout;
   guint timeout_id;
 };
 
@@ -57,15 +57,15 @@ timeout_cb (CallsInAppNotification *self)
 
 static void
 calls_in_app_notification_get_property (GObject      *object,
-              guint         property_id,
-              GValue       *value,
-              GParamSpec   *pspec)
+                                        guint         property_id,
+                                        GValue       *value,
+                                        GParamSpec   *pspec)
 {
   CallsInAppNotification *self = CALLS_IN_APP_NOTIFICATION (object);
 
   switch (property_id) {
   case PROP_TIMEOUT:
-    g_value_set_int (value, self->timeout);
+    g_value_set_uint (value, self->timeout);
     break;
 
   default:
@@ -77,22 +77,21 @@ calls_in_app_notification_get_property (GObject      *object,
 
 static void
 calls_in_app_notification_set_property (GObject      *object,
-              guint         property_id,
-              const GValue *value,
-              GParamSpec   *pspec)
+                                        guint         property_id,
+                                        const GValue *value,
+                                        GParamSpec   *pspec)
 {
   CallsInAppNotification *self = CALLS_IN_APP_NOTIFICATION (object);
 
-  switch (property_id)
-    {
-    case PROP_TIMEOUT:
-      self->timeout = g_value_get_int (value);
-      break;
+  switch (property_id) {
+  case PROP_TIMEOUT:
+    self->timeout = g_value_get_uint (value);
+    break;
 
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-    }
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    break;
+  }
 }
 
 
@@ -101,8 +100,7 @@ calls_in_app_notification_finalize (GObject *object)
 {
   CallsInAppNotification *self = CALLS_IN_APP_NOTIFICATION (object);
 
-  if (self->timeout_id)
-    g_source_remove (self->timeout_id);
+  g_clear_handle_id (&self->timeout_id, g_source_remove);
 
   G_OBJECT_CLASS (calls_in_app_notification_parent_class)->finalize (object);
 }
@@ -118,13 +116,15 @@ calls_in_app_notification_class_init (CallsInAppNotificationClass *klass)
   object_class->set_property = calls_in_app_notification_set_property;
   object_class->finalize = calls_in_app_notification_finalize;
 
-  props[PROP_TIMEOUT] = g_param_spec_int ("timeout",
-                                          "Timeout",
-                                          "The time the in-app notifaction should be shown",
-                                          -1,
-                                          G_MAXINT,
-                                          3,
-                                          G_PARAM_READWRITE);
+  props[PROP_TIMEOUT] = g_param_spec_uint ("timeout",
+                                           "Timeout",
+                                           "The time the in-app notifaction should be shown",
+                                           1,
+                                           G_MAXUINT,
+                                           DEFAULT_TIMEOUT_SECONDS,
+                                           G_PARAM_READWRITE |
+                                           G_PARAM_CONSTRUCT |
+                                           G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
@@ -138,7 +138,6 @@ static void
 calls_in_app_notification_init (CallsInAppNotification *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-  self->timeout = DEFAULT_TIMEOUT_SECONDS;
 }
 
 
@@ -169,11 +168,7 @@ calls_in_app_notification_hide (CallsInAppNotification *self)
 {
   g_return_if_fail (CALLS_IS_IN_APP_NOTIFICATION (self));
 
-  if (self->timeout_id)
-    {
-      g_source_remove (self->timeout_id);
-      self->timeout_id = 0;
-    }
+  g_clear_handle_id (&self->timeout_id, g_source_remove);
 
   gtk_revealer_set_reveal_child (GTK_REVEALER(self), FALSE);
 }

@@ -39,7 +39,13 @@ static MediaCodecInfo gst_codecs[] = {
 };
 
 
-static gboolean
+/**
+ * media_codec_available_in_gst:
+ * @codec: A #MediaCodecInfo
+ *
+ * Returns: %TRUE if codec is available on your system, %FALSE otherwise
+ */
+gboolean
 media_codec_available_in_gst (MediaCodecInfo *codec) {
   gboolean available = FALSE;
   GstRegistry *registry = gst_registry_get ();
@@ -60,7 +66,9 @@ media_codec_available_in_gst (MediaCodecInfo *codec) {
  *
  * @name: The name of the codec
  *
- * Returns: (transfer none): A #MediaCodecInfo, if found
+ * Returns: (transfer none): A #MediaCodecInfo, if found.
+ * You should check if the codec is available on your system before
+ * trying to use it with media_codec_available_in_gst()
  */
 MediaCodecInfo *
 media_codec_by_name (const char *name)
@@ -79,7 +87,9 @@ media_codec_by_name (const char *name)
  *
  * @payload_id: The payload id (see RFC 3551, 3555, 4733, 4855)
  *
- * Returns: (transfer none): A #MediaCodecInfo, if found
+ * Returns: (transfer none): A #MediaCodecInfo, if found.
+ * You should check if the codec is available on your system before
+ * trying to use it with media_codec_available_in_gst()
  */
 MediaCodecInfo *
 media_codec_by_payload_id (guint payload_id)
@@ -111,7 +121,8 @@ media_codec_get_gst_capabilities (MediaCodecInfo *codec)
 
 /* media_codecs_get_candidates:
  *
- * Returns: (transfer none): A #GList of codec candidates of type #MediaCodecInfo
+ * Returns: (transfer container): A #GList of codec candidates of type #MediaCodecInfo.
+ * Free the list with g_list_free when done.
  */
 GList *
 media_codecs_get_candidates (void)

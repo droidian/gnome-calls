@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2021-10-28 16:26+0000\n"
-"PO-Revision-Date: 2021-10-28 15:00-0300\n"
+"POT-Creation-Date: 2021-11-21 14:47+0000\n"
+"PO-Revision-Date: 2021-12-10 14:27-0300\n"
+"Last-Translator: Rafael Fontenelle <rafaelff@gnome.org>\n"
 "Language-Team: Brazilian Portuguese <gnome-pt_br-list@gnome.org>\n"
 "Language: pt_BR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
-"Last-Translator: Enrico Nicoletto <liverig@gmail.com>\n"
 "X-Generator: Poedit 3.0\n"
 
 #: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
@@ -34,8 +34,7 @@ msgstr "Boas Vindas à Demonstração do Call-UI"
 #: examples/cui-demo-window.ui:191
 msgid "This is a tour of the features the library has to offer."
 msgstr ""
-"Este é um passeio pelas características que a biblioteca tem a "
-"oferecer."
+"Este é um passeio pelas características que a biblioteca tem a oferecer."
 
 #: examples/cui-demo-window.ui:195
 msgid "Welcome"
@@ -45,15 +44,44 @@ msgstr "Boas Vindas"
 msgid "Call Display"
 msgstr "Exibição de chamada"
 
-#: src/cui-call-display.c:291
+#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
+#: src/cui-call-display.ui:293
+msgid "Dial Pad"
+msgstr "Teclado de discagem"
+
+#: examples/cui-demo-window.ui:224
+msgid "A simple dial pad to enter phone numbers."
+msgstr "Um teclado de discagem simples para digitar números de telefone."
+
+#: examples/cui-demo-window.ui:263
+msgid "Keypad"
+msgstr "Teclado numérico"
+
+#: examples/cui-demo-window.ui:264
+msgid "A number keypad."
+msgstr "Um teclado numérico."
+
+#: examples/cui-demo-window.ui:288
+msgid "Show letters"
+msgstr "Mostrar letras"
+
+#: examples/cui-demo-window.ui:303
+msgid "Show symbols"
+msgstr "Mostrar símbolos"
+
+#: examples/cui-demo-window.ui:365
+msgid "Key pad"
+msgstr "Teclado numérico"
+
+#: src/cui-call-display.c:294
 msgid "Calling…"
 msgstr "Chamando…"
 
-#: src/cui-call-display.c:305
+#: src/cui-call-display.c:308
 msgid "Call ended"
 msgstr "Chamada encerrada"
 
-#: src/cui-call-display.c:592
+#: src/cui-call-display.c:339
 msgid "Unknown"
 msgstr "Desconhecida"
 
@@ -77,10 +105,6 @@ msgstr "Adicionar chamada"
 msgid "Hold"
 msgstr "Em espera"
 
-#: src/cui-call-display.ui:293
-msgid "Dial Pad"
-msgstr "Teclado de discagem"
-
 #: src/cui-call-display.ui:349
 msgid "Hang up"
 msgstr "Desligar"
@@ -92,6 +116,10 @@ msgstr "Responder"
 #: src/cui-call-display.ui:465
 msgid "Hide the dial pad"
 msgstr "Ocultar teclado de discagem"
+
+#: src/cui-dialpad.ui:19
+msgid "Enter a number"
+msgstr "Digitar um número"
 
 #: src/cui-encryption-indicator.ui:23
 msgid "This call is not encrypted"

@@ -59,7 +59,6 @@ enum {
 
   PROP_CALLS,
   PROP_COUNTRY_CODE,
-  PROP_NUMERIC,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -107,18 +106,15 @@ struct DisconnectedData
 
 
 static void
-call_state_changed_cb (CallsDummyOrigin *self,
-                       CallsCallState    new_state,
-                       CallsCallState    old_state,
-                       CallsCall        *call)
+call_state_changed_cb (CallsCall        *call,
+                       GParamSpec       *pspec,
+                       CallsDummyOrigin *self)
 {
-  if (new_state != CALLS_CALL_STATE_DISCONNECTED)
-    {
-      return;
-    }
+  g_assert (CALLS_IS_DUMMY_ORIGIN (self));
+  g_assert (CALLS_IS_DUMMY_CALL (call));
 
-  g_return_if_fail (CALLS_IS_DUMMY_ORIGIN (self));
-  g_return_if_fail (CALLS_IS_CALL (call));
+  if (calls_call_get_state (call) != CALLS_CALL_STATE_DISCONNECTED)
+    return;
 
   remove_call (self, call, "Disconnected");
 }
@@ -135,9 +131,9 @@ add_call (CallsDummyOrigin *self, const gchar *number, gboolean inbound)
 
   call = CALLS_CALL (dummy_call);
   g_signal_emit_by_name (CALLS_ORIGIN (self), "call-added", call);
-  g_signal_connect_swapped (call, "state-changed",
-                            G_CALLBACK (call_state_changed_cb),
-                            self);
+  g_signal_connect (call, "notify::state",
+                    G_CALLBACK (call_state_changed_cb),
+                    self);
 
   self->calls = g_list_append (self->calls, dummy_call);
 
@@ -215,10 +211,6 @@ get_property (GObject      *object,
     g_value_set_string (value, NULL);
     break;
 
-  case PROP_NUMERIC:
-    g_value_set_boolean (value, TRUE);
-    break;
-
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -274,7 +266,6 @@ calls_dummy_origin_class_init (CallsDummyOriginClass *klass)
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
   IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
-  IMPLEMENTS (PROP_NUMERIC, "numeric-addresses");
 
 #undef IMPLEMENTS
 }

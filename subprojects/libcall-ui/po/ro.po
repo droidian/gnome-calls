@@ -10,8 +10,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2021-11-10 08:16+0000\n"
-"PO-Revision-Date: 2021-11-13 19:33+0100\n"
+"POT-Creation-Date: 2021-11-21 14:47+0000\n"
+"PO-Revision-Date: 2021-11-22 19:06+0100\n"
 "Last-Translator: libre <eposta1@pm.me>\n"
 "Language-Team: Romanian <gnomero-list@lists.sourceforge.net>\n"
 "Language: ro\n"
@@ -75,15 +75,15 @@ msgstr "Arată simboluri"
 msgid "Key pad"
 msgstr "Tastatură"
 
-#: src/cui-call-display.c:291
+#: src/cui-call-display.c:294
 msgid "Calling…"
 msgstr "Sună…"
 
-#: src/cui-call-display.c:305
+#: src/cui-call-display.c:308
 msgid "Call ended"
 msgstr "Apel terminat"
 
-#: src/cui-call-display.c:592
+#: src/cui-call-display.c:339
 msgid "Unknown"
 msgstr "Necunoscut"
 
@@ -118,6 +118,10 @@ msgstr "Răspunde"
 #: src/cui-call-display.ui:465
 msgid "Hide the dial pad"
 msgstr "Ascunde tastatura"
+
+#: src/cui-dialpad.ui:19
+msgid "Enter a number"
+msgstr "Introdu un număr"
 
 #: src/cui-encryption-indicator.ui:23
 msgid "This call is not encrypted"
