@@ -23,3 +23,7 @@ cui-call-display .phone-number-entry,
 cui-dialpad      .phone-number-entry {
   font-size: 24px;
 }
+
+#cui-call-display-status {
+  font-feature-settings: "tnum";
+}

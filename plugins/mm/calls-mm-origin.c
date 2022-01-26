@@ -72,7 +72,6 @@ enum {
   PROP_CALLS,
   PROP_MODEM,
   PROP_COUNTRY_CODE,
-  PROP_NUMERIC,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -425,15 +424,15 @@ delete_call (CallsMMOrigin  *self,
 }
 
 static void
-call_state_changed_cb (CallsMMOrigin  *self,
-                       CallsCallState  new_state,
-                       CallsCallState  old_state,
-                       CallsCall      *call)
+call_state_changed_cb (CallsCall     *call,
+                       GParamSpec    *pspec,
+                       CallsMMOrigin *self)
 {
-  if (new_state != CALLS_CALL_STATE_DISCONNECTED)
-    {
-      return;
-    }
+  g_assert (CALLS_IS_MM_ORIGIN (self));
+  g_assert (CALLS_IS_MM_CALL (call));
+
+  if (calls_call_get_state (call) != CALLS_CALL_STATE_DISCONNECTED)
+    return;
 
   delete_call (self, CALLS_MM_CALL (call));
 }
@@ -448,9 +447,9 @@ add_call (CallsMMOrigin *self,
 
   call = calls_mm_call_new (mm_call);
 
-  g_signal_connect_swapped (call, "state-changed",
-                            G_CALLBACK (call_state_changed_cb),
-                            self);
+  g_signal_connect (call, "notify::state",
+                    G_CALLBACK (call_state_changed_cb),
+                    self);
 
   path = mm_call_dup_path (mm_call);
   g_hash_table_insert (self->calls, path, call);
@@ -673,10 +672,6 @@ get_property (GObject      *object,
     g_value_set_string (value, self->country_code);
     break;
 
-  case PROP_NUMERIC:
-    g_value_set_boolean (value, TRUE);
-    break;
-
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -892,7 +887,6 @@ calls_mm_origin_class_init (CallsMMOriginClass *klass)
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
   IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
-  IMPLEMENTS (PROP_NUMERIC, "numeric-addresses");
 
 #undef IMPLEMENTS
 

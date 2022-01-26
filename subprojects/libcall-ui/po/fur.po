@@ -1,0 +1,130 @@
+# Friulian translation for libcall-ui.
+# Copyright (C) 2021 libcall-ui's COPYRIGHT HOLDER
+# This file is distributed under the same license as the libcall-ui package.
+# Fabio Tomat <f.t.public@gmail.com>, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: libcall-ui main\n"
+"Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
+"issues/\n"
+"POT-Creation-Date: 2021-12-17 17:00+0000\n"
+"PO-Revision-Date: 2021-12-22 17:28+0100\n"
+"Last-Translator: Fabio Tomat <f.t.public@gmail.com>\n"
+"Language-Team: Friulian <fur@li.org>\n"
+"Language: fur\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.0.1\n"
+
+#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
+msgid "Call-UI Demo"
+msgstr "Dimostrazion IU-Clamade"
+
+#: examples/cui-demo-window.ui:138
+msgid "Back"
+msgstr "Indaûr"
+
+#: examples/cui-demo-window.ui:190
+msgid "Welcome to Call-UI Demo"
+msgstr "Benvignûts te dimostrazion IU-Clamade"
+
+#: examples/cui-demo-window.ui:191
+msgid "This is a tour of the features the library has to offer."
+msgstr ""
+"Cheste e je une panoramiche des funzionalitâts che la librarie e "
+"ufrìs."
+
+#: examples/cui-demo-window.ui:195
+msgid "Welcome"
+msgstr "Benvignûts"
+
+#: examples/cui-demo-window.ui:210
+msgid "Call Display"
+msgstr "Videade di clamade"
+
+#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
+#: src/cui-call-display.ui:293
+msgid "Dial Pad"
+msgstr "Tastiere"
+
+#: examples/cui-demo-window.ui:224
+msgid "A simple dial pad to enter phone numbers."
+msgstr "Une semplice tastiere par inserî i numars di telefon."
+
+#: examples/cui-demo-window.ui:263
+msgid "Keypad"
+msgstr "Tastierute"
+
+#: examples/cui-demo-window.ui:264
+msgid "A number keypad."
+msgstr "Une tastierute numeriche."
+
+#: examples/cui-demo-window.ui:288
+msgid "Show letters"
+msgstr "Mostre letaris"
+
+#: examples/cui-demo-window.ui:303
+msgid "Show symbols"
+msgstr "Mostre simbui"
+
+#: examples/cui-demo-window.ui:365
+msgid "Key pad"
+msgstr "Tastiere"
+
+#: src/cui-call-display.c:295
+msgid "Calling…"
+msgstr "Daûr a clamâ…"
+
+#: src/cui-call-display.c:309
+msgid "Call ended"
+msgstr "Clamade finide"
+
+#: src/cui-call-display.c:331
+msgid "Unknown"
+msgstr "No cognossût"
+
+#: src/cui-call-display.ui:37
+msgid "Incoming phone call"
+msgstr "Clamade in jentrade"
+
+#: src/cui-call-display.ui:139
+msgid "Mute"
+msgstr "Cidine"
+
+#: src/cui-call-display.ui:176
+msgid "Speaker"
+msgstr "Casse"
+
+#: src/cui-call-display.ui:212
+msgid "Add call"
+msgstr "Zonte clamade"
+
+#: src/cui-call-display.ui:257
+msgid "Hold"
+msgstr "In spiete"
+
+#: src/cui-call-display.ui:349
+msgid "Hang up"
+msgstr "Met jù"
+
+#: src/cui-call-display.ui:380
+msgid "Answer"
+msgstr "Rispuint"
+
+#: src/cui-call-display.ui:465
+msgid "Hide the dial pad"
+msgstr "Plate la tastiere"
+
+#: src/cui-dialpad.ui:19
+msgid "Enter a number"
+msgstr "Inserìs un numar"
+
+#: src/cui-encryption-indicator.ui:23
+msgid "This call is not encrypted"
+msgstr "Cheste clamade no je cifrade"
+
+#: src/cui-encryption-indicator.ui:45
+msgid "This call is encrypted"
+msgstr "Cheste clamade e je cifrade"

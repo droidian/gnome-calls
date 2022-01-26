@@ -37,8 +37,6 @@ struct _CallsMMCall
 {
   GObject parent_instance;
   MMCall *mm_call;
-  GString *id;
-  CallsCallState state;
   gchar *disconnect_reason;
 };
 
@@ -56,31 +54,10 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 static void
-change_state (CallsMMCall    *self,
-              CallsCallState  state)
-{
-  CallsCallState old_state = self->state;
-
-  if (old_state == state)
-    {
-      return;
-    }
-
-  self->state = state;
-  g_object_notify (G_OBJECT (self), "state");
-  g_signal_emit_by_name (CALLS_CALL (self),
-                         "state-changed",
-                         state,
-                         old_state);
-}
-
-
-static void
 notify_id_cb (CallsMMCall *self,
               const gchar *id)
 {
-  g_string_assign (self->id, id);
-  g_object_notify (G_OBJECT (self), "id");
+  calls_call_set_id (CALLS_CALL (self), id);
 }
 
 
@@ -185,38 +162,12 @@ state_changed_cb (CallsMMCall       *self,
         {
           g_debug ("MM call state changed to `%s'",
                    map_row->name);
-          change_state (self, map_row->calls);
+          calls_call_set_state (CALLS_CALL (self), map_row->calls);
           return;
         }
     }
 }
 
-static const char *
-calls_mm_call_get_id (CallsCall *call)
-{
-  CallsMMCall *self = CALLS_MM_CALL (call);
-
-  return self->id->str;
-}
-
-static CallsCallState
-calls_mm_call_get_state (CallsCall *call)
-{
-  CallsMMCall *self = CALLS_MM_CALL (call);
-
-  return self->state;
-}
-
-static gboolean
-calls_mm_call_get_inbound (CallsCall *call)
-{
-  CallsMMCall *self = CALLS_MM_CALL (call);
-
-  if (self->mm_call)
-    return mm_call_get_direction (self->mm_call) == MM_CALL_DIRECTION_INCOMING;
-
-  return FALSE;
-}
 
 static const char *
 calls_mm_call_get_protocol (CallsCall *self)
@@ -243,7 +194,9 @@ operation_cb (MMCall                      *mm_call,
   if (!ok)
     {
       g_warning ("Error %s ModemManager call to `%s': %s",
-                 data->desc, data->self->id->str, error->message);
+                 data->desc,
+                 calls_call_get_id (CALLS_CALL (data->self)),
+                 error->message);
       CALLS_ERROR (data->self, error);
     }
 
@@ -339,9 +292,7 @@ constructed (GObject *object)
   /* Start outgoing call */
   if (state == MM_CALL_STATE_UNKNOWN
       && mm_call_get_direction (self->mm_call) == MM_CALL_DIRECTION_OUTGOING)
-    {
-      calls_mm_call_start_call (CALLS_CALL (self));
-    }
+    calls_mm_call_start_call (CALLS_CALL (self));
 
   G_OBJECT_CLASS (calls_mm_call_parent_class)->constructed (object);
 }
@@ -363,7 +314,6 @@ finalize (GObject *object)
   CallsMMCall *self = CALLS_MM_CALL (object);
 
   g_free (self->disconnect_reason);
-  g_string_free (self->id, TRUE);
 
   G_OBJECT_CLASS (calls_mm_call_parent_class)->finalize (object);
 }
@@ -380,9 +330,6 @@ calls_mm_call_class_init (CallsMMCallClass *klass)
   object_class->dispose = dispose;
   object_class->finalize = finalize;
 
-  call_class->get_id = calls_mm_call_get_id;
-  call_class->get_state = calls_mm_call_get_state;
-  call_class->get_inbound = calls_mm_call_get_inbound;
   call_class->get_protocol = calls_mm_call_get_protocol;
   call_class->answer = calls_mm_call_answer;
   call_class->hang_up = calls_mm_call_hang_up;
@@ -405,17 +352,20 @@ calls_mm_call_message_source_interface_init (CallsMessageSourceInterface *iface)
 static void
 calls_mm_call_init (CallsMMCall *self)
 {
-  self->id = g_string_new (NULL);
 }
 
 
 CallsMMCall *
 calls_mm_call_new (MMCall *mm_call)
 {
+  gboolean inbound;
+
   g_return_val_if_fail (MM_IS_CALL (mm_call), NULL);
 
+  inbound = mm_call_get_direction (mm_call) == MM_CALL_DIRECTION_INCOMING;
   return g_object_new (CALLS_TYPE_MM_CALL,
                        "mm-call", mm_call,
+                       "inbound", inbound,
                        NULL);
 }
 

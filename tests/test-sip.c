@@ -110,9 +110,9 @@ test_sip_origin_objects (SipFixture   *fixture,
                 "account-state", &state_offline,
                 NULL);
 
-  g_assert_cmpint (state_alice, ==, CALLS_ACCOUNT_ONLINE);
-  g_assert_cmpint (state_bob, ==, CALLS_ACCOUNT_ONLINE);
-  g_assert_cmpint (state_offline, ==, CALLS_ACCOUNT_OFFLINE);
+  g_assert_cmpint (state_alice, ==, CALLS_ACCOUNT_STATE_ONLINE);
+  g_assert_cmpint (state_bob, ==, CALLS_ACCOUNT_STATE_ONLINE);
+  g_assert_cmpint (state_offline, ==, CALLS_ACCOUNT_STATE_OFFLINE);
 }
 
 static void
@@ -156,13 +156,13 @@ on_call_answer_cb (gpointer user_data)
 }
 
 static void
-on_autoreject_state_changed_cb (CallsCall     *call,
-                                CallsCallState new_state,
-                                CallsCallState old_state,
-                                gpointer       user_data)
+on_autoreject_state_changed (CallsCall  *call,
+                             GParamSpec *pspec,
+                             gpointer    user_data)
 {
-  g_assert_cmpint (old_state, ==, CALLS_CALL_STATE_INCOMING);
-  g_assert_cmpint (new_state, ==, CALLS_CALL_STATE_DISCONNECTED);
+  CallsCallState state = calls_call_get_state (call);
+
+  g_assert_cmpint (state, ==, CALLS_CALL_STATE_DISCONNECTED);
 
   g_object_unref (call);
 
@@ -233,8 +233,9 @@ on_incoming_call_autoreject_cb (CallsOrigin *origin,
   g_object_ref (call);
   g_idle_add ((GSourceFunc) on_call_hangup_cb, call);
 
-  g_signal_connect (call, "state-changed",
-                    (GCallback) on_autoreject_state_changed_cb, NULL);
+  g_signal_connect (call, "notify::state",
+                    G_CALLBACK (on_autoreject_state_changed),
+                    NULL);
 
   return G_SOURCE_REMOVE;
 }
@@ -371,6 +372,7 @@ setup_sip_origins (SipFixture   *fixture,
                                         FALSE,
                                         TRUE,
                                         5060,
+                                        FALSE,
                                         FALSE);
 
   fixture->origin_bob =
@@ -384,6 +386,7 @@ setup_sip_origins (SipFixture   *fixture,
                                         FALSE,
                                         TRUE,
                                         5061,
+                                        FALSE,
                                         FALSE);
 
   fixture->origin_offline =
@@ -397,6 +400,7 @@ setup_sip_origins (SipFixture   *fixture,
                                         FALSE,
                                         FALSE,
                                         0,
+                                        FALSE,
                                         FALSE);
 
 }
@@ -438,9 +442,11 @@ test_sip_media_manager (void)
   /* Check single codecs */
   codecs = g_list_append (NULL, media_codec_by_name ("PCMA"));
 
+  g_debug ("Testing generated SDP messages");
+
   /* PCMA RTP */
   sdp_message =
-    calls_sip_media_manager_get_capabilities (manager, 40002, FALSE, codecs);
+    calls_sip_media_manager_get_capabilities (manager, NULL, 40002, FALSE, codecs);
 
   g_assert_true (sdp_message);
   g_assert_true (find_string_in_sdp_message (sdp_message,
@@ -452,9 +458,11 @@ test_sip_media_manager (void)
 
   g_free (sdp_message);
 
+  g_debug ("PCMA RTP test OK");
+
   /* PCMA SRTP */
   sdp_message =
-    calls_sip_media_manager_get_capabilities (manager, 42002, TRUE, codecs);
+    calls_sip_media_manager_get_capabilities (manager, NULL, 42002, TRUE, codecs);
   g_assert_true (sdp_message);
   g_assert_true (find_string_in_sdp_message (sdp_message,
                                              "m=audio 42002 RTP/SAVP 8"));
@@ -462,11 +470,13 @@ test_sip_media_manager (void)
   g_clear_pointer (&codecs, g_list_free);
   g_free (sdp_message);
 
+  g_debug ("PCMA SRTP test OK");
+
   /* G722 RTP */
   codecs = g_list_append (NULL, media_codec_by_name ("G722"));
 
   sdp_message =
-    calls_sip_media_manager_get_capabilities (manager, 42042, FALSE, codecs);
+    calls_sip_media_manager_get_capabilities (manager, NULL, 42042, FALSE, codecs);
 
   g_assert_true (sdp_message);
   g_assert_true (find_string_in_sdp_message (sdp_message,
@@ -479,13 +489,15 @@ test_sip_media_manager (void)
   g_clear_pointer (&codecs, g_list_free);
   g_free (sdp_message);
 
+  g_debug ("G722 RTP test OK");
+
   /* G722 PCMU PCMA RTP (in this order) */
   codecs = g_list_append (NULL, media_codec_by_name ("G722"));
   codecs = g_list_append (codecs, media_codec_by_name ("PCMU"));
   codecs = g_list_append (codecs, media_codec_by_name ("PCMA"));
 
   sdp_message =
-    calls_sip_media_manager_get_capabilities (manager, 33340, FALSE, codecs);
+    calls_sip_media_manager_get_capabilities (manager, NULL, 33340, FALSE, codecs);
 
   g_assert_true (sdp_message);
   g_assert_true (find_string_in_sdp_message (sdp_message,
@@ -500,14 +512,16 @@ test_sip_media_manager (void)
   g_clear_pointer (&codecs, g_list_free);
   g_free (sdp_message);
 
-  /* GSM PCMA G722 PCMU (in this order) */
+  g_debug ("multiple codecs RTP test OK");
+
+  /* GSM PCMA G722 PCMU SRTP (in this order) */
   codecs = g_list_append (NULL, media_codec_by_name ("GSM"));
   codecs = g_list_append (codecs, media_codec_by_name ("PCMA"));
   codecs = g_list_append (codecs, media_codec_by_name ("G722"));
   codecs = g_list_append (codecs, media_codec_by_name ("PCMU"));
 
   sdp_message =
-    calls_sip_media_manager_get_capabilities (manager, 18098, TRUE, codecs);
+    calls_sip_media_manager_get_capabilities (manager, NULL, 18098, TRUE, codecs);
 
   g_assert_true (sdp_message);
   g_assert_true (find_string_in_sdp_message (sdp_message,
@@ -516,10 +530,13 @@ test_sip_media_manager (void)
   g_clear_pointer (&codecs, g_list_free);
   g_free (sdp_message);
 
+  g_debug ("multiple codecs SRTP test OK");
+
+  /* no codecs */
   g_test_expect_message ("CallsSipMediaManager", G_LOG_LEVEL_WARNING,
                          "No supported codecs found. Can't build meaningful SDP message");
   sdp_message =
-    calls_sip_media_manager_get_capabilities (manager, 25048, FALSE, NULL);
+    calls_sip_media_manager_get_capabilities (manager, NULL, 25048, FALSE, NULL);
 
   g_test_assert_expected_messages ();
   g_assert_true (sdp_message);
@@ -527,6 +544,8 @@ test_sip_media_manager (void)
                                              "m=audio 0 RTP/AVP"));
 
   g_free (sdp_message);
+
+  g_debug ("no codecs test OK");
 }
 
 gint

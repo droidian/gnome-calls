@@ -23,7 +23,12 @@
  */
 
 #include "calls-account.h"
+#include "calls-message-source.h"
+#include "calls-log.h"
+
 #include "enum-types.h"
+
+#include <glib/gi18n.h>
 
 /**
  * SECTION:account
@@ -35,6 +40,54 @@
 
 G_DEFINE_INTERFACE (CallsAccount, calls_account, CALLS_TYPE_ORIGIN)
 
+enum {
+  SIGNAL_STATE_CHANGED,
+  SIGNAL_LAST_SIGNAL,
+};
+static guint signals [SIGNAL_LAST_SIGNAL];
+
+
+static gboolean
+calls_account_state_change_is_important (CallsAccountState new_state)
+{
+  if (calls_log_get_verbosity () >= 3)
+    return TRUE;
+
+  switch (new_state) {
+  case CALLS_ACCOUNT_STATE_UNKNOWN:
+  case CALLS_ACCOUNT_STATE_INITIALIZING:
+  case CALLS_ACCOUNT_STATE_DEINITIALIZING:
+  case CALLS_ACCOUNT_STATE_CONNECTING:
+  case CALLS_ACCOUNT_STATE_DISCONNECTING:
+    return FALSE;
+
+  case CALLS_ACCOUNT_STATE_ERROR:
+  case CALLS_ACCOUNT_STATE_OFFLINE:
+  case CALLS_ACCOUNT_STATE_ONLINE:
+    return TRUE;
+
+  default:
+    return FALSE;
+  }
+}
+
+
+static gboolean
+calls_account_state_reason_is_error (CallsAccountStateReason reason)
+{
+  switch (reason) {
+  case CALLS_ACCOUNT_STATE_REASON_NO_CREDENTIALS:
+  case CALLS_ACCOUNT_STATE_REASON_CONNECTION_TIMEOUT:
+  case CALLS_ACCOUNT_STATE_REASON_CONNECTION_DNS_ERROR:
+  case CALLS_ACCOUNT_STATE_REASON_AUTHENTICATION_FAILURE:
+  case CALLS_ACCOUNT_STATE_REASON_INTERNAL_ERROR:
+    return TRUE;
+
+  default:
+    return FALSE;
+  }
+}
+
 
 static void
 calls_account_default_init (CallsAccountInterface *iface)
@@ -44,7 +97,7 @@ calls_account_default_init (CallsAccountInterface *iface)
                        "Account state",
                        "The state of the account",
                        CALLS_TYPE_ACCOUNT_STATE,
-                       CALLS_ACCOUNT_NULL,
+                       CALLS_ACCOUNT_STATE_UNKNOWN,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS |
                        G_PARAM_EXPLICIT_NOTIFY));
@@ -57,6 +110,24 @@ calls_account_default_init (CallsAccountInterface *iface)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS |
                          G_PARAM_EXPLICIT_NOTIFY));
+
+  /**
+   * CallsAccount::account-state-changed:
+   * @self: The #CallsAccount
+   * @new_state: The new #CALLS_ACCOUNT_STATE of the account
+   * @old_state: The old #CALLS_ACCOUNT_STATE of the account
+   * @reason: The #CALLS_ACCOUNT_STATE_REASON for the change
+   */
+  signals[SIGNAL_STATE_CHANGED] =
+    g_signal_new ("account-state-changed",
+                  G_TYPE_FROM_INTERFACE (iface),
+                  G_SIGNAL_RUN_LAST,
+                  0, NULL, NULL, NULL,
+                  G_TYPE_NONE,
+                  3,
+                  CALLS_TYPE_ACCOUNT_STATE,
+                  CALLS_TYPE_ACCOUNT_STATE,
+                  CALLS_TYPE_ACCOUNT_STATE_REASON);
 }
 
 /**
@@ -91,7 +162,7 @@ calls_account_get_state (CallsAccount *self)
 {
   CallsAccountState state;
 
-  g_return_val_if_fail (CALLS_IS_ACCOUNT (self), CALLS_ACCOUNT_NULL);
+  g_return_val_if_fail (CALLS_IS_ACCOUNT (self), CALLS_ACCOUNT_STATE_UNKNOWN);
 
   g_object_get (self, "account-state", &state, NULL);
 
@@ -116,4 +187,137 @@ calls_account_get_address (CallsAccount *self)
   g_return_val_if_fail (iface->get_address, NULL);
 
   return iface->get_address (self);
+}
+
+/**
+ * calls_account_state_to_string:
+ * @state: A #CallsAccountState
+ *
+ * Returns: (transfer none): A human readable description of the account state
+ */
+const char *
+calls_account_state_to_string (CallsAccountState state)
+{
+  switch (state) {
+  case CALLS_ACCOUNT_STATE_UNKNOWN:
+    return _("Default (uninitialized) state");
+
+  case CALLS_ACCOUNT_STATE_INITIALIZING:
+    return _("Initializing account…");
+
+  case CALLS_ACCOUNT_STATE_DEINITIALIZING:
+    return _("Uninitializing account…");
+
+  case CALLS_ACCOUNT_STATE_CONNECTING:
+    return _("Connecting to server…");
+
+  case CALLS_ACCOUNT_STATE_ONLINE:
+    return _("Account is online");
+
+  case CALLS_ACCOUNT_STATE_DISCONNECTING:
+    return _("Disconnecting from server…");
+
+  case CALLS_ACCOUNT_STATE_OFFLINE:
+    return _("Account is offline");
+
+  case CALLS_ACCOUNT_STATE_ERROR:
+    return _("Account encountered an error");
+
+  default:
+    return NULL;
+  }
+}
+
+/**
+ * calls_account_state_reason_to_string:
+ * @reason: A #CallsAccountStateReason
+ *
+ * Returns: (transfer none): A human readable description for why an account state changed
+ */
+const char *
+calls_account_state_reason_to_string (CallsAccountStateReason reason)
+{
+  switch (reason) {
+  case CALLS_ACCOUNT_STATE_REASON_UNKNOWN:
+    return _("No reason given");
+
+  case CALLS_ACCOUNT_STATE_REASON_INITIALIZATION_STARTED:
+    return _("Initialization started");
+
+  case CALLS_ACCOUNT_STATE_REASON_INITIALIZED:
+    return _("Initialization complete");
+
+  case CALLS_ACCOUNT_STATE_REASON_DEINITIALIZATION_STARTED:
+    return _("Uninitialization started");
+
+  case CALLS_ACCOUNT_STATE_REASON_DEINITIALIZED:
+    return _("Uninitialization complete");
+
+  case CALLS_ACCOUNT_STATE_REASON_NO_CREDENTIALS:
+    return _("No credentials set");
+
+  case CALLS_ACCOUNT_STATE_REASON_CONNECT_STARTED:
+    return _("Starting to connect");
+
+  case CALLS_ACCOUNT_STATE_REASON_CONNECTION_TIMEOUT:
+    return _("Connection timed out");
+
+  case CALLS_ACCOUNT_STATE_REASON_CONNECTION_DNS_ERROR:
+    return _("Domain name could not be resolved");
+
+  case CALLS_ACCOUNT_STATE_REASON_AUTHENTICATION_FAILURE:
+    return _("Server did not accept username or password");
+
+  case CALLS_ACCOUNT_STATE_REASON_CONNECTED:
+    return _("Connecting complete");
+
+  case CALLS_ACCOUNT_STATE_REASON_DISCONNECT_STARTED:
+    return _("Starting to disconnect");
+
+  case CALLS_ACCOUNT_STATE_REASON_DISCONNECTED:
+    return _("Disconnecting complete");
+
+  case CALLS_ACCOUNT_STATE_REASON_INTERNAL_ERROR:
+    return _("Internal error occurred");
+
+  default:
+    return NULL;
+  }
+}
+
+/**
+ * calls_account_emit_message_for_state_change:
+ * @account: A #CallsAccount
+ * @new_state: The new #CallsAccountState
+ * @reason: The #CallsAccountStateReason for the state change
+ *
+ * Returns: Emits a human readable message for a state change
+ */
+void
+calls_account_emit_message_for_state_change (CallsAccount           *account,
+                                             CallsAccountState       new_state,
+                                             CallsAccountStateReason reason)
+{
+  g_autofree char *message = NULL;
+  gboolean state_is_important = FALSE;
+  gboolean reason_is_error = FALSE;
+
+  g_return_if_fail (CALLS_IS_ACCOUNT (account));
+
+  state_is_important = calls_account_state_change_is_important (new_state);
+  reason_is_error = calls_account_state_reason_is_error (reason);
+
+  if (!state_is_important && !reason_is_error)
+    return;
+
+  if (reason_is_error || calls_log_get_verbosity () >= 3)
+    message = g_strdup_printf ("%s: %s",
+                            calls_account_state_to_string (new_state),
+                            calls_account_state_reason_to_string (reason));
+  else
+    message = g_strdup (calls_account_state_to_string (new_state));
+
+  calls_message_source_emit_message (CALLS_MESSAGE_SOURCE (account),
+                                     message,
+                                     reason_is_error ? GTK_MESSAGE_ERROR : GTK_MESSAGE_INFO);
 }

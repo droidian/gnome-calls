@@ -22,18 +22,15 @@
  *
  */
 
-#ifndef CALLS_MESSAGE_SOURCE_H__
-#define CALLS_MESSAGE_SOURCE_H__
+#pragma once
 
-#include "util.h"
-
-#include <glib-object.h>
+#include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
 #define CALLS_TYPE_MESSAGE_SOURCE (calls_message_source_get_type ())
 
-G_DECLARE_INTERFACE (CallsMessageSource, calls_message_source, CALLS, MESSAGE_SOURCE, GObject);
+G_DECLARE_INTERFACE (CallsMessageSource, calls_message_source, CALLS, MESSAGE_SOURCE, GObject)
 
 struct _CallsMessageSourceInterface
 {
@@ -44,7 +41,7 @@ struct _CallsMessageSourceInterface
 
 /**
  * CALLS_EMIT_MESSAGE:
- * @obj: an object which can be cast to a #CallsMesssageSource
+ * @obj: an object which can be cast to a #CallsMessageSource
  * @text: the message text as a string
  * @type: the type of the message
  *
@@ -60,7 +57,7 @@ struct _CallsMessageSourceInterface
 
 /**
  * CALLS_ERROR:
- * @obj: an object which can be cast to a #CallsMesssageSource
+ * @obj: an object which can be cast to a #CallsMessageSource
  * @error: a pointer to a #GError containing the error message
  *
  * Emit a message signal with an error type, the text of which is
@@ -72,7 +69,8 @@ struct _CallsMessageSourceInterface
 #define CALLS_ERROR(obj,error)                                  \
   CALLS_EMIT_MESSAGE (obj, error->message, GTK_MESSAGE_ERROR)
 
+void                   calls_message_source_emit_message (CallsMessageSource *self,
+                                                          const char         *message,
+                                                          GtkMessageType      message_type);
 
 G_END_DECLS
-
-#endif /* CALLS_MESSAGE_SOURCE_H__ */

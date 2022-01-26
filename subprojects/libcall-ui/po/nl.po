@@ -1,0 +1,133 @@
+# Dutch translations for PACKAGE package.
+# Copyright (C) 2021 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Erik Nijenhuis <erik@xerdi.com>, 2021.
+# Nathan Follens <nfollens@gnome.org>, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
+"issues/\n"
+"POT-Creation-Date: 2021-12-22 16:29+0000\n"
+"PO-Revision-Date: 2021-12-29 20:17+0100\n"
+"Last-Translator: Nathan Follens <nfollens@gnome.org>\n"
+"Language-Team: Dutch\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0.1\n"
+
+#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
+msgid "Call-UI Demo"
+msgstr "Oproep-UI-demo"
+
+#: examples/cui-demo-window.ui:138
+msgid "Back"
+msgstr "Terug"
+
+# Oproep-UI is in feite de naam van de App. Vandaar dat ik deze met hoofdletter heb gezet.
+#: examples/cui-demo-window.ui:190
+msgid "Welcome to Call-UI Demo"
+msgstr "Welkom bij de Oproep-UI-demo"
+
+#: examples/cui-demo-window.ui:191
+msgid "This is a tour of the features the library has to offer."
+msgstr ""
+"Dit is een rondleiding langs de functies die de softwarebibliotheek te "
+"bieden heeft."
+
+#: examples/cui-demo-window.ui:195
+msgid "Welcome"
+msgstr "Welkom"
+
+#: examples/cui-demo-window.ui:210
+msgid "Call Display"
+msgstr "Belscherm"
+
+#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
+#: src/cui-call-display.ui:293
+msgid "Dial Pad"
+msgstr "Toetsenblok"
+
+#: examples/cui-demo-window.ui:224
+msgid "A simple dial pad to enter phone numbers."
+msgstr "Een eenvoudig numeriek toetsenblok om telefoonnummers in te voeren."
+
+#: examples/cui-demo-window.ui:263
+msgid "Keypad"
+msgstr "Toetsenblok"
+
+#: examples/cui-demo-window.ui:264
+msgid "A number keypad."
+msgstr "Een numeriek toetsenblok."
+
+#: examples/cui-demo-window.ui:288
+msgid "Show letters"
+msgstr "Letters tonen"
+
+#: examples/cui-demo-window.ui:303
+msgid "Show symbols"
+msgstr "Symbolen tonen"
+
+#: examples/cui-demo-window.ui:365
+msgid "Key pad"
+msgstr "Toetsenblok"
+
+#: src/cui-call-display.c:295
+msgid "Calling…"
+msgstr "Bellen…"
+
+#: src/cui-call-display.c:309
+msgid "Call ended"
+msgstr "Oproep beëindigd"
+
+#: src/cui-call-display.c:331
+msgid "Unknown"
+msgstr "Onbekend"
+
+#: src/cui-call-display.ui:37
+msgid "Incoming phone call"
+msgstr "Inkomende oproep"
+
+#: src/cui-call-display.ui:139
+msgid "Mute"
+msgstr "Dempen"
+
+#: src/cui-call-display.ui:176
+msgid "Speaker"
+msgstr "Luidspreker"
+
+#: src/cui-call-display.ui:212
+msgid "Add call"
+msgstr "Oproep toevoegen"
+
+#: src/cui-call-display.ui:257
+msgid "Hold"
+msgstr "In de wacht zetten"
+
+#: src/cui-call-display.ui:349
+msgid "Hang up"
+msgstr "Ophangen"
+
+#: src/cui-call-display.ui:380
+msgid "Answer"
+msgstr "Opnemen"
+
+#: src/cui-call-display.ui:465
+msgid "Hide the dial pad"
+msgstr "Toetsenblok verbergen"
+
+#: src/cui-dialpad.ui:19
+msgid "Enter a number"
+msgstr "Voer een nummer in"
+
+#: src/cui-encryption-indicator.ui:23
+msgid "This call is not encrypted"
+msgstr "Dit gesprek is niet versleuteld"
+
+#: src/cui-encryption-indicator.ui:45
+msgid "This call is encrypted"
+msgstr "Dit gesprek is versleuteld"

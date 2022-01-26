@@ -38,10 +38,10 @@
  *
  * This is the interface to a call.  It has a id, name and a
  * state.  Only the state changes after creation.  If the state is
- * #CALL_CALL_STATE_INCOMING, the call can be answered with #answer.
- * The call can also be hung up at any time with #hang_up.
+ * #CALLS_CALL_STATE_INCOMING, the call can be answered with #calls_call_answer.
+ * The call can also be hung up at any time with #calls_call_hang_up.
  *
- * DTMF tones can be played the call using #send_dtmf
+ * DTMF tones can be played to the call using #calls_call_send_dtmf_tone
  * Valid characters for the key are 0-9, '*', '#', 'A',
  * 'B', 'C' and 'D'.
  */
@@ -67,6 +67,10 @@ static GParamSpec *properties[N_PROPS];
 static guint signals[N_SIGNALS];
 
 typedef struct {
+  char *id;
+  char *name;
+  CallsCallState state;
+  gboolean inbound;
   gboolean silenced;
 } CallsCallPrivate;
 
@@ -74,33 +78,9 @@ G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (CallsCall, calls_call, G_TYPE_OBJECT)
 
 
 static const char *
-calls_call_real_get_id (CallsCall *self)
-{
-  return NULL;
-}
-
-static const char *
-calls_call_real_get_name (CallsCall *self)
-{
-  return NULL;
-}
-
-static CallsCallState
-calls_call_real_get_state (CallsCall *self)
-{
-  return 0;
-}
-
-static gboolean
-calls_call_real_get_inbound (CallsCall *self)
-{
-  return FALSE;
-}
-
-static const char *
 calls_call_real_get_protocol (CallsCall *self)
 {
-  return NULL;
+  return get_protocol_from_address_with_fallback (calls_call_get_id (self));
 }
 
 static void
@@ -121,6 +101,42 @@ calls_call_real_send_dtmf_tone (CallsCall *self,
 }
 
 static void
+calls_call_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
+{
+  CallsCall *self = CALLS_CALL (object);
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
+  switch (prop_id) {
+  case PROP_INBOUND:
+    priv->inbound = g_value_get_boolean (value);
+    if (priv->inbound)
+      calls_call_set_state (self, CALLS_CALL_STATE_INCOMING);
+    else
+      calls_call_set_state (self, CALLS_CALL_STATE_DIALING);
+    break;
+
+  case PROP_ID:
+    calls_call_set_id (self, g_value_get_string (value));
+    break;
+
+  case PROP_NAME:
+    calls_call_set_name (self, g_value_get_string (value));
+    break;
+
+  case PROP_STATE:
+    calls_call_set_state (self, g_value_get_enum (value));
+    break;
+
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+  }
+}
+
+
+static void
 calls_call_get_property (GObject    *object,
                          guint       prop_id,
                          GValue     *value,
@@ -128,35 +144,34 @@ calls_call_get_property (GObject    *object,
 {
   CallsCall *self = CALLS_CALL (object);
 
-  switch (prop_id)
-    {
-    case PROP_INBOUND:
-      g_value_set_boolean (value, calls_call_get_inbound (self));
-      break;
+  switch (prop_id) {
+  case PROP_INBOUND:
+    g_value_set_boolean (value, calls_call_get_inbound (self));
+    break;
 
-    case PROP_ID:
-      g_value_set_string (value, calls_call_get_id (self));
-      break;
+  case PROP_ID:
+    g_value_set_string (value, calls_call_get_id (self));
+    break;
 
-    case PROP_NAME:
-      g_value_set_string (value, calls_call_get_name (self));
-      break;
+  case PROP_NAME:
+    g_value_set_string (value, calls_call_get_name (self));
+    break;
 
-    case PROP_STATE:
-      g_value_set_enum (value, calls_call_get_state (self));
-      break;
+  case PROP_STATE:
+    g_value_set_enum (value, calls_call_get_state (self));
+    break;
 
-    case PROP_PROTOCOL:
-      g_value_set_string (value, calls_call_get_protocol (self));
-      break;
+  case PROP_PROTOCOL:
+    g_value_set_string (value, calls_call_get_protocol (self));
+    break;
 
-    case PROP_SILENCED:
-      g_value_set_boolean (value, calls_call_get_silenced (self));
-      break;
+  case PROP_SILENCED:
+    g_value_set_boolean (value, calls_call_get_silenced (self));
+    break;
 
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+  }
 }
 
 static void
@@ -165,11 +180,8 @@ calls_call_class_init (CallsCallClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->get_property = calls_call_get_property;
+  object_class->set_property = calls_call_set_property;
 
-  klass->get_id = calls_call_real_get_id;
-  klass->get_name = calls_call_real_get_name;
-  klass->get_state = calls_call_real_get_state;
-  klass->get_inbound = calls_call_real_get_inbound;
   klass->get_protocol = calls_call_real_get_protocol;
   klass->answer = calls_call_real_answer;
   klass->hang_up = calls_call_real_hang_up;
@@ -180,29 +192,36 @@ calls_call_class_init (CallsCallClass *klass)
                           "Inbound",
                           "Whether the call is inbound",
                           FALSE,
-                          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
   properties[PROP_ID] =
     g_param_spec_string ("id",
                          "Id",
                          "The id the call is connected to if known",
                          NULL,
-                         G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT |
+                         G_PARAM_EXPLICIT_NOTIFY |
+                         G_PARAM_STATIC_STRINGS);
 
   properties[PROP_NAME] =
     g_param_spec_string ("name",
                          "Name",
                          "The name of the party the call is connected to, if the network provides it",
                          NULL,
-                         G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+                         G_PARAM_READWRITE |
+                         G_PARAM_EXPLICIT_NOTIFY |
+                         G_PARAM_STATIC_STRINGS);
 
   properties[PROP_STATE] =
     g_param_spec_enum ("state",
                        "State",
                        "The current state of the call",
                        CALLS_TYPE_CALL_STATE,
-                       CALLS_CALL_STATE_ACTIVE,
-                       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+                       CALLS_CALL_STATE_UNKNOWN,
+                       G_PARAM_READWRITE |
+                       G_PARAM_EXPLICIT_NOTIFY |
+                       G_PARAM_STATIC_STRINGS);
 
   properties[PROP_PROTOCOL] =
     g_param_spec_string ("protocol",
@@ -256,9 +275,36 @@ calls_call_init (CallsCall *self)
 const char *
 calls_call_get_id (CallsCall *self)
 {
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
   g_return_val_if_fail (CALLS_IS_CALL (self), NULL);
 
-  return CALLS_CALL_GET_CLASS (self)->get_id (self);
+  return priv->id;
+}
+
+/**
+ * calls_call_set_id:
+ * @self: a #CallsCall
+ * @id: the id of the remote party
+ *
+ * Set the id of the call. Some implementations might only be able to set
+ * the id after construction.
+ */
+void
+calls_call_set_id (CallsCall  *self,
+                   const char *id)
+{
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
+  g_return_if_fail (CALLS_IS_CALL (self));
+  g_return_if_fail (id);
+
+  if (g_strcmp0 (id, priv->id) == 0)
+    return;
+
+  g_free (priv->id);
+  priv->id = g_strdup (id);
+  g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_ID]);
 }
 
 /**
@@ -273,9 +319,33 @@ calls_call_get_id (CallsCall *self)
 const char *
 calls_call_get_name (CallsCall *self)
 {
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
   g_return_val_if_fail (CALLS_IS_CALL (self), NULL);
 
-  return CALLS_CALL_GET_CLASS (self)->get_name (self);
+  return priv->name;
+}
+
+/**
+ * calls_call_set_name:
+ * @self: a #CallsCall
+ * @name: the name to set
+ *
+ * Sets the name of the call as provided by the network.
+ */
+void
+calls_call_set_name (CallsCall  *self,
+                     const char *name)
+{
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
+  g_return_if_fail (CALLS_IS_CALL (self));
+
+  g_clear_pointer (&priv->name, g_free);
+  if (name)
+    priv->name = g_strdup (name);
+
+  g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_NAME]);
 }
 
 /**
@@ -289,9 +359,46 @@ calls_call_get_name (CallsCall *self)
 CallsCallState
 calls_call_get_state (CallsCall *self)
 {
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
   g_return_val_if_fail (CALLS_IS_CALL (self), 0);
 
-  return CALLS_CALL_GET_CLASS (self)->get_state (self);
+  return priv->state;
+}
+
+/**
+ * calls_call_set_state:
+ * @self: a #CallsCall
+ * @state: a #CallsCallState
+ *
+ * Set the current state of the call.
+ */
+void
+calls_call_set_state (CallsCall     *self,
+                      CallsCallState state)
+{
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+  CallsCallState old_state;
+
+  g_return_if_fail (CALLS_IS_CALL (self));
+
+  old_state = priv->state;
+
+  if (old_state == state) {
+    return;
+  }
+
+  priv->state = state;
+
+  g_object_ref (G_OBJECT (self));
+
+  g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_STATE]);
+  g_signal_emit_by_name (CALLS_CALL (self),
+                         "state-changed",
+                         state,
+                         old_state);
+
+  g_object_unref (G_OBJECT (self));
 }
 
 /**
@@ -336,9 +443,11 @@ calls_call_hang_up (CallsCall *self)
 gboolean
 calls_call_get_inbound (CallsCall *self)
 {
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
   g_return_val_if_fail (CALLS_IS_CALL (self), FALSE);
 
-  return CALLS_CALL_GET_CLASS (self)->get_inbound (self);
+  return priv->inbound;
 }
 
 /**
@@ -462,11 +571,9 @@ calls_call_state_to_string (GString        *string,
 
   value = g_enum_get_value (klass, (gint)state);
   if (!value)
-    {
-      return g_string_printf (string,
-                              "Unknown call state (%d)",
-                              (gint)state);
-    }
+    return g_string_printf (string,
+                            "Unknown call state (%d)",
+                            (gint)state);
 
   g_string_assign (string, value->value_nick);
   string->str[0] = g_ascii_toupper (string->str[0]);
@@ -488,15 +595,12 @@ calls_call_state_parse_nick (CallsCallState *state,
   klass = g_type_class_ref (CALLS_TYPE_CALL_STATE);
   value = g_enum_get_value_by_nick (klass, nick);
 
-  if (value)
-    {
-      *state = (CallsCallState) value->value;
-      ret = TRUE;
-    }
-  else
-    {
-      ret = FALSE;
-    }
+  if (value) {
+    *state = (CallsCallState) value->value;
+    ret = TRUE;
+  } else {
+    ret = FALSE;
+  }
 
   g_type_class_unref (klass);
   return ret;

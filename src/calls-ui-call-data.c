@@ -1,3 +1,26 @@
+/*
+ * Copyright (C) 2021, 2022 Purism SPC
+ *
+ * This file is part of Calls.
+ *
+ * Calls is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Calls is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Author: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ */
 
 #include "calls-ui-call-data.h"
 #include "calls-contacts-provider.h"
@@ -33,12 +56,6 @@ G_DEFINE_TYPE_WITH_CODE (CallsUiCallData, calls_ui_call_data, G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (CUI_TYPE_CALL,
                                                 calls_ui_call_data_cui_call_interface_init))
 
-struct DtmfData
-{
-  CallsCall *call;
-  char dtmf;
-};
-
 static const char *
 calls_ui_call_data_get_display_name (CuiCall *call_data)
 {
@@ -62,29 +79,6 @@ calls_ui_call_data_get_id (CuiCall *call_data)
 }
 
 static CuiCallState
-calls_state_to_cui_call_state (CallsCallState state)
-{
-  switch (state) {
-  case CALLS_CALL_STATE_ACTIVE:
-    return CUI_CALL_STATE_ACTIVE;
-  case CALLS_CALL_STATE_HELD:
-    return CUI_CALL_STATE_HELD;
-  case CALLS_CALL_STATE_DIALING:
-    return CUI_CALL_STATE_DIALING;
-  case CALLS_CALL_STATE_ALERTING:
-    return CUI_CALL_STATE_ALERTING;
-  case CALLS_CALL_STATE_INCOMING:
-    return CUI_CALL_STATE_INCOMING;
-  case CALLS_CALL_STATE_WAITING:
-    return CUI_CALL_STATE_WAITING;
-  case CALLS_CALL_STATE_DISCONNECTED:
-    return CUI_CALL_STATE_DISCONNECTED;
-  default:
-    return CUI_CALL_STATE_UNKNOWN;
-  }
-}
-
-static CuiCallState
 calls_ui_call_data_get_state (CuiCall *call_data)
 {
   CallsUiCallData *self = (CallsUiCallData *) call_data;
@@ -92,7 +86,7 @@ calls_ui_call_data_get_state (CuiCall *call_data)
   g_return_val_if_fail (CALLS_IS_UI_CALL_DATA (self), CUI_CALL_STATE_UNKNOWN);
   g_return_val_if_fail (!!self->call, CUI_CALL_STATE_UNKNOWN);
 
-  return calls_state_to_cui_call_state (calls_call_get_state (self->call));
+  return calls_call_state_to_cui_call_state (calls_call_get_state (self->call));
 }
 
 
@@ -383,3 +377,28 @@ calls_ui_call_data_get_call (CallsUiCallData *self)
 
   return self->call;
 }
+
+
+CuiCallState
+calls_call_state_to_cui_call_state (CallsCallState state)
+{
+  switch (state) {
+  case CALLS_CALL_STATE_ACTIVE:
+    return CUI_CALL_STATE_ACTIVE;
+  case CALLS_CALL_STATE_HELD:
+    return CUI_CALL_STATE_HELD;
+  case CALLS_CALL_STATE_DIALING:
+    return CUI_CALL_STATE_DIALING;
+  case CALLS_CALL_STATE_ALERTING:
+    return CUI_CALL_STATE_DIALING;
+  case CALLS_CALL_STATE_INCOMING:
+    return CUI_CALL_STATE_INCOMING;
+  case CALLS_CALL_STATE_WAITING:
+    return CUI_CALL_STATE_INCOMING;
+  case CALLS_CALL_STATE_DISCONNECTED:
+    return CUI_CALL_STATE_DISCONNECTED;
+  default:
+    return CUI_CALL_STATE_UNKNOWN;
+  }
+}
+
