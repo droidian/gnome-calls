@@ -1,3 +1,13 @@
+gnome-calls (42~beta.1-1) experimental; urgency=medium
+
+  [ Jeremy Bicha ]
+  * Add Breaks/Replaces for translation files previously included in phosh
+
+  [ Evangelos Ribeiro Tzaras ]
+  * New upstream version 42~beta.1
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Wed, 26 Jan 2022 15:44:59 +0100
+
 gnome-calls (42~alpha.0-1) experimental; urgency=medium
 
   * New upstream version 42~alpha.0
