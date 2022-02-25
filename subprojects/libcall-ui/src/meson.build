@@ -57,6 +57,7 @@ call_ui_lib = static_library('call-ui',
   dependencies: call_ui_deps)
 
 libcall_ui_dep = declare_dependency(
+  sources: call_ui_enum_sources,
   include_directories: include_directories('.'),
   dependencies: call_ui_deps,
   link_with: call_ui_lib)

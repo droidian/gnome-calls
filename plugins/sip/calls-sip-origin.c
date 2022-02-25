@@ -1050,7 +1050,7 @@ init_sip_account (CallsSipOrigin *self,
     return FALSE;
   }
 
-  // setup_nua() and setup_sip_handles() only after account data has been set
+  /* setup_nua() and setup_sip_handles() only after account data has been set */
   self->nua = setup_nua (self);
   if (self->nua == NULL) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -1356,6 +1356,11 @@ calls_sip_origin_dispose (GObject *object)
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
 
   g_clear_pointer (&self->own_ip, g_free);
+  g_clear_pointer (&self->transport_protocol, g_free);
+  g_clear_pointer (&self->display_name, g_free);
+  g_clear_pointer (&self->host, g_free);
+  g_clear_pointer (&self->user, g_free);
+  g_clear_pointer (&self->password, g_free);
 
   if (!self->use_direct_connection && self->state == CALLS_ACCOUNT_STATE_ONLINE)
     go_online (CALLS_ACCOUNT (self), FALSE);

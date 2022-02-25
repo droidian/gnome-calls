@@ -1,142 +1,149 @@
-# Persian translation for libcall-ui.
+# Galician translation for libcall-ui.
 # Copyright (C) 2022 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
-# Danial Behzadi <dani.behzi@ubuntu.com>, 2022.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Fran Diéguez <frandieguez@gnome.org>, 2022.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-01-28 15:05+0000\n"
-"PO-Revision-Date: 2022-01-29 14:08+0330\n"
-"Last-Translator: Danial Behzadi <dani.behzi@ubuntu.com>\n"
-"Language-Team: Persian <fa@li.org>\n"
-"Language: fa\n"
+"POT-Creation-Date: 2022-01-31 18:37+0000\n"
+"PO-Revision-Date: 2022-02-04 16:22+0100\n"
+"Last-Translator: Fran Diéguez <frandieguez@gnome.org>\n"
+"Language-Team: Galician <proxecto@trasno.gal>\n"
+"Language: gl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.0\n"
+"X-DL-Team: gl\n"
+"X-DL-Module: libcall-ui\n"
+"X-DL-Branch: main\n"
+"X-DL-Domain: po\n"
+"X-DL-State: Translating\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"X-Generator: Gtranslator 41.0\n"
 
 #: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
 msgid "Call-UI Demo"
-msgstr "نمایش رابط کاربری تماس"
+msgstr "Demostración de interface de chamada"
 
 #: examples/cui-demo-window.ui:138
 msgid "Back"
-msgstr "بازگشت"
+msgstr "Atrás"
 
 #: examples/cui-demo-window.ui:190
 msgid "Welcome to Call-UI Demo"
-msgstr "به نمایش رابط کاربری تماس خوش آمدید"
+msgstr "Benvida á Demostración da IU de chamada"
 
 #: examples/cui-demo-window.ui:191
 msgid "This is a tour of the features the library has to offer."
-msgstr "این گشتی از ویژگی‌هاییست که کتاب‌خانه ارائه می‌دهد."
+msgstr "Esta é unha demostración das características que a biblioteca ofrece."
 
 #: examples/cui-demo-window.ui:195
 msgid "Welcome"
-msgstr "خوش‌آمد"
+msgstr "Benvida"
 
 #: examples/cui-demo-window.ui:210
 msgid "Call Display"
-msgstr "نمایش تماس"
+msgstr "Pantalla de chamada"
 
 #: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
 #: src/cui-call-display.ui:294
 msgid "Dial Pad"
-msgstr "صفحهٔ شماره‌گیری"
+msgstr "Teclado telefónico"
 
 #: examples/cui-demo-window.ui:224
 msgid "A simple dial pad to enter phone numbers."
-msgstr "یک صفحهٔ شماره‌گیری ساده برای وارد کردن شماره‌های تلفن."
+msgstr "Un teclado telefónico sinxelo para escribir números de teléfono."
 
 #: examples/cui-demo-window.ui:263
 msgid "Keypad"
-msgstr "صفحهٔ کلید"
+msgstr "Teclado telefónico"
 
 #: examples/cui-demo-window.ui:264
 msgid "A number keypad."
-msgstr "یک صفحهٔ کلید شماره‌ای."
+msgstr "Un teclado telefónico numérico."
 
 #: examples/cui-demo-window.ui:288
 msgid "Show letters"
-msgstr "نمایش حرف‌ها"
+msgstr "Mostrar letras"
 
 #: examples/cui-demo-window.ui:303
 msgid "Show symbols"
-msgstr "نمایش نمادها"
+msgstr "Mostrar símbolos"
 
 #: examples/cui-demo-window.ui:365
 msgid "Key pad"
-msgstr "صفحهٔ کلید"
+msgstr "Teclado telefónico"
 
 #: src/cui-call.c:310
 msgid "Call active"
-msgstr "تماس فعّال"
+msgstr "Chamada activa"
 
 #: src/cui-call.c:312
 msgid "Call held"
-msgstr "تماس منتظر"
+msgstr "Chamada en espera"
 
 #. Deprecated
 #: src/cui-call.c:315
 msgid "Calling…"
-msgstr "در حال تماس…"
+msgstr "Chamando…"
 
 #. Deprecated
 #: src/cui-call.c:318
 msgid "Incoming call"
-msgstr "تماس ورودی"
+msgstr "Chamada entrante"
 
 #: src/cui-call.c:320
 msgid "Call ended"
-msgstr "تماس پایان یافت"
+msgstr "Chamada finalizada"
 
 #: src/cui-call.c:323 src/cui-call-display.c:291
 msgid "Unknown"
-msgstr "ناشناخته"
+msgstr "Descoñecido"
 
 #: src/cui-call-display.ui:37
 msgid "Incoming phone call"
-msgstr "تماس تلفنی ورودی"
+msgstr "Chamada telefónica entrante"
 
 #: src/cui-call-display.ui:140
 msgid "Mute"
-msgstr "بی‌صدا"
+msgstr "Enmudecido"
 
 #: src/cui-call-display.ui:177
 msgid "Speaker"
-msgstr "بلندگو"
+msgstr "Altofalante"
 
 #: src/cui-call-display.ui:213
 msgid "Add call"
-msgstr "افزودن تماس"
+msgstr "Engadir chamada"
 
 #: src/cui-call-display.ui:258
 msgid "Hold"
-msgstr "انتظار"
+msgstr "Reter"
 
 #: src/cui-call-display.ui:350
 msgid "Hang up"
-msgstr "قطع تماس"
+msgstr "Colgar"
 
 #: src/cui-call-display.ui:381
 msgid "Answer"
-msgstr "پاسخ"
+msgstr "Responder"
 
 #: src/cui-call-display.ui:463
 msgid "Hide the dial pad"
-msgstr "نهفتن صفحهٔ شماره‌گیری"
+msgstr "Ocultar teclado telefónico"
 
 #: src/cui-dialpad.ui:19
 msgid "Enter a number"
-msgstr "شماره‌ای وارد کنید"
+msgstr "Escriba un número"
 
 #: src/cui-encryption-indicator.ui:23
 msgid "This call is not encrypted"
-msgstr "تماس رمزنگاری نشده است"
+msgstr "Esta chamada non está cifrada"
 
 #: src/cui-encryption-indicator.ui:45
 msgid "This call is encrypted"
-msgstr "تماس رمزنگاری شده است"
+msgstr "Esta chamada está cifrada"

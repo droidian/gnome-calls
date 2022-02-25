@@ -129,7 +129,7 @@
                             <property name="valign">center</property>
                             <property name="use-underline">True</property>
                             <property name="visible" bind-source="content_box" bind-property="folded" bind-flags="sync-create"/>
-                            <signal name="clicked" handler="back_clicked_cb"/>
+                            <signal name="clicked" handler="back_clicked_cb" swapped="yes"/>
                             <style>
                               <class name="image-button"/>
                             </style>
@@ -155,7 +155,7 @@
                             <property name="valign">center</property>
                             <property name="use-underline">True</property>
                             <property name="visible">True</property>
-                            <signal name="clicked" handler="on_incoming_call_clicked"/>
+                            <signal name="clicked" handler="on_incoming_call_clicked" swapped="yes"/>
                             <style>
                               <class name="image-button"/>
                             </style>

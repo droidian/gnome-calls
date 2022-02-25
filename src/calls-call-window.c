@@ -39,7 +39,6 @@
 #include <glib-object.h>
 #include <handy.h>
 
-#define CALLS_WINDOW_HIDE_DELAY 3
 
 struct _CallsCallWindow
 {
@@ -56,8 +55,6 @@ struct _CallsCallWindow
   GtkFlowBox *call_selector;
 
   guint inhibit_cookie;
-  guint hideout_id;
-
 };
 
 G_DEFINE_TYPE (CallsCallWindow, calls_call_window, GTK_TYPE_APPLICATION_WINDOW);
@@ -86,40 +83,18 @@ session_inhibit (CallsCallWindow *self, gboolean inhibit)
 }
 
 
-static gboolean
-on_delayed_window_hide (gpointer user_data)
-{
-  CallsCallWindow *self = user_data;
-  g_assert (CALLS_IS_CALL_WINDOW (self));
-
-  gtk_widget_set_visible (GTK_WIDGET (self), FALSE);
-
-  gtk_stack_set_visible_child_name (self->main_stack, "calls");
-
-  self->hideout_id = 0;
-
-  return G_SOURCE_REMOVE;
-}
-
 static void
 update_visibility (CallsCallWindow *self)
 {
   guint calls = g_list_model_get_n_items (G_LIST_MODEL (self->calls));
 
-  if (calls == 0) {
-    self->hideout_id =
-      g_timeout_add_seconds (CALLS_WINDOW_HIDE_DELAY,
-                             G_SOURCE_FUNC (on_delayed_window_hide),
-                             self);
-  } else {
-    g_clear_handle_id (&self->hideout_id, g_source_remove);
-
-    gtk_widget_set_visible (GTK_WIDGET (self), TRUE);
-
-    if (calls == 1)
-      gtk_stack_set_visible_child_name (self->main_stack, "active-call");
-  }
+  gtk_widget_set_visible (GTK_WIDGET (self), calls > 0);
   gtk_widget_set_sensitive (GTK_WIDGET (self->show_calls), calls > 1);
+
+  if (calls == 0)
+    gtk_stack_set_visible_child_name (self->main_stack, "calls");
+  else if (calls == 1)
+    gtk_stack_set_visible_child_name (self->main_stack, "active-call");
 
   session_inhibit (self, !!calls);
 }
@@ -176,21 +151,20 @@ call_selector_child_activated_cb (GtkFlowBox      *box,
 
 
 static void
-add_call (CallsCallWindow *self,
-          CallsCall       *call)
+add_call_to_window (CallsCallWindow *self,
+                    CallsUiCallData *ui_call_data)
 {
-  CallsUiCallData *call_data;
+  CuiCall *call = (CuiCall *) ui_call_data;
   CuiCallDisplay *display;
   CallsCallSelectorItem *item;
 
   g_assert (CALLS_IS_CALL_WINDOW (self));
-  g_assert (CALLS_IS_CALL (call));
+  g_assert (CUI_IS_CALL (call));
 
-  call_data = calls_ui_call_data_new (call);
-  display = cui_call_display_new (CUI_CALL (call_data));
+  display = cui_call_display_new (CUI_CALL (ui_call_data));
   item = calls_call_selector_item_new (display);
   gtk_stack_add_named (self->call_stack, GTK_WIDGET (display),
-                       calls_call_get_id (call));
+                       cui_call_get_id (call));
 
   g_list_store_append (self->calls, item);
 
@@ -198,52 +172,67 @@ add_call (CallsCallWindow *self,
   set_focus (self, display);
 }
 
-struct DisplayData
+
+static void
+on_call_notify_active_ui (CallsUiCallData *call,
+                          GParamSpec      *unused,
+                          CallsCallWindow *self)
 {
-  GtkStack *call_stack;
-  CuiCallDisplay *display;
-};
+  g_assert (CALLS_IS_CALL_WINDOW (self));
+  g_assert (CALLS_IS_UI_CALL_DATA (call));
 
-static gboolean
-on_remove_delayed (gpointer user_data)
-{
-  struct DisplayData *display_data = user_data;
+  if (!calls_ui_call_data_get_ui_active (call)) {
+    g_warning ("UI for a call should never switch back to being inactive");
+    return;
+  }
 
-  gtk_container_remove (GTK_CONTAINER (display_data->call_stack),
-                        GTK_WIDGET (display_data->display));
-
-  g_free (display_data);
-  return G_SOURCE_REMOVE;
+  add_call_to_window (self, call);
 }
+
+
+static void
+add_call (CallsCallWindow *self,
+          CallsUiCallData *call)
+{
+  g_assert (CALLS_IS_CALL_WINDOW (self));
+  g_assert (CALLS_IS_UI_CALL_DATA (call));
+
+  if (calls_ui_call_data_get_ui_active (call)) {
+    add_call_to_window (self, call);
+    return;
+  }
+
+  g_signal_connect (call,
+                    "notify::ui-active",
+                    G_CALLBACK (on_call_notify_active_ui),
+                    self);
+}
+
 
 static void
 remove_call (CallsCallWindow *self,
-             CallsCall       *call,
+             CallsUiCallData *ui_call_data,
              const gchar     *reason)
 {
   guint n_calls;
 
   g_assert (CALLS_IS_CALL_WINDOW (self));
-  g_assert (CALLS_IS_CALL (call));
+  g_assert (CALLS_IS_UI_CALL_DATA (ui_call_data));
+
+  g_signal_handlers_disconnect_by_data (ui_call_data, self);
 
   n_calls = g_list_model_get_n_items (G_LIST_MODEL (self->calls));
   for (guint i = 0; i < n_calls; i++) {
     g_autoptr (CallsCallSelectorItem) item =
       g_list_model_get_item (G_LIST_MODEL (self->calls), i);
     CuiCallDisplay *display = calls_call_selector_item_get_display (item);
-    CallsUiCallData *call_data =
+    CallsUiCallData *display_call_data =
       CALLS_UI_CALL_DATA (cui_call_display_get_call (display));
 
-    if (calls_ui_call_data_get_call (call_data) == call) {
-      struct DisplayData *display_data = g_new0 (struct DisplayData, 1);
-
+    if (display_call_data == ui_call_data) {
       g_list_store_remove (self->calls, i);
-      display_data->call_stack = self->call_stack;
-      display_data->display = display;
-      g_timeout_add_seconds (CALLS_WINDOW_HIDE_DELAY,
-                             G_SOURCE_FUNC (on_remove_delayed),
-                             display_data);
-
+      gtk_container_remove (GTK_CONTAINER (self->call_stack),
+                            GTK_WIDGET (display));
       break;
     }
   }
@@ -302,12 +291,12 @@ calls_call_window_init (CallsCallWindow *self)
                             self->in_app_notification);
 
   g_signal_connect_swapped (calls_manager_get_default (),
-                            "call-add",
+                            "ui-call-added",
                             G_CALLBACK (add_call),
                             self);
 
   g_signal_connect_swapped (calls_manager_get_default (),
-                            "call-remove",
+                            "ui-call-removed",
                             G_CALLBACK (remove_call),
                             self);
 
@@ -362,4 +351,3 @@ calls_call_window_new (GtkApplication *application)
                        NULL);
 }
 
-#undef CALLS_WINDOW_HIDE_DELAY

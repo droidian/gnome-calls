@@ -53,8 +53,6 @@ struct _CuiCallDisplay {
   GtkOverlay       parent_instance;
 
   CuiCall         *call;
-  GTimer          *timer;
-  guint            timeout;
 
   GtkLabel        *incoming_phone_call;
   HdyAvatar       *avatar;
@@ -95,7 +93,7 @@ on_libcallaudio_async_finished (gboolean success, GError *error, gpointer data)
 
 
 static void
-on_answer_clicked (GtkButton *button, CuiCallDisplay *self)
+on_answer_clicked (CuiCallDisplay *self)
 {
   g_return_if_fail (CUI_IS_CALL_DISPLAY (self));
 
@@ -104,8 +102,7 @@ on_answer_clicked (GtkButton *button, CuiCallDisplay *self)
 
 
 static void
-on_hang_up_clicked (GtkButton      *button,
-                    CuiCallDisplay *self)
+on_hang_up_clicked (CuiCallDisplay *self)
 {
   g_return_if_fail (CUI_IS_CALL_DISPLAY (self));
 
@@ -123,8 +120,6 @@ mute_toggled_cb (GtkToggleButton *togglebutton,
                  CuiCallDisplay  *self)
 {
   gboolean want_mute;
-
-  g_autoptr (GError) error = NULL;
 
   want_mute = gtk_toggle_button_get_active (togglebutton);
   call_audio_mute_mic_async (want_mute, on_libcallaudio_async_finished, NULL);
@@ -156,8 +151,8 @@ hide_dial_pad_clicked_cb (CuiCallDisplay *self)
 }
 
 
-static gboolean
-timeout_cb (CuiCallDisplay *self)
+static void
+set_pretty_time (CuiCallDisplay *self)
 {
 #define MINUTE 60
 #define HOUR   (60 * MINUTE)
@@ -166,14 +161,10 @@ timeout_cb (CuiCallDisplay *self)
   g_autoptr (GString) str = NULL;
   guint seconds, minutes;
 
-  g_return_val_if_fail (CUI_IS_CALL_DISPLAY (self), FALSE);
+  g_assert (CUI_IS_CALL_DISPLAY (self));
+  g_assert (CUI_IS_CALL (self->call));
 
-  if (!self->call) {
-    self->timeout = 0;
-    return G_SOURCE_REMOVE;
-  }
-
-  elapsed = g_timer_elapsed (self->timer, NULL);
+  elapsed = cui_call_get_active_time (self->call);
 
   str = g_string_new ("");
 
@@ -189,17 +180,8 @@ timeout_cb (CuiCallDisplay *self)
 
   gtk_label_set_text (self->status, str->str);
 
-  return G_SOURCE_CONTINUE;
-
 #undef HOUR
 #undef MINUTE
-}
-
-
-static void
-stop_timeout (CuiCallDisplay *self)
-{
-  g_clear_handle_id (&self->timeout, g_source_remove);
 }
 
 
@@ -219,10 +201,13 @@ on_call_state_changed (CuiCallDisplay *self,
   hang_up_style = gtk_widget_get_style_context
                     (GTK_WIDGET (self->hang_up));
 
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
   /* Widgets */
   switch (state)
   {
   case CUI_CALL_STATE_INCOMING:
+  case CUI_CALL_STATE_WAITING: /* Deprecated */
     gtk_widget_hide (GTK_WIDGET (self->status));
     gtk_widget_hide (GTK_WIDGET (self->controls));
     gtk_widget_show (GTK_WIDGET (self->incoming_phone_call));
@@ -231,18 +216,10 @@ on_call_state_changed (CuiCallDisplay *self,
       (hang_up_style, GTK_STYLE_CLASS_DESTRUCTIVE_ACTION);
     break;
 
-  case CUI_CALL_STATE_DIALING:
-    /* Start timer when dialing */
-    g_timer_start (self->timer);
-    G_GNUC_FALLTHROUGH;
   case CUI_CALL_STATE_ACTIVE:
-    /* Start timer on active call latest */
-    if (!g_timer_is_active (self->timer))
-	g_timer_start (self->timer);
-    G_GNUC_FALLTHROUGH;
-  case CUI_CALL_STATE_ALERTING:
+  case CUI_CALL_STATE_CALLING:
+  case CUI_CALL_STATE_ALERTING: /* Deprecated */
   case CUI_CALL_STATE_HELD:
-  case CUI_CALL_STATE_WAITING:
     gtk_style_context_add_class
       (hang_up_style, GTK_STYLE_CLASS_DESTRUCTIVE_ACTION);
     gtk_widget_hide (GTK_WIDGET (self->answer));
@@ -252,21 +229,21 @@ on_call_state_changed (CuiCallDisplay *self,
 
     gtk_widget_set_visible
       (GTK_WIDGET (self->gsm_controls),
-      state != CUI_CALL_STATE_DIALING
-      && state != CUI_CALL_STATE_ALERTING);
+       state != CUI_CALL_STATE_CALLING);
 
+    /* TODO Only switch to "call" audio mode for cellular calls */
     call_audio_select_mode_async (CALL_AUDIO_MODE_CALL,
                                   on_libcallaudio_async_finished,
                                   NULL);
     break;
 
   case CUI_CALL_STATE_DISCONNECTED:
-    g_timer_stop (self->timer);
     call_audio_select_mode_async (CALL_AUDIO_MODE_DEFAULT,
                                   on_libcallaudio_async_finished,
                                   NULL);
     gtk_widget_set_sensitive (GTK_WIDGET (self), FALSE);
     break;
+
   case CUI_CALL_STATE_UNKNOWN:
   default:
     g_warn_if_reached ();
@@ -276,31 +253,26 @@ on_call_state_changed (CuiCallDisplay *self,
   switch (state)
   {
   case CUI_CALL_STATE_INCOMING:
-    break;
-
-  case CUI_CALL_STATE_DIALING:
-  case CUI_CALL_STATE_ALERTING:
-    gtk_label_set_text (self->status, _("Calling…"));
+  case CUI_CALL_STATE_WAITING: /* Deprecated */
     break;
 
   case CUI_CALL_STATE_ACTIVE:
-  case CUI_CALL_STATE_HELD:
-  case CUI_CALL_STATE_WAITING:
-    if (self->timeout == 0) {
-      self->timeout = g_timeout_add
-                        (500, (GSourceFunc)timeout_cb, self);
-      timeout_cb (self);
-    }
+    set_pretty_time (self);
     break;
 
+  case CUI_CALL_STATE_CALLING:
+  case CUI_CALL_STATE_ALERTING: /* Deprecated */
+  case CUI_CALL_STATE_HELD:
   case CUI_CALL_STATE_DISCONNECTED:
-    gtk_label_set_text (self->status, _("Call ended"));
-    stop_timeout (self);
+    gtk_label_set_text (self->status, cui_call_state_to_string (state));
     break;
+
   case CUI_CALL_STATE_UNKNOWN:
   default:
     g_warn_if_reached ();
   }
+
+  #pragma GCC diagnostic warning "-Wdeprecated-declarations"
 }
 
 
@@ -333,6 +305,25 @@ on_update_contact_information (CuiCallDisplay *self)
 
   gtk_label_set_text (self->primary_contact_info, display_name);
   gtk_label_set_text (number_label, number);
+}
+
+
+static void
+on_time_updated (CuiCallDisplay *self)
+{
+  CuiCallState state;
+
+  g_assert (CUI_IS_CALL_DISPLAY (self));
+  g_assert (CUI_IS_CALL (self->call));
+
+  state = cui_call_get_state (self->call);
+  if (state != CUI_CALL_STATE_ACTIVE &&
+      state != CUI_CALL_STATE_HELD) {
+    g_warning ("Received timer update, but call is not active!");
+    return;
+  }
+
+  set_pretty_time (self);
 }
 
 
@@ -419,9 +410,6 @@ cui_call_display_constructed (GObject *object)
 
   G_OBJECT_CLASS (cui_call_display_parent_class)->constructed (object);
 
-  self->timer = g_timer_new ();
-  g_timer_stop (self->timer);
-
   g_signal_connect_swapped (self->dial_pad_revealer,
                             "notify::child-revealed",
                             G_CALLBACK (on_dialpad_revealed),
@@ -469,20 +457,9 @@ cui_call_display_dispose (GObject *object)
     self->call = NULL;
   }
 
-  stop_timeout (self);
-
   G_OBJECT_CLASS (cui_call_display_parent_class)->dispose (object);
 }
 
-static void
-cui_call_display_finalize (GObject *object)
-{
-  CuiCallDisplay *self = CUI_CALL_DISPLAY (object);
-
-  g_timer_destroy (self->timer);
-
-  G_OBJECT_CLASS (cui_call_display_parent_class)->finalize (object);
-}
 
 static void
 cui_call_display_class_init (CuiCallDisplayClass *klass)
@@ -495,7 +472,6 @@ cui_call_display_class_init (CuiCallDisplayClass *klass)
 
   object_class->constructed = cui_call_display_constructed;
   object_class->dispose = cui_call_display_dispose;
-  object_class->finalize = cui_call_display_finalize;
 
   /**
    * CuiCallDisplay:call-handle:
@@ -631,6 +607,11 @@ cui_call_display_set_call (CuiCallDisplay *self, CuiCall *call)
                            self,
                            G_CONNECT_SWAPPED);
   on_call_state_changed (self, NULL, call);
+
+  g_signal_connect_object (call, "notify::active-time",
+                           G_CALLBACK (on_time_updated),
+                           self,
+                           G_CONNECT_SWAPPED);
 
   self->dtmf_bind = g_object_bind_property (call,
                                             "can-dtmf",
