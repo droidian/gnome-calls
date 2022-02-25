@@ -55,8 +55,7 @@ prefer_dark_theme_to_icon_name_cb (GBinding     *binding,
 
 
 static void
-back_clicked_cb (GtkWidget     *sender,
-                 CuiDemoWindow *self)
+back_clicked_cb (CuiDemoWindow *self)
 {
   hdy_leaflet_navigate (self->content_box, HDY_NAVIGATION_DIRECTION_BACK);
 }
@@ -79,8 +78,7 @@ on_call_state_changed (CuiDemoCall *call, GParamSpec *pspec, gpointer user_data)
 
 
 static void
-on_incoming_call_clicked (GtkWidget     *sender,
-                          CuiDemoWindow *self)
+on_incoming_call_clicked (CuiDemoWindow *self)
 {
   if (!self->call1) {
     self->call1 = cui_demo_call_new ();

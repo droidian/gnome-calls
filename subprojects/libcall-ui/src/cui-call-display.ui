@@ -340,7 +340,7 @@
                 <property name="visible">True</property>
                 <property name="width_request">150</property>
                 <property name="hexpand">True</property>
-                <signal name="clicked" handler="on_hang_up_clicked" swapped="no"/>
+                <signal name="clicked" handler="on_hang_up_clicked" swapped="yes"/>
                 <style>
                   <class name="destructive-action"/>
                   <class name="image-button"/>
@@ -371,7 +371,7 @@
                 <property name="width_request">150</property>
                 <property name="hexpand">True</property>
                 <property name="margin_left">12</property>
-                <signal name="clicked" handler="on_answer_clicked" swapped="no"/>
+                <signal name="clicked" handler="on_answer_clicked" swapped="yes"/>
                 <style>
                   <class name="suggested-action"/>
                   <class name="image-button"/>

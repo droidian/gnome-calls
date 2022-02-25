@@ -24,7 +24,6 @@
 
 #include "calls-call.h"
 #include "calls-message-source.h"
-#include "calls-manager.h"
 #include "enum-types.h"
 #include "util.h"
 
@@ -54,7 +53,7 @@ enum {
   PROP_NAME,
   PROP_STATE,
   PROP_PROTOCOL,
-  PROP_SILENCED,
+  PROP_CALL_TYPE,
   N_PROPS,
 };
 
@@ -71,7 +70,7 @@ typedef struct {
   char *name;
   CallsCallState state;
   gboolean inbound;
-  gboolean silenced;
+  CallsCallType call_type;
 } CallsCallPrivate;
 
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE (CallsCall, calls_call, G_TYPE_OBJECT)
@@ -130,6 +129,10 @@ calls_call_set_property (GObject      *object,
     calls_call_set_state (self, g_value_get_enum (value));
     break;
 
+  case PROP_CALL_TYPE:
+    priv->call_type = g_value_get_enum (value);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
   }
@@ -165,13 +168,25 @@ calls_call_get_property (GObject    *object,
     g_value_set_string (value, calls_call_get_protocol (self));
     break;
 
-  case PROP_SILENCED:
-    g_value_set_boolean (value, calls_call_get_silenced (self));
+  case PROP_CALL_TYPE:
+    g_value_set_enum (value, calls_call_get_call_type (self));
     break;
 
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
   }
+}
+
+
+static void
+calls_call_dispose (GObject *object)
+{
+  CallsCallPrivate *priv = calls_call_get_instance_private (CALLS_CALL (object));
+
+  g_clear_pointer (&priv->id, g_free);
+  g_clear_pointer (&priv->name, g_free);
+
+  G_OBJECT_CLASS (calls_call_parent_class)->dispose (object);
 }
 
 static void
@@ -181,12 +196,18 @@ calls_call_class_init (CallsCallClass *klass)
 
   object_class->get_property = calls_call_get_property;
   object_class->set_property = calls_call_set_property;
+  object_class->dispose = calls_call_dispose;
 
   klass->get_protocol = calls_call_real_get_protocol;
   klass->answer = calls_call_real_answer;
   klass->hang_up = calls_call_real_hang_up;
   klass->send_dtmf_tone = calls_call_real_send_dtmf_tone;
 
+  /**
+   * CallsCall:inbound: (attributes org.gtk.Property.get=calls_call_get_inbound)
+   *
+   * %TRUE if the call is inbound, %FALSE otherwise.
+   */
   properties[PROP_INBOUND] =
     g_param_spec_boolean ("inbound",
                           "Inbound",
@@ -194,6 +215,13 @@ calls_call_class_init (CallsCallClass *klass)
                           FALSE,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
+  /**
+   * CallsCall:id: (attributes org.gtk.Property.get=calls_call_get_id org.gtk.Property.set=calls_call_set_id)
+
+   * Get the id (number, SIP address)  the call is connected to.  It is possible that this
+   * could return %NULL if the id is not known, for example if an
+   * incoming PTSN call has no caller ID information.
+   */
   properties[PROP_ID] =
     g_param_spec_string ("id",
                          "Id",
@@ -204,6 +232,11 @@ calls_call_class_init (CallsCallClass *klass)
                          G_PARAM_EXPLICIT_NOTIFY |
                          G_PARAM_STATIC_STRINGS);
 
+  /**
+   * CallsCall:name: (attributes org.gtk.Property.get=calls_call_get_name org.gtk.Property.set=calls_call_set_name)
+   *
+   * The (network provided) name of the call. For the name of a contact, see #calls_best_match_get_name
+   */
   properties[PROP_NAME] =
     g_param_spec_string ("name",
                          "Name",
@@ -213,6 +246,11 @@ calls_call_class_init (CallsCallClass *klass)
                          G_PARAM_EXPLICIT_NOTIFY |
                          G_PARAM_STATIC_STRINGS);
 
+  /**
+   * CallsCall:state: (attributes org.gtk.Property.get=calls_call_get_state org.gtk.Property.set=calls_call_set_state)
+   *
+   * The state of the call or %CALLS_CALL_STATE_UNKNOWN if unknown.
+   */
   properties[PROP_STATE] =
     g_param_spec_enum ("state",
                        "State",
@@ -223,6 +261,11 @@ calls_call_class_init (CallsCallClass *klass)
                        G_PARAM_EXPLICIT_NOTIFY |
                        G_PARAM_STATIC_STRINGS);
 
+  /**
+   * CallsCall:protocol: (attributes org.gtk.Property.get=calls_call_get_protocol)
+   *
+   * The protocol for this call, f.e. tel or sip
+   */
   properties[PROP_PROTOCOL] =
     g_param_spec_string ("protocol",
                          "Protocol",
@@ -230,12 +273,20 @@ calls_call_class_init (CallsCallClass *klass)
                          NULL,
                          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
 
-  properties[PROP_SILENCED] =
-    g_param_spec_boolean ("silenced",
-                          "Silenced",
-                          "Whether the call ringing should be silenced",
-                          FALSE,
-                          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  /**
+   * CallsCall:call-type: (attributes org.gtk.Property.get=calls_call_get_call_type)
+   *
+   * The type of this call or #CALLS_CALL_TYPE_UNKNOWN if unknown
+   */
+  properties[PROP_CALL_TYPE] =
+    g_param_spec_enum ("call-type",
+                       "Call type",
+                       "The type of call (f.e. cellular, sip voice)",
+                       CALLS_TYPE_CALL_TYPE,
+                       CALLS_CALL_TYPE_UNKNOWN,
+                       G_PARAM_READWRITE |
+                       G_PARAM_CONSTRUCT_ONLY |
+                       G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (object_class, N_PROPS, properties);
 
@@ -263,14 +314,10 @@ calls_call_init (CallsCall *self)
 }
 
 /**
- * calls_call_get_id:
+ * calls_call_get_id: (attributes org.gtk.Method.get_property=id)
  * @self: a #CallsCall
  *
- * Get the id the call is connected to.  It is possible that this
- * could return NULL if the id is not known, for example if an
- * incoming PTSN call has no caller ID information.
- *
- * Returns: (transfer none): the id, or NULL
+ * Returns: (transfer none) (nullable): the id, or %NULL if the id is unknown
  */
 const char *
 calls_call_get_id (CallsCall *self)
@@ -283,7 +330,7 @@ calls_call_get_id (CallsCall *self)
 }
 
 /**
- * calls_call_set_id:
+ * calls_call_set_id: (attributes org.gtk.Method.set_property=id)
  * @self: a #CallsCall
  * @id: the id of the remote party
  *
@@ -297,7 +344,6 @@ calls_call_set_id (CallsCall  *self,
   CallsCallPrivate *priv = calls_call_get_instance_private (self);
 
   g_return_if_fail (CALLS_IS_CALL (self));
-  g_return_if_fail (id);
 
   if (g_strcmp0 (id, priv->id) == 0)
     return;
@@ -308,7 +354,7 @@ calls_call_set_id (CallsCall  *self,
 }
 
 /**
- * calls_call_get_name:
+ * calls_call_get_name: (attributes org.gtk.Method.get_property=name)
  * @self: a #CallsCall
  *
  * Get the name of the party the call is connected to, if the network
@@ -327,7 +373,7 @@ calls_call_get_name (CallsCall *self)
 }
 
 /**
- * calls_call_set_name:
+ * calls_call_set_name: (attributes org.gtk.Method.set_property=name)
  * @self: a #CallsCall
  * @name: the name to set
  *
@@ -349,7 +395,7 @@ calls_call_set_name (CallsCall  *self,
 }
 
 /**
- * calls_call_get_state:
+ * calls_call_get_state: (attributes org.gtk.Method.get_property=state)
  * @self: a #CallsCall
  *
  * Get the current state of the call.
@@ -367,7 +413,7 @@ calls_call_get_state (CallsCall *self)
 }
 
 /**
- * calls_call_set_state:
+ * calls_call_set_state: (attributes org.gtk.Method.set_property=state org.gtk.Method.signal=state-changed)
  * @self: a #CallsCall
  * @state: a #CallsCallState
  *
@@ -402,6 +448,22 @@ calls_call_set_state (CallsCall     *self,
 }
 
 /**
+ * calls_call_get_call_type: (attributes org.gtk.Method.get_property=call-type)
+ * @self: a #CallsCall
+ *
+ * Returns: The type of call, or #CALLS_CALL_TYPE_UNKNOWN if not known.
+ */
+CallsCallType
+calls_call_get_call_type (CallsCall *self)
+{
+  CallsCallPrivate *priv = calls_call_get_instance_private (self);
+
+  g_return_val_if_fail (CALLS_IS_CALL (self), CALLS_CALL_TYPE_UNKNOWN);
+
+  return priv->call_type;
+}
+
+/**
  * calls_call_answer:
  * @self: a #CallsCall
  *
@@ -433,7 +495,7 @@ calls_call_hang_up (CallsCall *self)
 
 
 /**
- * calls_call_get_inbound:
+ * calls_call_get_inbound: (attributes org.gtk.Method.get_property=inbound)
  * @self: a #CallsCall
  *
  * Get the direction of the call.
@@ -451,12 +513,12 @@ calls_call_get_inbound (CallsCall *self)
 }
 
 /**
- * calls_call_get_protocol:
+ * calls_call_get_protocol: (attributes org.gtk.Method.get_property=protocol)
  * @self: a #CallsCall
  *
  * Get the protocol of the call (i.e. "tel", "sip")
  *
- * Returns: The protocol used or %NULL when unknown
+ * Returns: (transfer none): The protocol used or %NULL when unknown
  */
 const char *
 calls_call_get_protocol (CallsCall *self)
@@ -498,87 +560,6 @@ calls_call_send_dtmf_tone (CallsCall *self,
   g_return_if_fail (dtmf_tone_key_is_valid (key));
 
   CALLS_CALL_GET_CLASS (self)->send_dtmf_tone (self, key);
-}
-
-/**
- * calls_call_get_contact:
- * @self: a #CallsCall
- *
- * This a convenience function to optain the #CallsBestMatch matching the
- * phone id of the #CallsCall.
- *
- * Returns: (transfer full): A #CallsBestMatch
- */
-CallsBestMatch *
-calls_call_get_contact (CallsCall *self)
-{
-  CallsContactsProvider *contacts_provider;
-
-  g_return_val_if_fail (CALLS_IS_CALL (self), NULL);
-
-  contacts_provider =
-    calls_manager_get_contacts_provider (calls_manager_get_default ());
-
-  return calls_contacts_provider_lookup_id (contacts_provider,
-                                            calls_call_get_id (self));
-}
-
-/**
- * calls_call_silence_ring:
- * @self: a #CallsCall
- *
- * Inhibit ringing
- */
-void
-calls_call_silence_ring (CallsCall *self)
-{
-  CallsCallPrivate *priv = calls_call_get_instance_private (self);
-
-  g_return_if_fail (CALLS_IS_CALL (self));
-  g_return_if_fail (calls_call_get_state (self) == CALLS_CALL_STATE_INCOMING);
-
-  if (priv->silenced)
-    return;
-
-  priv->silenced = TRUE;
-  g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_SILENCED]);
-}
-
-/**
- * calls_call_get_silenced:
- * @self: a #CallsCall
- *
- * Returns: %TRUE if call has been silenced to not ring, %FALSE otherwise
- */
-gboolean
-calls_call_get_silenced (CallsCall *self)
-{
-  CallsCallPrivate *priv = calls_call_get_instance_private (self);
-
-  g_return_val_if_fail (CALLS_IS_CALL (self), FALSE);
-
-  return priv->silenced;
-}
-
-void
-calls_call_state_to_string (GString        *string,
-                            CallsCallState  state)
-{
-  GEnumClass *klass;
-  GEnumValue *value;
-
-  klass = g_type_class_ref (CALLS_TYPE_CALL_STATE);
-
-  value = g_enum_get_value (klass, (gint)state);
-  if (!value)
-    return g_string_printf (string,
-                            "Unknown call state (%d)",
-                            (gint)state);
-
-  g_string_assign (string, value->value_nick);
-  string->str[0] = g_ascii_toupper (string->str[0]);
-
-  g_type_class_unref (klass);
 }
 
 gboolean

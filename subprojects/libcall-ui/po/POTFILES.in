@@ -1,4 +1,5 @@
 examples/cui-demo-window.ui
+src/cui-call.c
 src/cui-call-display.c
 src/cui-call-display.ui
 src/cui-dialpad.ui

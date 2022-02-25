@@ -20,6 +20,7 @@ enum {
   PROP_STATE,
   PROP_ENCRYPTED,
   PROP_CAN_DTMF,
+  PROP_ACTIVE_TIME,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -67,6 +68,9 @@ cui_dummy_call_get_property (GObject    *object,
     break;
   case PROP_CAN_DTMF:
     g_value_set_boolean (value, self->can_dtmf);
+    break;
+  case PROP_ACTIVE_TIME:
+    g_value_set_double (value, 0.0);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -123,6 +127,12 @@ cui_dummy_call_class_init (CuiDummyCallClass *klass)
                                     PROP_CAN_DTMF,
                                     "can-dtmf");
   props[PROP_CAN_DTMF] = g_object_class_find_property (object_class, "can-dtmf");
+
+  g_object_class_override_property (object_class,
+                                    PROP_ACTIVE_TIME,
+                                    "active-time");
+  props[PROP_ACTIVE_TIME] = g_object_class_find_property (object_class, "active-time");
+
 }
 
 
@@ -252,7 +262,7 @@ cui_dummy_call_set_display_name (CuiDummyCall *self,
   g_return_if_fail (CUI_IS_DUMMY_CALL (self));
 
   g_free (self->display_name);
-  self->display_name = g_strdup (self->display_name);
+  self->display_name = g_strdup (display_name);
 
   g_object_notify_by_pspec (G_OBJECT (self), props[PROP_DISPLAY_NAME]);
 }

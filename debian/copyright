@@ -5,12 +5,12 @@ Source: https://gitlab.gnome.org/GNOME/calls
 License: GPL-3+
 
 Files: *
-Copyright: 2018-2021 Purism SPC
+Copyright: 2018-2022 Purism SPC
            2018 Mohammed Sadiq <sadiq@sadiqpk.org>
 License: GPL-3+
 
 Files: data/org.gnome.Calls.metainfo.xml
-Copyright: 2018-2021 Purism SPC
+Copyright: 2018-2022 Purism SPC
 License: CC0-1.0
 
 Files: data/screenshots/*
@@ -26,8 +26,9 @@ License: CC-BY-SA-4.0
 
 Files: debian/*
 Copyright: 2018 Purism SPC
- 2020 Evangelos Ribeiro Tzaras
- 2020 Henry-Nicolas Tourneur
+ 2020-2022 Evangelos Ribeiro Tzaras
+ 2020-2021 Henry-Nicolas Tourneur
+ 2021-2022 Jeremy Bicha
 License: GPL-3+
 
 License: GPL-3+

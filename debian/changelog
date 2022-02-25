@@ -1,3 +1,10 @@
+gnome-calls (42~rc.0-1) experimental; urgency=medium
+
+  * New upstream version 42~rc.0
+  * Update copyright
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Fri, 25 Feb 2022 16:03:32 +0100
+
 gnome-calls (42~beta.1-1) experimental; urgency=medium
 
   [ Jeremy Bicha ]

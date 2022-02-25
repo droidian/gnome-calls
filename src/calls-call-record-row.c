@@ -73,19 +73,6 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 
-static gboolean
-string_to_variant (GBinding *binding,
-                   const GValue *from_value,
-                   GValue *to_value)
-{
-  const gchar *target = g_value_get_string (from_value);
-  GVariant *variant = g_variant_new_string (target);
-
-  g_value_take_variant (to_value, variant);
-  return TRUE;
-}
-
-
 static void
 nice_time (GDateTime *t,
            gchar **nice,
@@ -323,26 +310,7 @@ setup_contact (CallsCallRecordRow *self)
   g_autofree gchar *target = NULL;
   CallsContactsProvider *contacts_provider;
 
-  // Get the target number
-  g_object_get (G_OBJECT (self->record),
-                "target", &target,
-                NULL);
-
-  // Look up the best match object
   contacts_provider = calls_manager_get_contacts_provider (calls_manager_get_default ());
-  self->contact = calls_contacts_provider_lookup_id (contacts_provider, target);
-
-  g_object_bind_property (self->contact, "name",
-                          self->target, "label",
-                          G_BINDING_SYNC_CREATE);
-
-  g_object_bind_property (self->contact, "has-individual",
-                          self->avatar, "show-initials",
-                          G_BINDING_SYNC_CREATE);
-
-  g_object_bind_property (self->contact, "avatar",
-                          self->avatar, "loadable-icon",
-                          G_BINDING_SYNC_CREATE);
 
   if (calls_contacts_provider_get_can_add_contacts (contacts_provider)) {
     on_notify_can_add_contacts (self);
@@ -355,13 +323,39 @@ setup_contact (CallsCallRecordRow *self)
   }
 
 
-  if (target[0] == '\0') {
+
+  // Get the target number
+  g_object_get (G_OBJECT (self->record),
+                "target", &target,
+                NULL);
+
+  if (!target || target[0] == '\0') {
     gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), NULL);
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action_copy), FALSE);
   } else {
-    gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), "app.dial");
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action_copy), TRUE);
   }
+
+  // Look up the best match object
+  self->contact = calls_contacts_provider_lookup_id (contacts_provider, target);
+
+  if (!self->contact) {
+    gtk_label_set_text (self->target, calls_best_match_get_primary_info (NULL));
+    return;
+  }
+
+  g_object_bind_property (self->contact, "primary-info",
+                          self->target, "label",
+                          G_BINDING_SYNC_CREATE);
+
+  g_object_bind_property (self->contact, "has-individual",
+                          self->avatar, "show-initials",
+                          G_BINDING_SYNC_CREATE);
+
+  g_object_bind_property (self->contact, "avatar",
+                          self->avatar, "loadable-icon",
+                          G_BINDING_SYNC_CREATE);
+
 }
 
 
@@ -445,22 +439,33 @@ constructed (GObject *object)
   gboolean inbound;
   GDateTime *answered;
   GDateTime *end;
+  g_autofree char *target_name = NULL;
+  g_autofree char *protocol = NULL;
+  g_autofree char *action_name = NULL;
+  g_autofree char *target = NULL;
 
-  g_object_get (G_OBJECT (self->record),
+  g_object_get (self->record,
                 "inbound", &inbound,
                 "answered", &answered,
                 "end", &end,
+                "protocol", &protocol,
+                "target", &target,
                 NULL);
 
-  g_object_bind_property_full (self->record,
-                               "target",
-                               self->button,
-                               "action-target",
-                               G_BINDING_SYNC_CREATE,
-                               (GBindingTransformFunc) string_to_variant,
-                               NULL,
-                               NULL,
-                               NULL);
+  /* Fall back to "app.dial-tel" action if no protocol was given */
+  if (protocol)
+    action_name = g_strdup_printf ("app.dial-%s", protocol);
+  else
+    action_name = g_strdup ("app.dial-tel");
+
+  gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), action_name);
+
+  /* TODO add origin ID to action target */
+  if (target && *target)
+    gtk_actionable_set_action_target (GTK_ACTIONABLE (self->button),
+                                      "(ss)", target, "");
+  else
+    ;
 
   setup_time (self, inbound, answered, end);
   calls_date_time_unref (answered);
