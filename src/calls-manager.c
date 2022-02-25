@@ -34,6 +34,7 @@
 #include "calls-message-source.h"
 #include "calls-provider.h"
 #include "calls-settings.h"
+#include "calls-ui-call-data.h"
 #include "calls-ussd.h"
 
 #include "enum-types.h"
@@ -41,24 +42,41 @@
 #include <glib/gi18n.h>
 #include <libpeas/peas.h>
 
+/**
+ * SECTION:manager
+ * @short_description: Central management object
+ * @Title: CallsManager
+ *
+ * #CallsManager is a singleton that manages lists of loaded #CallsProvider,
+ * #CallsOrigin and #CallsCall objects. It keeps track of which #CallsOrigin
+ * supports which protocol. It also checks which #CallsCall are ongoing and
+ * emits signals for the UI and other parts of the application to act on.
+ */
+
+static const char * const protocols[] = {
+  "tel",
+  "sip",
+  "sips"
+};
+
 struct _CallsManager
 {
   GObject parent_instance;
 
   GHashTable *providers;
-  /* This is the protocols supported in principle. This is collected from the loaded
-     providers and does not imply that there are any origins able to handle a given protocol.
-     See origins_by_protocol for a GListStore of suitable origins per protocol.
-  */
-  GPtrArray *supported_protocols;
 
   GListStore *origins;
   /* origins_by_protocol maps protocol names to GListStore's of suitable origins */
   GHashTable *origins_by_protocol;
+  /* dial_actions_by_protocol maps protocol names to GSimpleActions */
+  GHashTable *dial_actions_by_protocol;
+
+  /* map CallsCall to CallsUiCallData */
+  GHashTable *calls;
 
   CallsContactsProvider *contacts_provider;
 
-  CallsManagerState state;
+  CallsManagerFlags state_flags;
   CallsSettings *settings;
 };
 
@@ -73,7 +91,7 @@ G_DEFINE_TYPE_WITH_CODE (CallsManager, calls_manager, G_TYPE_OBJECT,
 
 enum {
   PROP_0,
-  PROP_STATE,
+  PROP_STATE_FLAGS,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -82,6 +100,8 @@ static GParamSpec *props[PROP_LAST_PROP];
 enum {
   SIGNAL_CALL_ADD,
   SIGNAL_CALL_REMOVE,
+  UI_CALL_ADDDED, /* we're phasing out "call-added" in favour of "ui-call-added" */
+  UI_CALL_REMOVED,
   USSD_ADDED,
   USSD_CANCELLED,
   USSD_STATE_CHANGED,
@@ -92,115 +112,109 @@ static guint signals [SIGNAL_LAST_SIGNAL];
 
 
 static void
-set_state (CallsManager *self, CallsManagerState state)
+set_state_flags (CallsManager *self, CallsManagerFlags state_flags)
 {
-  if (self->state == state)
+  if (self->state_flags == state_flags)
     return;
 
-  self->state = state;
+  self->state_flags = state_flags;
 
-  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_STATE]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_STATE_FLAGS]);
 }
 
 
 static void
-update_state (CallsManager *self)
+update_state_flags (CallsManager *self)
 {
-  guint n_items;
   GHashTableIter iter;
-  gpointer key;
   gpointer value;
+  CallsManagerFlags state_flags = CALLS_MANAGER_FLAGS_UNKNOWN;
 
   g_assert (CALLS_IS_MANAGER (self));
 
-  if (g_hash_table_size (self->providers) == 0) {
-    set_state (self, CALLS_MANAGER_STATE_NO_PROVIDER);
+  g_hash_table_iter_init (&iter, self->providers);
+
+  while (g_hash_table_iter_next (&iter, NULL, &value)) {
+    CallsProvider *provider = CALLS_PROVIDER (value);
+
+    if (calls_provider_is_modem (provider)) {
+      state_flags |= CALLS_MANAGER_FLAGS_HAS_CELLULAR_PROVIDER;
+
+      if (calls_provider_is_operational (provider))
+        state_flags |= CALLS_MANAGER_FLAGS_HAS_CELLULAR_MODEM;
+    } else {
+      state_flags |= CALLS_MANAGER_FLAGS_HAS_VOIP_PROVIDER;
+
+      if (calls_provider_is_operational (provider))
+        state_flags |= CALLS_MANAGER_FLAGS_HAS_VOIP_ACCOUNT;
+    }
+  }
+  set_state_flags (self, state_flags);
+}
+
+
+static CallsOrigin *
+lookup_origin_by_id (CallsManager *self,
+                     const char   *origin_id)
+{
+  return NULL;
+}
+
+
+static void
+on_dial_protocol_activated (GSimpleAction *action,
+                            GVariant      *parameter,
+                            CallsManager  *self)
+{
+  GApplication *application;
+  CallsOrigin *origin;
+  g_autofree char *target = NULL;
+  g_autofree char *origin_id = NULL;
+
+  g_variant_get (parameter, "(ss)", &target, &origin_id);
+  origin = lookup_origin_by_id (self, origin_id);
+
+  if (origin) {
+    calls_origin_dial (origin, target);
     return;
   }
 
-  g_hash_table_iter_init (&iter, self->providers);
+  if (origin_id && *origin_id)
+    g_debug ("Origin ID '%s' given, but was not found for call to '%s'",
+             origin_id, target);
 
-  while (g_hash_table_iter_next (&iter, &key, &value)) {
-    CallsProvider *provider = CALLS_PROVIDER (value);
-
-    if (calls_provider_is_modem (provider) && !calls_provider_is_operational (provider)) {
-      set_state (self, CALLS_MANAGER_STATE_NO_VOICE_MODEM);
-      return;
-    }
+  /* fall back to the default action if we could not determine origin to place call from */
+  application = g_application_get_default ();
+  if (!application) {
+    g_warning ("Could not get default application, cannot activate action '%s'",
+               g_action_get_name (G_ACTION (action)));
+    return;
   }
 
-  n_items = g_list_model_get_n_items (G_LIST_MODEL (self->origins));
-
-  if (n_items)
-    set_state (self, CALLS_MANAGER_STATE_READY);
-  else
-    set_state (self, CALLS_MANAGER_STATE_NO_ORIGIN);
+  g_action_group_activate_action (G_ACTION_GROUP (application),
+                                  "dial",
+                                  g_variant_new_string (target));
 }
 
 
-static gboolean
-check_supported_protocol (CallsManager *self,
-                          const char   *protocol)
-{
-  guint index;
-  g_assert (CALLS_IS_MANAGER (self));
-  g_assert (protocol);
-
-  if (self->supported_protocols->len > 0)
-    return g_ptr_array_find_with_equal_func (self->supported_protocols,
-                                             protocol,
-                                             g_str_equal,
-                                             &index);
-
-  return FALSE;
-}
-
-
-/* This function will update self->supported_protocols from available provider plugins */
 static void
-update_protocols (CallsManager *self)
+update_protocol_dial_actions (CallsManager *self)
 {
-  GHashTableIter iter;
-  gpointer key, value;
-  const char * const *protocols;
-
   g_assert (CALLS_IS_MANAGER (self));
 
-  g_ptr_array_remove_range (self->supported_protocols,
-                            0, self->supported_protocols->len);
+  for (guint i = 0; i < G_N_ELEMENTS (protocols); i++) {
+    GSimpleAction *action = g_hash_table_lookup (self->dial_actions_by_protocol,
+                                                 protocols[i]);
+    GListModel *protocol_origin = g_hash_table_lookup (self->origins_by_protocol,
+                                                       protocols[i]);
+    /* TODO take into account if origin is active: modem registered or VoIP account online */
+    gboolean action_enabled = g_list_model_get_n_items (protocol_origin) > 0;
 
-  g_hash_table_iter_init (&iter, self->providers);
-  while (g_hash_table_iter_next (&iter, &key, &value)) {
-    const char *name = key;
-    CallsProvider *provider = CALLS_PROVIDER (value);
-
-    protocols = calls_provider_get_protocols (provider);
-
-    if (protocols == NULL) {
-      g_debug ("Plugin %s does not provide any protocols", name);
-      continue;
-    }
-    for (guint i = 0; protocols[i] != NULL; i++) {
-      if (!check_supported_protocol (self, protocols[i]))
-        g_ptr_array_add (self->supported_protocols, g_strdup (protocols[i]));
-
-      if (!g_hash_table_contains (self->origins_by_protocol, protocols[i])) {
-        /* Add a new GListStore if there's none already.
-         * Actually adding origins to self->origins_by_protocol is done
-         * in rebuild_origins_by_protocol()
-         */
-        GListStore *store = g_list_store_new (CALLS_TYPE_ORIGIN);
-        g_hash_table_insert (self->origins_by_protocol,
-                             g_strdup (protocols[i]),
-                             store);
-      }
-    }
+    g_simple_action_set_enabled (action, action_enabled);
   }
-
-  update_state (self);
 }
 
-/* propagate any message from origins, providers, calls, etc */
+
 static void
 on_message (CallsMessageSource *source,
             const char         *message,
@@ -228,24 +242,77 @@ on_message (CallsMessageSource *source,
 static void
 add_call (CallsManager *self, CallsCall *call, CallsOrigin *origin)
 {
+  CallsUiCallData *call_data;
+
   g_return_if_fail (CALLS_IS_MANAGER (self));
   g_return_if_fail (CALLS_IS_ORIGIN (origin));
   g_return_if_fail (CALLS_IS_CALL (call));
 
+  call_data = calls_ui_call_data_new (call);
+  g_hash_table_insert (self->calls, call, call_data);
+
+  /* TODO get rid of SIGNAL_CALL_ADD signal */
   g_signal_emit (self, signals[SIGNAL_CALL_ADD], 0, call, origin);
+  g_signal_emit (self, signals[UI_CALL_ADDDED], 0, call_data);
 }
 
 
+struct CallsRemoveData
+{
+  CallsManager *manager;
+  CallsCall    *call;
+};
+
+
+static gboolean
+on_remove_delayed (struct CallsRemoveData *data)
+{
+  CallsUiCallData *call_data;
+
+  g_assert (CALLS_IS_MANAGER (data->manager));
+  g_assert (CALLS_IS_CALL (data->call));
+
+  call_data = g_hash_table_lookup (data->manager->calls, data->call);
+  if (!call_data) {
+    g_warning ("Could not find call %s in UI call hash table",
+               calls_call_get_id (data->call));
+  } else {
+    g_signal_emit (data->manager, signals[UI_CALL_REMOVED], 0, call_data);
+    g_hash_table_remove (data->manager->calls, data->call);
+  }
+
+  g_free (data);
+
+  return G_SOURCE_REMOVE;
+}
+
+
+#define DELAY_CALL_REMOVE_MS 3000
 static void
 remove_call (CallsManager *self, CallsCall *call, gchar *reason, CallsOrigin *origin)
 {
+  struct CallsRemoveData *data;
+
   g_return_if_fail (CALLS_IS_MANAGER (self));
   g_return_if_fail (CALLS_IS_ORIGIN (origin));
   g_return_if_fail (CALLS_IS_CALL (call));
 
+  data = g_new (struct CallsRemoveData, 1);
+  data->manager = self;
+  data->call = call;
+
+  /** Having the delay centrally managed makes sure our UI
+   *  and the DBus side stays consistent
+   */
+  g_timeout_add (DELAY_CALL_REMOVE_MS,
+                 G_SOURCE_FUNC (on_remove_delayed),
+                 data);
+
+  /* TODO get rid of SIGNAL_CALL_REMOVE signal */
   /* We ignore the reason for now, because it doesn't give any usefull information */
   g_signal_emit (self, signals[SIGNAL_CALL_REMOVE], 0, call, origin);
 }
+#undef DELAY_CALL_REMOVE_MS
 
 
 static void
@@ -365,8 +432,6 @@ remove_origin (CallsManager *self, CallsOrigin *origin)
                origin);
   else
     g_list_store_remove (self->origins, position);
-
-  update_state (self);
 }
 
 /* rebuild_origins_by_protocols() when any origins were added or removed */
@@ -374,7 +439,7 @@ static void
 rebuild_origins_by_protocols (CallsManager *self)
 {
   GHashTableIter iter;
-  gpointer key, value;
+  gpointer value;
   guint n_origins;
 
   g_assert (CALLS_IS_MANAGER (self));
@@ -382,7 +447,7 @@ rebuild_origins_by_protocols (CallsManager *self)
   /* Remove everything */
   g_hash_table_iter_init (&iter, self->origins_by_protocol);
 
-  while (g_hash_table_iter_next (&iter, &key, &value)) {
+  while (g_hash_table_iter_next (&iter, NULL, &value)) {
     GListStore *store = G_LIST_STORE (value);
     g_list_store_remove_all (store);
   }
@@ -394,17 +459,18 @@ rebuild_origins_by_protocols (CallsManager *self)
     g_autoptr (CallsOrigin) origin =
       g_list_model_get_item (G_LIST_MODEL (self->origins), i);
 
-    for (guint j = 0; j < self->supported_protocols->len; j++) {
-      char *protocol = g_ptr_array_index (self->supported_protocols, j);
+    for (guint j = 0; j < G_N_ELEMENTS (protocols); j++) {
       GListStore *store =
-        G_LIST_STORE (g_hash_table_lookup (self->origins_by_protocol, protocol));
+        G_LIST_STORE (g_hash_table_lookup (self->origins_by_protocol, protocols[j]));
 
       g_assert (store);
 
-      if (calls_origin_supports_protocol (origin, protocol))
+      if (calls_origin_supports_protocol (origin, protocols[j]))
         g_list_store_append (store, origin);
     }
   }
+
+  update_protocol_dial_actions (self);
 }
 
 
@@ -445,9 +511,8 @@ remove_provider (CallsManager *self,
   g_hash_table_remove (self->providers, name);
   calls_provider_unload_plugin (name);
 
-  update_protocols (self);
-  update_state (self);
   rebuild_origins_by_protocols (self);
+  update_state_flags (self);
 
   g_signal_emit (self, signals[PROVIDERS_CHANGED], 0);
 }
@@ -458,13 +523,13 @@ origin_found_in_any_provider (CallsManager *self,
                               CallsOrigin  *origin)
 {
   GHashTableIter iter;
-  gpointer key, value;
+  gpointer value;
 
   g_return_val_if_fail (CALLS_IS_MANAGER (self), FALSE);
   g_return_val_if_fail (CALLS_IS_ORIGIN (origin), FALSE);
 
   g_hash_table_iter_init (&iter, self->providers);
-  while (g_hash_table_iter_next (&iter, &key, &value)) {
+  while (g_hash_table_iter_next (&iter, NULL, &value)) {
     guint position;
     CallsProvider *provider = CALLS_PROVIDER (value);
     GListModel *origins = calls_provider_get_origins (provider);
@@ -531,7 +596,7 @@ origin_items_changed_cb (GListModel   *model,
   }
 
   rebuild_origins_by_protocols (self);
-  update_state (self);
+  update_state_flags (self);
 }
 
 
@@ -556,8 +621,6 @@ add_provider (CallsManager *self, const gchar *name)
 
   g_hash_table_insert (self->providers, g_strdup (name), provider);
 
-  update_protocols (self);
-
   origins = calls_provider_get_origins (provider);
 
   g_signal_connect_object (origins, "items-changed",
@@ -580,8 +643,8 @@ calls_manager_get_property (GObject    *object,
   CallsManager *self = CALLS_MANAGER (object);
 
   switch (property_id) {
-  case PROP_STATE:
-    g_value_set_enum (value, calls_manager_get_state (self));
+  case PROP_STATE_FLAGS:
+    g_value_set_flags (value, calls_manager_get_state_flags (self));
     break;
 
   default:
@@ -602,7 +665,7 @@ calls_manager_finalize (GObject *object)
 
   g_clear_pointer (&self->providers, g_hash_table_unref);
   g_clear_pointer (&self->origins_by_protocol, g_hash_table_unref);
-  g_clear_pointer (&self->supported_protocols, g_ptr_array_unref);
+  g_clear_pointer (&self->dial_actions_by_protocol, g_hash_table_unref);
 
   G_OBJECT_CLASS (calls_manager_parent_class)->finalize (object);
 }
@@ -637,6 +700,26 @@ calls_manager_class_init (CallsManagerClass *klass)
                  2,
                  CALLS_TYPE_CALL,
                  CALLS_TYPE_ORIGIN);
+
+  signals[UI_CALL_ADDDED] =
+    g_signal_new ("ui-call-added",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_FIRST,
+                  0,
+                  NULL, NULL, NULL,
+                  G_TYPE_NONE,
+                  1,
+                  CALLS_TYPE_UI_CALL_DATA);
+
+  signals[UI_CALL_REMOVED] =
+    g_signal_new ("ui-call-removed",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_FIRST,
+                  0,
+                  NULL, NULL, NULL,
+                  G_TYPE_NONE,
+                  1,
+                  CALLS_TYPE_UI_CALL_DATA);
 
   signals[USSD_ADDED] =
     g_signal_new ("ussd-added",
@@ -678,13 +761,13 @@ calls_manager_class_init (CallsManagerClass *klass)
                   G_TYPE_NONE,
                   0);
 
-  props[PROP_STATE] =
-    g_param_spec_enum ("state",
-                       "state",
-                       "The state of the Manager",
-                       CALLS_TYPE_MANAGER_STATE,
-                       CALLS_MANAGER_STATE_NO_PROVIDER,
-                       G_PARAM_READABLE | G_PARAM_EXPLICIT_NOTIFY);
+  props[PROP_STATE_FLAGS] =
+    g_param_spec_flags ("state",
+                        "state",
+                        "The state of the Manager",
+                        CALLS_TYPE_MANAGER_FLAGS,
+                        CALLS_MANAGER_FLAGS_UNKNOWN,
+                        G_PARAM_READABLE | G_PARAM_EXPLICIT_NOTIFY);
 
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
@@ -693,10 +776,12 @@ calls_manager_class_init (CallsManagerClass *klass)
 static void
 calls_manager_init (CallsManager *self)
 {
+  g_autoptr (GVariantType) variant_type = NULL;
+  GApplication *application;
   PeasEngine *peas;
   const gchar *dir;
 
-  self->state = CALLS_MANAGER_STATE_NO_PROVIDER;
+  self->state_flags = CALLS_MANAGER_FLAGS_UNKNOWN;
   self->providers = g_hash_table_new_full (g_str_hash,
                                            g_str_equal,
                                            g_free,
@@ -707,8 +792,45 @@ calls_manager_init (CallsManager *self)
                                                      g_free,
                                                      g_object_unref);
 
+  for (guint i = 0; i < G_N_ELEMENTS (protocols); i++) {
+    GListStore *origin_store = g_list_store_new (calls_origin_get_type ());
+    g_hash_table_insert (self->origins_by_protocol,
+                         g_strdup (protocols[i]),
+                         origin_store);
+  }
+
+  self->dial_actions_by_protocol = g_hash_table_new_full (g_str_hash,
+                                                          g_str_equal,
+                                                          g_free,
+                                                          g_object_unref);
+
+  application = g_application_get_default ();
+  variant_type = g_variant_type_new ("(ss)");
+
+  for (guint i = 0; i < G_N_ELEMENTS (protocols); i++) {
+    g_autofree char *action_name = g_strdup_printf ("dial-%s", protocols[i]);
+    GSimpleAction *action = g_simple_action_new (action_name, variant_type);
+    g_signal_connect (action,
+                      "activate",
+                      G_CALLBACK (on_dial_protocol_activated),
+                      self);
+
+    g_hash_table_insert (self->dial_actions_by_protocol,
+                         g_strdup (protocols[i]),
+                         g_object_ref (action));
+
+    /* Enable action if there are suitable origins */
+    g_simple_action_set_enabled (action, FALSE);
+
+    /* application can be NULL when running tests */
+    if (application)
+      g_action_map_add_action (G_ACTION_MAP (application), G_ACTION (action));
+  }
+
   self->origins = g_list_store_new (calls_origin_get_type ());
-  self->supported_protocols = g_ptr_array_new_full (5, g_free);
+
+  /* This hash table only owns the value, not the key */
+  self->calls = g_hash_table_new_full (NULL, NULL, NULL, g_object_unref);
 
   self->settings = calls_settings_new ();
   // Load the contacts provider
@@ -778,7 +900,6 @@ calls_manager_remove_provider (CallsManager *self,
   g_return_if_fail (name);
 
   remove_provider (self, name);
-  update_protocols (self);
 }
 
 
@@ -809,12 +930,12 @@ calls_manager_is_modem_provider (CallsManager *self,
 }
 
 
-CallsManagerState
-calls_manager_get_state (CallsManager *self)
+CallsManagerFlags
+calls_manager_get_state_flags (CallsManager *self)
 {
-  g_return_val_if_fail (CALLS_IS_MANAGER (self), CALLS_MANAGER_STATE_UNKNOWN);
+  g_return_val_if_fail (CALLS_IS_MANAGER (self), CALLS_MANAGER_FLAGS_UNKNOWN);
 
-  return self->state;
+  return self->state_flags;
 }
 
 
@@ -827,28 +948,20 @@ calls_manager_get_origins (CallsManager *self)
 }
 
 
+/**
+ * calls_manager_get_calls:
+ * @self: A #CallsManager
+ *
+ * Returns: (transfer container): Returns a list of all known calls.
+ * The calls are objects of type #CallsUiCallData. Use g_list_free() when
+ * done using the list.
+ */
 GList *
 calls_manager_get_calls (CallsManager *self)
 {
-  GListModel *origins = NULL;
-  g_autoptr (GList) calls = NULL;
-  guint n_items = 0;
-
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
 
-  origins = calls_manager_get_origins (self);
-  if (origins)
-    n_items = g_list_model_get_n_items (origins);
-
-  for (guint i = 0; i < n_items; i++)
-    {
-      g_autoptr (CallsOrigin) origin = NULL;
-
-      origin = g_list_model_get_item (origins, i);
-      calls = g_list_concat (calls, calls_origin_get_calls (origin));
-    }
-
-  return g_steal_pointer (&calls);
+  return g_hash_table_get_values (self->calls);
 }
 
 /**
@@ -860,22 +973,28 @@ calls_manager_get_calls (CallsManager *self)
 void
 calls_manager_hang_up_all_calls (CallsManager *self)
 {
-  g_autoptr (GList) calls = NULL;
+  GListModel *origins;
   GList *node;
   CallsCall *call;
+  uint n_items;
 
   g_return_if_fail (CALLS_IS_MANAGER (self));
 
-  calls = calls_manager_get_calls (self);
+  origins = G_LIST_MODEL (self->origins);
+  n_items = g_list_model_get_n_items (origins);
 
-  for (node = calls; node; node = node->next)
-    {
+  for (uint i = 0; i < n_items; i++) {
+    g_autoptr (CallsOrigin) origin = g_list_model_get_item (origins, i);
+    g_autoptr (GList) calls = calls_origin_get_calls (origin);
+
+    for (node = calls; node; node = node->next) {
       call = node->data;
       g_debug ("Hanging up on call %s", calls_call_get_name (call));
       calls_call_hang_up (call);
     }
+  }
 
-  g_debug ("Hanged up on all calls");
+  g_debug ("Hung up on all calls");
 }
 
 /**
@@ -912,7 +1031,8 @@ calls_manager_has_active_call (CallsManager *self)
  * @self: The #CallsManager
  * @target: The target number/address
  *
- * Returns (transfer none): A #GListModel of suitable origins
+ * Returns (transfer none): A #GListModel of suitable origins as long
+ * as the protocol to be used for @target is supported, %NULL otherwise
  */
 GListModel *
 calls_manager_get_suitable_origins (CallsManager *self,

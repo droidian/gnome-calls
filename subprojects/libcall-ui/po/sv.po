@@ -1,7 +1,7 @@
 # Swedish translation for libcall-ui.
 # Copyright © 2021 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
-# Luna Jernberg <droidbittin@gmail.com>, 2021.
+# Luna Jernberg <droidbittin@gmail.com>, 2021, 2022.
 # Anders Jonsson <anders.jonsson@norsjovallen.se>, 2021.
 #
 msgid ""
@@ -9,9 +9,9 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2021-11-25 17:32+0000\n"
-"PO-Revision-Date: 2021-11-26 01:38+0100\n"
-"Last-Translator: Anders Jonsson <anders.jonsson@norsjovallen.se>\n"
+"POT-Creation-Date: 2022-01-28 15:51+0000\n"
+"PO-Revision-Date: 2022-01-28 19:01+0100\n"
+"Last-Translator: Luna Jernberg <droidbittin@gmail.com>\n"
 "Language-Team: Swedish <tp-sv@listor.tp-sv.se>\n"
 "Language: sv\n"
 "MIME-Version: 1.0\n"
@@ -45,7 +45,7 @@ msgid "Call Display"
 msgstr "Samtalsdisplay"
 
 #: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:293
+#: src/cui-call-display.ui:294
 msgid "Dial Pad"
 msgstr "Knappsats"
 
@@ -73,15 +73,29 @@ msgstr "Visa symboler"
 msgid "Key pad"
 msgstr "Numeriskt tangentbord"
 
-#: src/cui-call-display.c:295
+#: src/cui-call.c:310
+msgid "Call active"
+msgstr "Samtal aktivt"
+
+#: src/cui-call.c:312
+msgid "Call held"
+msgstr "Samtal pausat"
+
+#. Deprecated
+#: src/cui-call.c:315
 msgid "Calling…"
 msgstr "Ringer…"
 
-#: src/cui-call-display.c:309
+#. Deprecated
+#: src/cui-call.c:318
+msgid "Incoming call"
+msgstr "Inkommande samtal"
+
+#: src/cui-call.c:320
 msgid "Call ended"
 msgstr "Samtal avslutat"
 
-#: src/cui-call-display.c:331
+#: src/cui-call.c:323 src/cui-call-display.c:291
 msgid "Unknown"
 msgstr "Okänd"
 
@@ -89,31 +103,31 @@ msgstr "Okänd"
 msgid "Incoming phone call"
 msgstr "Inkommande telefonsamtal"
 
-#: src/cui-call-display.ui:139
+#: src/cui-call-display.ui:140
 msgid "Mute"
 msgstr "Tysta"
 
-#: src/cui-call-display.ui:176
+#: src/cui-call-display.ui:177
 msgid "Speaker"
 msgstr "Högtalare"
 
-#: src/cui-call-display.ui:212
+#: src/cui-call-display.ui:213
 msgid "Add call"
 msgstr "Lägg till samtal"
 
-#: src/cui-call-display.ui:257
+#: src/cui-call-display.ui:258
 msgid "Hold"
 msgstr "Pausa"
 
-#: src/cui-call-display.ui:349
+#: src/cui-call-display.ui:350
 msgid "Hang up"
 msgstr "Lägg på"
 
-#: src/cui-call-display.ui:380
+#: src/cui-call-display.ui:381
 msgid "Answer"
 msgstr "Svara"
 
-#: src/cui-call-display.ui:465
+#: src/cui-call-display.ui:463
 msgid "Hide the dial pad"
 msgstr "Dölj knappsatsen"
 

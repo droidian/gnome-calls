@@ -130,13 +130,12 @@ add_call (CallsDummyOrigin *self, const gchar *number, gboolean inbound)
   g_assert (dummy_call != NULL);
 
   call = CALLS_CALL (dummy_call);
-  g_signal_emit_by_name (CALLS_ORIGIN (self), "call-added", call);
   g_signal_connect (call, "notify::state",
                     G_CALLBACK (call_state_changed_cb),
                     self);
-
   self->calls = g_list_append (self->calls, dummy_call);
 
+  g_signal_emit_by_name (CALLS_ORIGIN (self), "call-added", call);
 }
 
 
@@ -157,7 +156,7 @@ supports_protocol (CallsOrigin *origin,
   g_assert (protocol != NULL);
   g_assert (CALLS_IS_DUMMY_ORIGIN (origin));
 
-  return TRUE;
+  return g_strcmp0 (protocol, "tel") == 0;
 }
 
 
@@ -235,6 +234,7 @@ finalize (GObject *object)
   CallsDummyOrigin *self = CALLS_DUMMY_ORIGIN (object);
 
   g_string_free (self->name, TRUE);
+  g_list_free (self->calls);
 
   G_OBJECT_CLASS (calls_dummy_origin_parent_class)->finalize (object);
 }
@@ -296,7 +296,6 @@ void
 calls_dummy_origin_create_inbound (CallsDummyOrigin *self,
                                    const gchar      *number)
 {
-  g_return_if_fail (number != NULL);
   g_return_if_fail (CALLS_IS_DUMMY_ORIGIN (self));
 
   add_call (self, number, TRUE);

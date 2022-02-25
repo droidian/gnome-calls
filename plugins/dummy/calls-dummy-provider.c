@@ -81,6 +81,25 @@ usr1_handler (CallsDummyProvider *self)
   return TRUE;
 }
 
+
+static gboolean
+usr2_handler (CallsDummyProvider *self)
+{
+  GListModel *model;
+  g_autoptr(CallsDummyOrigin) origin = NULL;
+
+  model = G_LIST_MODEL (self->origins);
+  g_return_val_if_fail (g_list_model_get_n_items (model) > 0, FALSE);
+
+  g_debug ("Received SIGUSR2, adding new anonymous incoming call");
+
+  origin = g_list_model_get_item (model, 0);
+  calls_dummy_origin_create_inbound (origin, NULL);
+
+  return TRUE;
+}
+
+
 static const char *
 calls_dummy_provider_get_name (CallsProvider *provider)
 {
@@ -107,6 +126,12 @@ calls_dummy_provider_get_protocols (CallsProvider *provider)
   return supported_protocols;
 }
 
+static gboolean
+calls_dummy_provider_is_modem (CallsProvider *provider)
+{
+  return TRUE;
+}
+
 static void
 constructed (GObject *object)
 {
@@ -116,6 +141,9 @@ constructed (GObject *object)
 
   g_unix_signal_add (SIGUSR1,
                      (GSourceFunc)usr1_handler,
+                     self);
+  g_unix_signal_add (SIGUSR2,
+                     (GSourceFunc) usr2_handler,
                      self);
 
   G_OBJECT_CLASS (calls_dummy_provider_parent_class)->constructed (object);
@@ -147,6 +175,7 @@ calls_dummy_provider_class_init (CallsDummyProviderClass *klass)
   provider_class->get_status = calls_dummy_provider_get_status;
   provider_class->get_origins = calls_dummy_provider_get_origins;
   provider_class->get_protocols = calls_dummy_provider_get_protocols;
+  provider_class->is_modem = calls_dummy_provider_is_modem;
 }
 
 

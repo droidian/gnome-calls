@@ -442,6 +442,9 @@ calls_contacts_provider_lookup_id (CallsContactsProvider *self,
 
   g_return_val_if_fail (CALLS_IS_CONTACTS_PROVIDER (self), NULL);
 
+  if (!id || !*id)
+    return NULL;
+
   best_match = g_hash_table_lookup (self->best_matches, id);
 
   if (best_match) {
