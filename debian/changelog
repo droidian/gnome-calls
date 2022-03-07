@@ -1,3 +1,12 @@
+gnome-calls (42~rc.1-1) unstable; urgency=medium
+
+  * d/watch: Use download.gnome.org as the canonical tarball source
+  * d/watch: Follow GNOME versioning scheme
+  * d/gbp.conf: Sign tags by default
+  * New upstream version 42~rc.1
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Mon, 07 Mar 2022 10:52:48 +0100
+
 gnome-calls (42~rc.0-1) experimental; urgency=medium
 
   * New upstream version 42~rc.0
