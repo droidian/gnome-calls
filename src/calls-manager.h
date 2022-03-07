@@ -62,11 +62,10 @@ gboolean               calls_manager_is_modem_provider        (CallsManager *sel
 CallsManagerFlags      calls_manager_get_state_flags          (CallsManager *self);
 GListModel            *calls_manager_get_origins              (CallsManager *self);
 GList                 *calls_manager_get_calls                (CallsManager *self);
-void                   calls_manager_dial                     (CallsManager *self,
-                                                               CallsOrigin  *origin,
-                                                               const char   *target);
 GListModel            *calls_manager_get_suitable_origins     (CallsManager *self,
                                                                const char   *target);
+CallsOrigin           *calls_manager_get_origin_by_id         (CallsManager *self,
+                                                               const char   *origin_id);
 const gchar           *calls_manager_get_contact_name         (CallsCall    *call);
 gboolean               calls_manager_has_active_call          (CallsManager *self);
 void                   calls_manager_hang_up_all_calls        (CallsManager *self);
