@@ -51,6 +51,7 @@ enum {
   PROP_0,
   PROP_CALL_HANDLE,
   PROP_IP,
+  PROP_PIPELINE,
   PROP_LAST_PROP
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -64,8 +65,6 @@ struct _CallsSipCall
 
   char *ip;
 
-  guint lport_rtp;
-  guint lport_rtcp;
   guint rport_rtp;
   guint rport_rtcp;
   gchar *remote;
@@ -85,30 +84,21 @@ try_setting_up_media_pipeline (CallsSipCall *self)
 {
   g_assert (CALLS_SIP_CALL (self));
 
-  if (self->codecs == NULL)
+  if (!self->codecs)
     return FALSE;
 
-  if (self->pipeline == NULL) {
+  if (calls_sip_media_pipeline_get_state (self->pipeline) ==
+      CALLS_MEDIA_PIPELINE_STATE_NEED_CODEC) {
     MediaCodecInfo *codec = (MediaCodecInfo *) self->codecs->data;
-    self->pipeline = calls_sip_media_pipeline_new (codec);
+
+    g_debug ("Setting codec '%s' for pipeline", codec->name);
+    calls_sip_media_pipeline_set_codec (self->pipeline, codec);
   }
-
-  if (!self->lport_rtp || !self->lport_rtcp || !self->remote ||
-      !self->rport_rtp || !self->rport_rtcp)
-    return FALSE;
-
-  g_debug ("Setting local ports: RTP/RTCP %u/%u",
-           self->lport_rtp, self->lport_rtcp);
-
-  g_object_set (G_OBJECT (self->pipeline),
-                "lport-rtp", self->lport_rtp,
-                "lport-rtcp", self->lport_rtcp,
-                NULL);
 
   g_debug ("Setting remote ports: RTP/RTCP %u/%u",
            self->rport_rtp, self->rport_rtcp);
 
-  g_object_set (G_OBJECT (self->pipeline),
+  g_object_set (self->pipeline,
                 "remote", self->remote,
                 "rport-rtp", self->rport_rtp,
                 "rport-rtcp", self->rport_rtcp,
@@ -123,7 +113,7 @@ calls_sip_call_answer (CallsCall *call)
 {
   CallsSipCall *self;
   g_autofree gchar *local_sdp = NULL;
-  guint local_port = get_port_for_rtp ();
+  guint rtp_port, rtcp_port;
 
   g_assert (CALLS_IS_CALL (call));
   g_assert (CALLS_IS_SIP_CALL (call));
@@ -137,12 +127,15 @@ calls_sip_call_answer (CallsCall *call)
     return;
   }
 
-  /* TODO get free port by creating GSocket and passing that to the pipeline */
-  calls_sip_call_setup_local_media_connection (self, local_port, local_port + 1);
+  rtp_port = calls_sip_media_pipeline_get_rtp_port (self->pipeline);
+  rtcp_port = calls_sip_media_pipeline_get_rtcp_port (self->pipeline);
+
+  calls_sip_call_setup_local_media_connection (self);
 
   local_sdp = calls_sip_media_manager_get_capabilities (self->manager,
                                                         self->ip,
-                                                        local_port,
+                                                        rtp_port,
+                                                        rtcp_port,
                                                         FALSE,
                                                         self->codecs);
 
@@ -214,6 +207,10 @@ calls_sip_call_set_property (GObject      *object,
     self->ip = g_value_dup_string (value);
     break;
 
+  case PROP_PIPELINE:
+    self->pipeline = g_value_dup_object (value);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -246,10 +243,9 @@ calls_sip_call_finalize (GObject *object)
 {
   CallsSipCall *self = CALLS_SIP_CALL (object);
 
-  if (self->pipeline) {
-    calls_sip_media_pipeline_stop (self->pipeline);
-    g_clear_object (&self->pipeline);
-  }
+  calls_sip_media_pipeline_stop (self->pipeline);
+
+  g_clear_object (&self->pipeline);
   g_clear_pointer (&self->codecs, g_list_free);
   g_clear_pointer (&self->remote, g_free);
   g_clear_pointer (&self->ip, g_free);
@@ -283,6 +279,14 @@ calls_sip_call_class_init (CallsSipCallClass *klass)
                          "Own IP for media and SDP",
                          NULL,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT);
+
+  props[PROP_PIPELINE] =
+    g_param_spec_object ("pipeline",
+                         "Pipeline",
+                         "Media pipeline for this call",
+                         CALLS_TYPE_SIP_MEDIA_PIPELINE,
+                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 }
 
@@ -302,19 +306,13 @@ calls_sip_call_init (CallsSipCall *self)
 /**
  * calls_sip_call_setup_local_media_connection:
  * @self: A #CallsSipCall
- * @port_rtp: The RTP port on the the local host
- * @port_rtcp: The RTCP port on the local host
  */
 void
-calls_sip_call_setup_local_media_connection (CallsSipCall *self,
-                                             guint         port_rtp,
-                                             guint         port_rtcp)
+calls_sip_call_setup_local_media_connection (CallsSipCall *self)
 {
   g_return_if_fail (CALLS_IS_SIP_CALL (self));
 
-  self->lport_rtp = port_rtp;
-  self->lport_rtcp = port_rtcp;
-
+  /* XXX maybe we can get rid of this completely */
   try_setting_up_media_pipeline (self);
 }
 
@@ -368,10 +366,11 @@ calls_sip_call_activate_media (CallsSipCall *self,
 
 
 CallsSipCall *
-calls_sip_call_new (const gchar  *id,
-                    gboolean      inbound,
-                    const char   *own_ip,
-                    nua_handle_t *handle)
+calls_sip_call_new (const gchar           *id,
+                    gboolean               inbound,
+                    const char            *own_ip,
+                    CallsSipMediaPipeline *pipeline,
+                    nua_handle_t          *handle)
 {
   g_return_val_if_fail (id, NULL);
 
@@ -379,7 +378,9 @@ calls_sip_call_new (const gchar  *id,
                        "id", id,
                        "inbound", inbound,
                        "own-ip", own_ip,
+                       "pipeline", pipeline,
                        "nua-handle", handle,
+                       "call-type", CALLS_CALL_TYPE_SIP_VOICE,
                        NULL);
 }
 

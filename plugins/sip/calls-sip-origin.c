@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Purism SPC
+ * Copyright (C) 2021-2022 Purism SPC
  *
  * This file is part of Calls.
  *
@@ -60,6 +60,7 @@
 enum {
   PROP_0,
   PROP_NAME,
+  PROP_ID,
   PROP_ACC_HOST,
   PROP_ACC_USER,
   PROP_ACC_PASSWORD,
@@ -118,6 +119,7 @@ struct _CallsSipOrigin
   const char *protocol_prefix;
   char *address;
   char *name;
+  char *id;
 
   GList *calls;
   GHashTable *call_handles;
@@ -233,12 +235,15 @@ add_call (CallsSipOrigin *self,
 {
   CallsSipCall *sip_call;
   CallsCall *call;
+  CallsSipMediaPipeline *pipeline;
   g_autofree gchar *local_sdp = NULL;
   g_auto (GStrv)  address_split = NULL;
   const char *call_address = address;
+  gint rtp_port, rtcp_port;
 
-  /* TODO get free port by creating GSocket and passing that to the pipeline */
-  guint local_port = get_port_for_rtp ();
+  pipeline = calls_sip_media_manager_get_pipeline (self->media_manager);
+  rtp_port = calls_sip_media_pipeline_get_rtp_port (pipeline);
+  rtcp_port = calls_sip_media_pipeline_get_rtcp_port (pipeline);
 
   if (self->can_tel) {
     address_split = g_strsplit_set (address, ":@;", -1);
@@ -248,7 +253,7 @@ add_call (CallsSipOrigin *self,
       call_address = address_split[1];
   }
 
-  sip_call = calls_sip_call_new (call_address, inbound, self->own_ip, handle);
+  sip_call = calls_sip_call_new (call_address, inbound, self->own_ip, pipeline, handle);
   g_assert (sip_call != NULL);
 
   if (self->oper->call_handle)
@@ -267,11 +272,12 @@ add_call (CallsSipOrigin *self,
                     self);
 
   if (!inbound) {
-    calls_sip_call_setup_local_media_connection (sip_call, local_port, local_port + 1);
+    calls_sip_call_setup_local_media_connection (sip_call);
 
     local_sdp = calls_sip_media_manager_static_capabilities (self->media_manager,
                                                              self->own_ip,
-                                                             local_port,
+                                                             rtp_port,
+                                                             rtcp_port,
                                                              FALSE);
 
     g_assert (local_sdp);
@@ -503,6 +509,7 @@ sip_i_state (int              status,
 {
   const sdp_session_t *r_sdp = NULL;
   const sdp_session_t *l_sdp = NULL;
+  const char *r_sdp_str = NULL;
   gint call_state = nua_callstate_init;
   CallsCallState state;
   CallsSipCall *call;
@@ -525,6 +532,7 @@ sip_i_state (int              status,
   tl_gets (tags,
            SOATAG_LOCAL_SDP_REF (l_sdp),
            SOATAG_REMOTE_SDP_REF (r_sdp),
+           SOATAG_REMOTE_SDP_STR_REF (r_sdp_str),
            NUTAG_CALLSTATE_REF (call_state),
            NUTAG_OFFER_SENT_REF (offer_sent),
            NUTAG_OFFER_RECV_REF (offer_recv),
@@ -535,18 +543,20 @@ sip_i_state (int              status,
   if (status == 503) {
     CALLS_EMIT_MESSAGE (origin, "DNS error", GTK_MESSAGE_ERROR);
   }
-  /* XXX making some assumptions about the received SDP message here...
-   * namely: rtcp port = rtp port + 1
-   */
+
   if (r_sdp) {
     g_autoptr (GList) codecs =
       calls_sip_media_manager_get_codecs_from_sdp (origin->media_manager,
                                                    r_sdp->sdp_media);
     const char *session_ip = NULL;
     const char *media_ip = NULL;
+    int rtp_port;
+    int rtcp_port = 0;
+
+    g_debug ("Remote SDP was set to:\n%s", r_sdp_str);
 
     if (!codecs) {
-      g_warning ("No common codecs in SDP. Hanging up");
+      g_warning ("No common codecs in SDP. Hanging up. Remote SDP:\n%s", r_sdp_str);
       calls_call_hang_up (CALLS_CALL (call));
       return;
     }
@@ -565,10 +575,24 @@ sip_i_state (int              status,
     }
 
     calls_sip_call_set_codecs (call, codecs);
+
+    /* TODO This needs to adapt for the ICE case */
+    rtp_port = r_sdp->sdp_media->m_port;
+    for (sdp_attribute_t *attr = r_sdp->sdp_media->m_attributes; attr; attr = attr->a_next) {
+      if (g_strcmp0 (attr->a_name, "rtcp") == 0) {
+        rtcp_port = atoi (attr->a_value);
+        break;
+      }
+    }
+
+    /* Legacy fallback */
+    if (rtcp_port == 0)
+      rtcp_port = rtp_port + 1;
+
     calls_sip_call_setup_remote_media_connection (call,
                                                   media_ip ? : session_ip,
-                                                  r_sdp->sdp_media->m_port,
-                                                  r_sdp->sdp_media->m_port + 1);
+                                                  rtp_port,
+                                                  rtcp_port);
   }
 
   switch (call_state) {
@@ -1184,6 +1208,10 @@ calls_sip_origin_set_property (GObject      *object,
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
 
   switch (property_id) {
+  case PROP_ID: /* contruct only */
+    self->id = g_value_dup_string (value);
+    break;
+
   case PROP_ACC_HOST:
     g_free (self->host);
     self->host = g_value_dup_string (value);
@@ -1259,6 +1287,11 @@ calls_sip_origin_get_property (GObject      *object,
   case PROP_NAME:
     g_value_set_string (value, self->name);
     break;
+
+  case PROP_ID:
+    g_value_set_string (value, self->id);
+    break;
+
   case PROP_ACC_HOST:
     g_value_set_string (value, self->host);
     break;
@@ -1355,6 +1388,7 @@ calls_sip_origin_dispose (GObject *object)
 {
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
 
+  g_clear_pointer (&self->id, g_free);
   g_clear_pointer (&self->own_ip, g_free);
   g_clear_pointer (&self->transport_protocol, g_free);
   g_clear_pointer (&self->display_name, g_free);
@@ -1491,6 +1525,7 @@ calls_sip_origin_class_init (CallsSipOriginClass *klass)
   g_object_class_override_property (object_class, ID, NAME);    \
   props[ID] = g_object_class_find_property(object_class, NAME);
 
+  IMPLEMENTS (PROP_ID, "id");
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
   IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
