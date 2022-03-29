@@ -1,3 +1,9 @@
+gnome-calls (42.0-1) unstable; urgency=medium
+
+  * New upstream version 42.0
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Tue, 29 Mar 2022 16:12:49 +0200
+
 gnome-calls (42~rc.1-1) unstable; urgency=medium
 
   * d/watch: Use download.gnome.org as the canonical tarball source
