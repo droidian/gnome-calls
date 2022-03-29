@@ -1,3 +1,19 @@
+Calls 42.0
+Released: 19 March 2022
+
+Translation updates:
+====================
+
+ - Finnish (Jiri Grönroos)
+ - Serbian (Мирослав Николић)
+ - Catalan (Jordi Mas i Hernandez)
+ - Turkish (Emin Tufan Çetin)
+ - Ukranian (Yuri Chornoivan)
+ - Armenian (Avag Sayan)
+
+The detailed changes can be found in debian/changelog
+
+
 Calls 42.rc.1
 ---------------
 Released: 5 March 2022
@@ -6,7 +22,7 @@ Maybe noteworthy:
 =================
 
 * G722 is now the preferred codec for SIP calls
-* Hole punching scheme now also used for RTCP 
+* Hole punching scheme now also used for RTCP
 
 Translation updates:
 ====================
