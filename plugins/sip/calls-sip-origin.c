@@ -76,6 +76,7 @@ enum {
   PROP_CALLS,
   PROP_COUNTRY_CODE,
   PROP_CAN_TEL,
+  PROP_MEDIA_ENCRYPTION,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -111,6 +112,7 @@ struct _CallsSipOrigin {
   gboolean              auto_connect;
   gboolean              direct_mode;
   gboolean              can_tel;
+  SipMediaEncryption    media_encryption;
 
   char                 *own_ip;
   gint                  local_port;
@@ -145,11 +147,15 @@ change_state (CallsSipOrigin         *self,
 
   g_assert (CALLS_SIP_ORIGIN (self));
 
-  if (self->state == new_state)
+  if (self->state == new_state &&
+      new_state != CALLS_ACCOUNT_STATE_ERROR &&
+      !calls_account_state_reason_is_for_ui (reason))
     return;
 
   old_state = self->state;
   self->state = new_state;
+
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACC_STATE]);
 
   g_signal_emit_by_name (self, "account-state-changed", old_state, new_state, reason);
   calls_account_emit_message_for_state_change (CALLS_ACCOUNT (self), new_state, reason);
@@ -253,7 +259,12 @@ add_call (CallsSipOrigin *self,
       call_address = address_split[1];
   }
 
-  sip_call = calls_sip_call_new (call_address, inbound, self->own_ip, pipeline, handle);
+  sip_call = calls_sip_call_new (call_address,
+                                 inbound,
+                                 self->own_ip,
+                                 pipeline,
+                                 self->media_encryption,
+                                 handle);
   g_assert (sip_call != NULL);
 
   if (self->oper->call_handle)
@@ -272,13 +283,30 @@ add_call (CallsSipOrigin *self,
                     self);
 
   if (!inbound) {
-    calls_sip_call_setup_local_media_connection (sip_call);
+    g_autoptr (GList) crypto_attributes = NULL;
+    g_autoptr (CallsSdpCryptoContext) ctx =
+      calls_sip_call_get_sdp_crypto_context (sip_call);
+
+    if (self->media_encryption == SIP_MEDIA_ENCRYPTION_FORCED) {
+      if (!calls_sdp_crypto_context_generate_offer (ctx)) {
+        g_warning ("Media encryption must be used, but could not generate offer. Aborting");
+        calls_call_set_state (CALLS_CALL (sip_call), CALLS_CALL_STATE_DISCONNECTED);
+        return;
+      }
+    }
+
+    if (self->media_encryption == SIP_MEDIA_ENCRYPTION_PREFERRED) {
+      if (!calls_sdp_crypto_context_generate_offer (ctx))
+        g_debug ("Media encryption optional, but could not generate offer. Continuing unencrypted");
+    }
+
+    crypto_attributes = calls_sdp_crypto_context_get_crypto_candidates (ctx, FALSE);
 
     local_sdp = calls_sip_media_manager_static_capabilities (self->media_manager,
                                                              self->own_ip,
                                                              rtp_port,
                                                              rtcp_port,
-                                                             FALSE);
+                                                             crypto_attributes);
 
     g_assert (local_sdp);
 
@@ -454,17 +482,27 @@ sip_r_register (int              status,
       g_debug ("Own IP as reported by the registrar: %s", origin->own_ip);
     }
 
+  } else if (status == 100) {
+    /* nothing to do; request authorized by cache */
   } else if (status == 401 || status == 407) {
     sip_authenticate (origin, nh, sip);
 
   } else if (status == 403) {
-    g_warning ("wrong credentials?");
+    g_debug ("REGISTER denied: Probably using wrong credentials");
     change_state (origin,
                   CALLS_ACCOUNT_STATE_OFFLINE,
                   CALLS_ACCOUNT_STATE_REASON_AUTHENTICATION_FAILURE);
-
+  } else if (status == 503) {
+    change_state (origin,
+                  CALLS_ACCOUNT_STATE_OFFLINE,
+                  CALLS_ACCOUNT_STATE_REASON_CONNECTION_DNS_ERROR);
   } else if (status == 904) {
-    g_warning ("unmatched challenge");
+    g_warning ("REGISTER: unmatched challenge");
+    change_state (origin,
+                  CALLS_ACCOUNT_STATE_ERROR,
+                  CALLS_ACCOUNT_STATE_REASON_INTERNAL_ERROR);
+  } else {
+    g_warning ("REGISTER: %d %s", status, phrase);
     change_state (origin,
                   CALLS_ACCOUNT_STATE_ERROR,
                   CALLS_ACCOUNT_STATE_REASON_INTERNAL_ERROR);
@@ -489,6 +527,12 @@ sip_r_unregister (int              status,
     change_state (origin,
                   CALLS_ACCOUNT_STATE_OFFLINE,
                   CALLS_ACCOUNT_STATE_REASON_DISCONNECTED);
+  } else if (status == 100) {
+    /* nothing to do; request authorized by cache */
+  } else if (status == 503) {
+    change_state (origin,
+                  CALLS_ACCOUNT_STATE_OFFLINE,
+                  CALLS_ACCOUNT_STATE_REASON_CONNECTION_DNS_ERROR);
   } else {
     g_warning ("Unregisterung unsuccessful: %03d %s", status, phrase);
     change_state (origin,
@@ -549,6 +593,7 @@ sip_i_state (int              status,
     g_autoptr (GList) codecs =
       calls_sip_media_manager_get_codecs_from_sdp (origin->media_manager,
                                                    r_sdp->sdp_media);
+    g_autoptr (CallsSdpCryptoContext) ctx = NULL;
     const char *session_ip = NULL;
     const char *media_ip = NULL;
     int rtp_port;
@@ -560,6 +605,40 @@ sip_i_state (int              status,
       g_warning ("No common codecs in SDP. Hanging up. Remote SDP:\n%s", r_sdp_str);
       calls_call_hang_up (CALLS_CALL (call));
       return;
+    }
+
+    ctx = calls_sip_call_get_sdp_crypto_context (call);
+    if (origin->media_encryption == SIP_MEDIA_ENCRYPTION_FORCED) {
+
+      if (!calls_sdp_crypto_context_set_remote_media (ctx, r_sdp->sdp_media)) {
+        g_warning ("Media encryption is enforced, but remote didn't set crypto attributes.\n"
+                   "Remote SDP: %s", r_sdp_str);
+        calls_call_hang_up (CALLS_CALL (call));
+        return;
+      }
+    }
+
+    if (origin->media_encryption == SIP_MEDIA_ENCRYPTION_PREFERRED) {
+      if (!calls_sdp_crypto_context_set_remote_media (ctx, r_sdp->sdp_media))
+        g_debug ("Remote didn't set crypto attributes. Continuing unencrypted");
+    }
+
+    if (origin->media_encryption == SIP_MEDIA_ENCRYPTION_NONE) {
+      gboolean got_crypto = FALSE;
+
+      for (sdp_attribute_t *attr = r_sdp->sdp_media->m_attributes; attr; attr = attr->a_next) {
+        if (g_strcmp0 (attr->a_name, "crypto") == 0) {
+          got_crypto = TRUE;
+          break;
+        }
+      }
+
+      if (got_crypto) {
+        g_debug ("Remote peer %s wants to talk using encryption, but not allowed by local policy",
+                 calls_call_get_id (CALLS_CALL (call)));
+        calls_call_hang_up (CALLS_CALL (call));
+        return;
+      }
     }
 
     if (r_sdp->sdp_connection && r_sdp->sdp_connection->c_address)
@@ -820,13 +899,15 @@ sip_callback (nua_event_t   event,
     break;
 
   default:
-    /* unknown event -> print out error message */
-    g_warning ("unknown event %d: %03d %s",
-               event,
-               status,
-               phrase);
-    g_warning ("printing tags");
-    tl_print (stdout, "", tags);
+    /* unknown event */
+    g_debug ("unknown event %d: %03d %s",
+             event,
+             status,
+             phrase);
+    if (tags && tags[0].t_tag != NULL) {
+      g_debug ("printing tags");
+      tl_print (stdout, "", tags);
+    }
     break;
   }
 }
@@ -862,6 +943,8 @@ setup_nua (CallsSipOrigin *self)
 
   self->address = g_strconcat (self->user, "@", self->host, NULL);
   from_str = g_strconcat (self->protocol_prefix, ":", self->address, NULL);
+
+  g_object_notify_by_pspec(G_OBJECT (self), props[PROP_ACC_ADDRESS]);
 
   use_sips = check_sips (from_str);
   use_ipv6 = check_ipv6 (self->host);
@@ -1268,6 +1351,10 @@ calls_sip_origin_set_property (GObject      *object,
     self->can_tel = g_value_get_boolean (value);
     break;
 
+  case PROP_MEDIA_ENCRYPTION:
+    self->media_encryption = g_value_get_enum (value);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -1282,7 +1369,6 @@ calls_sip_origin_get_property (GObject    *object,
                                GParamSpec *pspec)
 {
   CallsSipOrigin *self = CALLS_SIP_ORIGIN (object);
-  g_autofree char *name = NULL;
 
   switch (property_id) {
   case PROP_NAME:
@@ -1347,6 +1433,10 @@ calls_sip_origin_get_property (GObject    *object,
 
   case PROP_CAN_TEL:
     g_value_set_boolean (value, self->can_tel);
+    break;
+
+  case PROP_MEDIA_ENCRYPTION:
+    g_value_set_enum (value, self->media_encryption);
     break;
 
   default:
@@ -1517,11 +1607,14 @@ calls_sip_origin_class_init (CallsSipOriginClass *klass)
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CAN_TEL, props[PROP_CAN_TEL]);
 
-  g_object_class_override_property (object_class, PROP_ACC_STATE, "account-state");
-  props[PROP_ACC_STATE] = g_object_class_find_property (object_class, "account-state");
-
-  g_object_class_override_property (object_class, PROP_ACC_ADDRESS, "address");
-  props[PROP_ACC_ADDRESS] = g_object_class_find_property (object_class, "address");
+  props[PROP_MEDIA_ENCRYPTION] =
+    g_param_spec_enum ("media-encryption",
+                       "Media encryption",
+                       "The media encryption mode",
+                       SIP_TYPE_MEDIA_ENCRYPTION,
+                       SIP_MEDIA_ENCRYPTION_NONE,
+                       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_MEDIA_ENCRYPTION, props[PROP_MEDIA_ENCRYPTION]);
 
 #define IMPLEMENTS(ID, NAME) \
   g_object_class_override_property (object_class, ID, NAME);    \
@@ -1531,6 +1624,8 @@ calls_sip_origin_class_init (CallsSipOriginClass *klass)
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
   IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
+  IMPLEMENTS (PROP_ACC_STATE, "account-state");
+  IMPLEMENTS (PROP_ACC_ADDRESS, "address");
 
 #undef IMPLEMENTS
 }
@@ -1576,15 +1671,16 @@ calls_sip_origin_init (CallsSipOrigin *self)
 }
 
 void
-calls_sip_origin_set_credentials (CallsSipOrigin *self,
-                                  const char     *host,
-                                  const char     *user,
-                                  const char     *password,
-                                  const char     *display_name,
-                                  const char     *transport_protocol,
-                                  gint            port,
-                                  gboolean        can_tel,
-                                  gboolean        auto_connect)
+calls_sip_origin_set_credentials (CallsSipOrigin    *self,
+                                  const char        *host,
+                                  const char        *user,
+                                  const char        *password,
+                                  const char        *display_name,
+                                  const char        *transport_protocol,
+                                  gint               port,
+                                  SipMediaEncryption media_encryption,
+                                  gboolean           can_tel,
+                                  gboolean           auto_connect)
 {
   g_return_if_fail (CALLS_IS_SIP_ORIGIN (self));
 
@@ -1620,8 +1716,10 @@ calls_sip_origin_set_credentials (CallsSipOrigin *self,
     self->transport_protocol = g_strdup ("UDP");
 
   self->port = port;
-
   self->can_tel = can_tel;
+  self->media_encryption = media_encryption;
+
+  update_name (self);
 
   recreate_sip (self);
 }

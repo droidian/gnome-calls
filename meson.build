@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '43.alpha.0',
+  version: '43.alpha.1',
   license: 'GPLv3+',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -103,6 +103,7 @@ test_c_args = [
   '-Wno-switch-enum',
   '-Wtype-limits',
   '-Wunused-function',
+  '-Wunused-variable',
   '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_64',
   '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_70',
   # see https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/332

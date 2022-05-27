@@ -21,20 +21,14 @@
         <property name="valign">center</property>
         <property name="visible">True</property>
         <property name="active">False</property>
-        <signal name="notify::active" handler="on_online_switched" swapped="yes"/>
+        <signal name="state-set" handler="on_online_switched" swapped="no"/>
       </object>
     </child>
 
     <child>
-      <object class="GtkButton" id="edit_btn">
+      <object class="GtkImage">
         <property name="visible">True</property>
-        <child>
-          <object class="GtkImage">
-            <property name="visible">True</property>
-            <property name="icon_name">go-next-symbolic</property>
-          </object>
-        </child>
-        <signal name="clicked" handler="on_edit_clicked" swapped="yes"/>
+        <property name="icon_name">go-next-symbolic</property>
       </object>
     </child>
   </template>

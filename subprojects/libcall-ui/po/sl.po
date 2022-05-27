@@ -9,9 +9,9 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-01-20 06:31+0000\n"
-"PO-Revision-Date: 2022-01-24 21:18+0100\n"
-"Last-Translator: Matej Urbančič <mateju@src.gnome.org>\n"
+"POT-Creation-Date: 2022-03-12 15:30+0000\n"
+"PO-Revision-Date: 2022-03-22 15:24+0100\n"
+"Last-Translator: Martin Srebotnjak <miles@filmsi.net>\n"
 "Language-Team: Slovenian GNOME Translation Team <gnome-si@googlegroups.com>\n"
 "Language: sl_SI\n"
 "MIME-Version: 1.0\n"
@@ -20,70 +20,31 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n%100==1 ? 1 : n%100==2 ? 2 : n%100==3 || n"
 "%100==4 ? 3 : 0);\n"
 "X-Poedit-SourceCharset: utf-8\n"
-"X-Generator: Poedit 3.0\n"
+"X-Generator: Poedit 3.0.1\n"
 
-#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
-msgid "Call-UI Demo"
-msgstr "Demonstracija klicnega uporabniškega vmesnika"
+#: src/cui-call.c:310
+msgid "Call active"
+msgstr "Klic dejaven"
 
-#: examples/cui-demo-window.ui:138
-msgid "Back"
-msgstr "Nazaj"
+#: src/cui-call.c:312
+msgid "Call held"
+msgstr "Klic zadržan"
 
-#: examples/cui-demo-window.ui:190
-msgid "Welcome to Call-UI Demo"
-msgstr "Dobrodošli v demonstraciji klicnega uporabniškega vmesnika"
-
-#: examples/cui-demo-window.ui:191
-msgid "This is a tour of the features the library has to offer."
-msgstr "To je sprehod po funkcijah, ki jih ponuja knjižnica."
-
-#: examples/cui-demo-window.ui:195
-msgid "Welcome"
-msgstr "Dobrodošli"
-
-#: examples/cui-demo-window.ui:210
-msgid "Call Display"
-msgstr "Prikaz klica"
-
-#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:294
-msgid "Dial Pad"
-msgstr "Številčnica"
-
-#: examples/cui-demo-window.ui:224
-msgid "A simple dial pad to enter phone numbers."
-msgstr "Preprosta številčnica za vnos telefonskih številk."
-
-#: examples/cui-demo-window.ui:263
-msgid "Keypad"
-msgstr "Tipkovnica"
-
-#: examples/cui-demo-window.ui:264
-msgid "A number keypad."
-msgstr "Številska tipkovnica."
-
-#: examples/cui-demo-window.ui:288
-msgid "Show letters"
-msgstr "Pokaži črke"
-
-#: examples/cui-demo-window.ui:303
-msgid "Show symbols"
-msgstr "Pokaži simbole"
-
-#: examples/cui-demo-window.ui:365
-msgid "Key pad"
-msgstr "Tipkovnica"
-
-#: src/cui-call-display.c:283
+#. Deprecated
+#: src/cui-call.c:315
 msgid "Calling…"
 msgstr "Klicanje …"
 
-#: src/cui-call-display.c:297
+#. Deprecated
+#: src/cui-call.c:318
+msgid "Incoming call"
+msgstr "Dohodni klic"
+
+#: src/cui-call.c:320
 msgid "Call ended"
 msgstr "Klic končan"
 
-#: src/cui-call-display.c:319
+#: src/cui-call.c:323 src/cui-call-display.c:294
 msgid "Unknown"
 msgstr "Neznano"
 
@@ -106,6 +67,10 @@ msgstr "Dodaj klic"
 #: src/cui-call-display.ui:258
 msgid "Hold"
 msgstr "Zadrži"
+
+#: src/cui-call-display.ui:294
+msgid "Dial Pad"
+msgstr "Številčnica"
 
 #: src/cui-call-display.ui:350
 msgid "Hang up"

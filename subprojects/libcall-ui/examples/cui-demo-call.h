@@ -9,5 +9,6 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (CuiDemoCall, cui_demo_call, CUI, DEMO_CALL, GObject)
 
 CuiDemoCall *cui_demo_call_new (void);
+void         cui_demo_call_set_encrypted (CuiDemoCall *self, gboolean encrypted);
 
 G_END_DECLS
