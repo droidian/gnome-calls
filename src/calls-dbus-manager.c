@@ -237,10 +237,8 @@ on_notify_update_hints (CallsUiCallData    *call,
 static void
 call_added_cb (CallsDBusManager *self, CuiCall *call)
 {
-  g_autoptr (GError) error = NULL;
   g_autoptr (CallsDBusObjectSkeleton) object = NULL;
   g_autoptr (CallsDBusCallsCall) iface = NULL;
-  g_autoptr (CallsBestMatch) match = NULL;
   g_autofree char *path = NULL;
 
   path = get_obj_path (self, self->iface_num++);
@@ -262,6 +260,7 @@ call_added_cb (CallsDBusManager *self, CuiCall *call)
   g_object_bind_property (call, "id", iface, "id", G_BINDING_SYNC_CREATE);
   g_object_bind_property (call, "display-name", iface, "display-name", G_BINDING_SYNC_CREATE);
   g_object_bind_property (call, "protocol", iface, "protocol", G_BINDING_SYNC_CREATE);
+  g_object_bind_property (call, "encrypted", iface, "encrypted", G_BINDING_SYNC_CREATE);
   g_object_set (iface, "can-dtmf", cui_call_get_can_dtmf (call), NULL);
 
   g_object_bind_property_full (call, "avatar-icon",
@@ -269,9 +268,6 @@ call_added_cb (CallsDBusManager *self, CuiCall *call)
                                G_BINDING_SYNC_CREATE,
                                avatar_loadable_icon_transform_to_image_path,
                                NULL, NULL, NULL);
-
-  /* TODO: once calls supports encryption */
-  calls_dbus_calls_call_set_encrypted (iface, FALSE);
 
   g_signal_connect (call,
                     "notify::ui-active",

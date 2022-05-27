@@ -183,6 +183,13 @@
                 <signal name="notify::selected-index" handler="on_user_changed" swapped="yes"/>
               </object>
             </child>
+            <child>
+              <object class="HdyComboRow" id="media_encryption">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Media Encryption</property>
+                <signal name="notify::selected-index" handler="on_user_changed" swapped="yes"/>
+              </object>
+            </child>
           </object>
         </child>
         <child>
@@ -194,6 +201,19 @@
                 <property name="title" translatable="yes">Use for Phone Calls</property>
                 <child>
                   <object class="GtkSwitch" id="tel_switch">
+                    <property name="visible">True</property>
+                    <property name="valign">center</property>
+                    <signal name="notify::active" handler="on_user_changed" swapped="yes"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="HdyActionRow">
+                <property name="visible">True</property>
+                <property name="title" translatable="yes">Automatically Connect</property>
+                <child>
+                  <object class="GtkSwitch" id="auto_connect_switch">
                     <property name="visible">True</property>
                     <property name="valign">center</property>
                     <signal name="notify::active" handler="on_user_changed" swapped="yes"/>

@@ -1,21 +1,48 @@
-libcall-ui
-----------
+libcall-ui 0.0.3
+----------------
+Released: May 2022
+* No breaking changes
+* Encryption indicator bound to call's `encrypted` property
+* UI tweaks
+* Fixed build issues
+* Don't reset call audio mode when the call didn't get accepted
+* Contributors:
+	CoderThomasB
+	Evangelos Ribeiro Tzaras
+	Guido Günther
+* UI translations:
+	Daniel Șerbănescu (ro)
+	Luna Jernberg (sv)
+	Hugo Carvalho (pt)
+	Мирослав Николић (sr)
+	Yaron Shahrabani (he)
+	Emin Tufan Çetin (tr)
+	Piotr Drąg (pl)
+	Martin Srebotnjak (sl)
+	Pablo Correa Gómez (es)
+	Nathan Follens (nl)
+	Quentin PAGÈS (oc)
+	Zurab Kargareteli (ka)
+	Jiri Grönroos (fi)
+
+libcall-ui 0.0.2
+----------------
 Released: February 2022
 * Breaking change: Implementations of CuiCall must implement
   "active-time" property to keep track of time. Sample implementation
   available in the demo
 * Deprecate some call states
 * UI translations:
-  Matej Urbančič (sl)
-  Maite Guix (ca)
-  Fran Dieguez (gl)
-  Yuri Chornoivan (uk)
-  Danial Behzadi (fa)
-  Rafael Fontenelle (pt_BR)
-  Vittorio Monti (it)
+	Matej Urbančič (sl)
+	Maite Guix (ca)
+	Fran Dieguez (gl)
+	Yuri Chornoivan (uk)
+	Danial Behzadi (fa)
+	Rafael Fontenelle (pt_BR)
+	Vittorio Monti (it)
 
-libcall-ui
-----------
+libcall-ui 0.0.1
+----------------
 Released: January 2022
 * Initial release with call-display, keypad and dialpad widgets
 * UI translations:
