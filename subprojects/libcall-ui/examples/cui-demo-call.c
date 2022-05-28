@@ -132,6 +132,8 @@ cui_demo_call_class_init (CuiDemoCallClass *klass)
   g_object_class_override_property (object_class,
                                     PROP_ENCRYPTED,
                                     "encrypted");
+  props[PROP_ENCRYPTED] =
+    g_object_class_find_property (object_class, "encrypted");
 
   g_object_class_override_property (object_class,
                                     PROP_CAN_DTMF,
@@ -343,4 +345,16 @@ CuiDemoCall *
 cui_demo_call_new (void)
 {
    return g_object_new (CUI_TYPE_DEMO_CALL, NULL);
+}
+
+void
+cui_demo_call_set_encrypted (CuiDemoCall *self, gboolean encrypted)
+{
+  g_assert (CUI_IS_DEMO_CALL (self));
+
+  if (self->encrypted == encrypted)
+    return;
+
+  self->encrypted = encrypted;
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ENCRYPTED]);
 }

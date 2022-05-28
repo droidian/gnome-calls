@@ -123,6 +123,36 @@ t = executable('sip', test_sources,
                )
 test('sip', t, env: test_env)
 
+test_sources = [ 'test-srtp.c' ]
+test_sources += sip_sources
+t = executable('srtp', test_sources,
+               c_args : test_cflags,
+               link_args: test_link_args,
+               pie: true,
+               link_with : [calls_vala, libcalls],
+               dependencies: [calls_deps, sip_deps],
+               include_directories : [
+                   calls_includes,
+                   sip_include,
+                 ]
+               )
+test('srtp', t, env: test_env)
+
+test_sources = [ 'test-sdp-crypto.c' ]
+test_sources += sip_sources
+t = executable('sdp-crypto', test_sources,
+               c_args : test_cflags,
+               link_args: test_link_args,
+               pie: true,
+               link_with : [calls_vala, libcalls],
+               dependencies: [calls_deps, sip_deps],
+               include_directories : [
+                   calls_includes,
+                   sip_include,
+                 ]
+               )
+test('sdp-crypto', t, env: test_env)
+
 test_sources = [ 'test-util.c' ]
 t = executable('util', test_sources,
                c_args : test_cflags,
@@ -192,5 +222,18 @@ t = executable('contacts', test_sources,
                  ]
                )
 test('contacts', t, env: test_env)
+
+test_sources = [ 'test-settings.c' ]
+t = executable('settings', test_sources,
+               c_args : test_cflags,
+               link_args: test_link_args,
+               pie: true,
+               link_with : [calls_vala, libcalls],
+               dependencies: calls_deps,
+               include_directories : [
+                   calls_includes,
+                 ]
+               )
+test('settings', t, env: test_env)
 
 endif

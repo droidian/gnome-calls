@@ -1,4 +1,4 @@
-examples/cui-demo-window.ui
+# List of source files containing translatable strings.
 src/cui-call.c
 src/cui-call-display.c
 src/cui-call-display.ui

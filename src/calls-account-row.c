@@ -47,12 +47,6 @@ enum {
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
-enum {
-  EDIT_CLICKED,
-  N_SIGNALS
-};
-static guint signals[N_SIGNALS];
-
 struct _CallsAccountRow {
   HdyActionRow          parent;
 
@@ -63,7 +57,6 @@ struct _CallsAccountRow {
   /* UI elements */
   HdyAvatar            *avatar;
   GtkSwitch            *online_switch;
-  GtkButton            *edit_btn;
 };
 
 G_DEFINE_TYPE (CallsAccountRow, calls_account_row, HDY_TYPE_ACTION_ROW)
@@ -74,29 +67,32 @@ on_account_state_changed (CallsAccountRow *self)
 {
   CallsAccountState state = calls_account_get_state (self->account);
 
+  g_debug ("Account (%s) state changed: %s",
+           calls_origin_get_name (CALLS_ORIGIN (self->account)),
+           calls_account_state_to_string (state));
+
   gtk_switch_set_active (self->online_switch, state == CALLS_ACCOUNT_STATE_ONLINE);
+  gtk_switch_set_state (self->online_switch, state == CALLS_ACCOUNT_STATE_ONLINE);
 }
 
-static void
-on_edit_clicked (CallsAccountRow *self)
+static gboolean
+on_online_switched (GtkSwitch *widget,
+                    gboolean   online,
+                    gpointer   user_data)
 {
-  /** CallsAccountOverview connects to this signal to show
-   *  the window containing the account providers widget.
-   *  See calls_account_provider_get_account_widget()
-   */
-  g_signal_emit (self, signals[EDIT_CLICKED], 0, self->provider, self->account);
-}
+  CallsAccountRow *self;
 
+  g_assert (CALLS_IS_ACCOUNT_ROW (user_data));
 
-static void
-on_online_switched (CallsAccountRow *self)
-{
-  gboolean online;
+  self = CALLS_ACCOUNT_ROW (user_data);
 
-  g_assert (CALLS_IS_ACCOUNT_ROW (self));
+  g_debug ("Trying to go %sline with account %s",
+           online ? "on" : "off",
+           calls_origin_get_name (CALLS_ORIGIN (self->account)));
 
-  online = gtk_switch_get_active (self->online_switch);
   calls_account_go_online (self->account, online);
+
+  return TRUE;
 }
 
 
@@ -156,6 +152,10 @@ calls_account_row_get_property (GObject    *object,
     g_value_set_boolean (value, calls_account_row_get_online (self));
     break;
 
+  case PROP_PROVIDER:
+    g_value_set_object (value, calls_account_row_get_account_provider (self));
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -172,23 +172,12 @@ calls_account_row_class_init (CallsAccountRowClass *klass)
   object_class->set_property = calls_account_row_set_property;
   object_class->get_property = calls_account_row_get_property;
 
-  signals[EDIT_CLICKED] =
-    g_signal_new ("edit-clicked",
-                  CALLS_TYPE_ACCOUNT_ROW,
-                  G_SIGNAL_RUN_FIRST,
-                  0,
-                  NULL, NULL, NULL,
-                  G_TYPE_NONE,
-                  2,
-                  CALLS_TYPE_ACCOUNT_PROVIDER,
-                  CALLS_TYPE_ACCOUNT);
-
   props[PROP_PROVIDER] =
     g_param_spec_object ("provider",
                          "Provider",
                          "The provider of the account this row represents",
                          CALLS_TYPE_ACCOUNT_PROVIDER,
-                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_ACCOUNT] =
@@ -202,7 +191,7 @@ calls_account_row_class_init (CallsAccountRowClass *klass)
   props[PROP_ONLINE] =
     g_param_spec_boolean ("online",
                           "online",
-                          "The state of the online switch",
+                          "If the account is online",
                           FALSE,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
@@ -211,9 +200,7 @@ calls_account_row_class_init (CallsAccountRowClass *klass)
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/account-row.ui");
   gtk_widget_class_bind_template_child (widget_class, CallsAccountRow, avatar);
   gtk_widget_class_bind_template_child (widget_class, CallsAccountRow, online_switch);
-  gtk_widget_class_bind_template_child (widget_class, CallsAccountRow, edit_btn);
 
-  gtk_widget_class_bind_template_callback (widget_class, on_edit_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_online_switched);
 }
 
@@ -266,4 +253,13 @@ calls_account_row_get_account (CallsAccountRow *self)
   g_return_val_if_fail (CALLS_IS_ACCOUNT_ROW (self), NULL);
 
   return self->account;
+}
+
+
+CallsAccountProvider *
+calls_account_row_get_account_provider (CallsAccountRow *self)
+{
+  g_return_val_if_fail (CALLS_IS_ACCOUNT_ROW (self), NULL);
+
+  return self->provider;
 }
