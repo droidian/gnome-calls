@@ -5,30 +5,47 @@ Source: https://gitlab.gnome.org/GNOME/calls
 License: GPL-3+
 
 Files: *
-Copyright: 2018-2022 Purism SPC
-           2018 Mohammed Sadiq <sadiq@sadiqpk.org>
+Copyright:
+  2018      Mohammed Sadiq <sadiq@sadiqpk.org>
+  2018-2022 Purism SPC
 License: GPL-3+
 
-Files: data/org.gnome.Calls.metainfo.xml
-Copyright: 2018-2022 Purism SPC
+Files:
+ data/org.gnome.Calls.metainfo.xml
+Copyright:
+  2018-2022  Purism SPC
 License: CC0-1.0
 
-Files: data/screenshots/*
-Copyright: 2021 Purism SPC
+Files:
+ data/screenshots/*
+Copyright:
+  2021  Purism SPC
 License: CC0-1.0
 
-Files: data/call-arrow*
+Files:
+ data/call-arrow*
  data/new-call-symbolic.svg
  data/org.gnome.Calls*svg
-Copyright: 2019 Purism SPC
-           2019 GNOME Design Team
+ subprojects/libcall-ui/examples/icons/*
+ subprojects/libcall-ui/src/icons/*
+Copyright:
+  2019  Purism SPC
+  2019  GNOME Design Team
 License: CC-BY-SA-4.0
 
-Files: debian/*
-Copyright: 2018 Purism SPC
- 2020-2022 Evangelos Ribeiro Tzaras
- 2020-2021 Henry-Nicolas Tourneur
- 2021-2022 Jeremy Bicha
+Files:
+ subprojects/libcall-ui/*
+Copyright:
+  2019-2022  Purism SPC
+License: LGPL-2.1+
+
+Files:
+ debian/*
+Copyright:
+  2020-2022  Evangelos Ribeiro Tzaras
+  2020-2021  Henry-Nicolas Tourneur
+  2021-2022  Jeremy Bicha
+  2018       Purism SPC
 License: GPL-3+
 
 License: GPL-3+
@@ -598,3 +615,21 @@ License: CC-BY-SA-4.0
  licenses.
  .
  Creative Commons may be contacted at creativecommons.org.
+
+License: LGPL-2.1+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as published by
+ the Free Software Foundation; either version 2.1, or (at your option)
+ any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public License along
+ with this program; if not, write to the Free Software Foundation,
+ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 2.1 can be found in ‘/usr/share/common-licenses/LGPL-2.1’.
