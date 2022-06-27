@@ -467,16 +467,23 @@ sip_r_register (int              status,
                 sip_t const     *sip,
                 tagi_t           tags[])
 {
-  g_debug ("response to REGISTER: %03d %s", status, phrase);
-
   if (status == 200) {
+    if (origin->state == CALLS_ACCOUNT_STATE_ONLINE)
+      return;
+
     g_debug ("REGISTER successful");
     change_state (origin,
                   CALLS_ACCOUNT_STATE_ONLINE,
                   CALLS_ACCOUNT_STATE_REASON_CONNECTED);
-    nua_get_params (nua, TAG_ANY (), TAG_END ());
+
+    /* Fix for https://github.com/freeswitch/sofia-sip/issues/25 */
+    if (!origin->contact_header)
+      nua_get_params (nua, TAG_ANY (), TAG_END ());
 
     if (sip->sip_contact && sip->sip_contact->m_url && sip->sip_contact->m_url->url_host) {
+      if (g_strcmp0 (origin->own_ip, sip->sip_contact->m_url->url_host) == 0)
+        return;
+
       g_free (origin->own_ip);
       origin->own_ip = g_strdup (sip->sip_contact->m_url->url_host);
       g_debug ("Own IP as reported by the registrar: %s", origin->own_ip);
@@ -590,14 +597,25 @@ sip_i_state (int              status,
   }
 
   if (r_sdp) {
-    g_autoptr (GList) codecs =
+    g_autoptr (CallsSdpCryptoContext) ctx = NULL;
+    g_autoptr (GList) remote_codecs =
       calls_sip_media_manager_get_codecs_from_sdp (origin->media_manager,
                                                    r_sdp->sdp_media);
-    g_autoptr (CallsSdpCryptoContext) ctx = NULL;
+    g_autoptr (GList) codecs = NULL;
+    GList *node;
+    GList *preferred_codecs = calls_sip_media_manager_codec_candidates (origin->media_manager);
     const char *session_ip = NULL;
     const char *media_ip = NULL;
     int rtp_port;
     int rtcp_port = 0;
+
+    for (node = remote_codecs; node != NULL; node = node->next) {
+      MediaCodecInfo *codec = node->data;
+      if (g_list_find (preferred_codecs, codec)) {
+        g_debug ("Found common codec: %s", codec->name);
+        codecs = g_list_append (codecs, codec);
+      }
+    }
 
     g_debug ("Remote SDP was set to:\n%s", r_sdp_str);
 
@@ -944,7 +962,7 @@ setup_nua (CallsSipOrigin *self)
   self->address = g_strconcat (self->user, "@", self->host, NULL);
   from_str = g_strconcat (self->protocol_prefix, ":", self->address, NULL);
 
-  g_object_notify_by_pspec(G_OBJECT (self), props[PROP_ACC_ADDRESS]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_ACC_ADDRESS]);
 
   use_sips = check_sips (from_str);
   use_ipv6 = check_ipv6 (self->host);

@@ -24,11 +24,12 @@
 
 #define G_LOG_DOMAIN "CallsNewCallBox"
 
-#include "calls-new-call-box.h"
-#include "calls-ussd.h"
+#include "calls-account.h"
 #include "calls-main-window.h"
 #include "calls-manager.h"
+#include "calls-new-call-box.h"
 #include "calls-settings.h"
+#include "calls-ussd.h"
 
 #include <glib/gi18n.h>
 #include <handy.h>
@@ -74,7 +75,7 @@ get_selected_origin (CallsNewCallBox *self)
   if (model && index >= 0)
     origin = g_list_model_get_item (model, index);
 
-  return origin;
+  return g_steal_pointer (&origin);
 }
 
 
@@ -85,23 +86,39 @@ get_origin (CallsNewCallBox *self,
   CallsManager *manager = calls_manager_get_default ();
   CallsSettings *settings = calls_manager_get_settings (manager);
 
-  g_autoptr (CallsOrigin) origin = NULL;
   GListModel *model;
   gboolean auto_use_def_origin =
     calls_settings_get_use_default_origins (settings);
 
   if (auto_use_def_origin) {
+    guint n_items;
+
     model = calls_manager_get_suitable_origins (calls_manager_get_default (),
                                                 target);
-    if (g_list_model_get_n_items (model) == 0)
+    n_items = g_list_model_get_n_items (model);
+
+    if (n_items == 0)
       return NULL;
 
-    origin = g_list_model_get_item (model, 0);
-    return origin;
+    for (guint i = 0; i < n_items; i++) {
+      g_autoptr (CallsOrigin) origin = g_list_model_get_item (model, i);
+      g_autofree char *origin_name = NULL;
 
+      if (CALLS_IS_ACCOUNT (origin) &&
+          calls_account_get_state (CALLS_ACCOUNT (origin)) != CALLS_ACCOUNT_STATE_ONLINE)
+        continue;
+
+      origin_name = calls_origin_get_name (origin);
+      g_debug ("Using origin '%s' for call to '%s'",
+               origin_name, target);
+
+      return g_steal_pointer (&origin);
+    }
   } else {
     return get_selected_origin (self);
   }
+
+  return NULL;
 }
 
 
@@ -400,7 +417,7 @@ void
 calls_new_call_box_dial (CallsNewCallBox *self,
                          const gchar     *target)
 {
-  CallsOrigin *origin;
+  g_autoptr (CallsOrigin) origin = NULL;
 
   g_return_if_fail (CALLS_IS_NEW_CALL_BOX (self));
   g_return_if_fail (target != NULL);
