@@ -35,10 +35,10 @@ tests for the moment.
  1 file changed, 28 deletions(-)
 
 diff --git a/tests/test-sip.c b/tests/test-sip.c
-index 441b689..e14fc06 100644
+index d16a036..f2aea94 100644
 --- a/tests/test-sip.c
 +++ b/tests/test-sip.c
-@@ -324,34 +324,6 @@ test_sip_call_direct_calls (SipFixture   *fixture,
+@@ -326,34 +326,6 @@ test_sip_call_direct_calls (SipFixture   *fixture,
  
    g_signal_handler_disconnect (fixture->origin_alice, handler_alice);
    g_signal_handler_disconnect (fixture->origin_bob, handler_bob);
