@@ -27,8 +27,3 @@ endif
 
 override_dh_auto_test:
 	xvfb-run dh_auto_test
-
-# generate the manpages from the scripts using help2man
-execute_before_dh_installman:
-	help2man --version-option='-h' --no-info --name="A GTK+ user interface for PSTN phone calls" \
-		debian/tmp/usr/bin/gnome-calls > debian/gnome-calls.1

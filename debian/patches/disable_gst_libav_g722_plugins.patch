@@ -1,0 +1,85 @@
+From: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+Date: Mon, 27 Jun 2022 07:46:37 +0200
+Subject: Disable g722 to avoid test failure with ffmpeg 5.0/gst-libav
+
+Bail out! CallsSipMediaPipeline-FATAL-WARNING: Error trying to setup codecs for pipeline: Could not create 'decoder' element of type avdec_g722
+stderr:
+
+(gst-plugin-scanner:196349): GLib-GObject-WARNING **: 07:29:24.149: type name '-a-png-encoder-pred' contains invalid characters
+
+See
+https://gitlab.freedesktop.org/gstreamer/gstreamer/-/issues/1055
+---
+ plugins/sip/gst-rfc3551.c |  2 +-
+ tests/test-media.c        | 12 +++++++++---
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/plugins/sip/gst-rfc3551.c b/plugins/sip/gst-rfc3551.c
+index d052b01..f59f4db 100644
+--- a/plugins/sip/gst-rfc3551.c
++++ b/plugins/sip/gst-rfc3551.c
+@@ -34,7 +34,7 @@ static MediaCodecInfo gst_codecs[] = {
+   {8, "PCMA", 8000, 1, "rtppcmapay", "rtppcmadepay", "alawenc", "alawdec", "libgstalaw.so"},
+   {0, "PCMU", 8000, 1, "rtppcmupay", "rtppcmudepay", "mulawenc", "mulawdec", "libgstmulaw.so"},
+   {3, "GSM", 8000, 1, "rtpgsmpay", "rtpgsmdepay", "gsmenc", "gsmdec", "libgstgsm.so"},
+-  {9, "G722", 8000, 1, "rtpg722pay", "rtpg722depay", "avenc_g722", "avdec_g722", "libgstlibav.so"},
++  /* {9, "G722", 8000, 1, "rtpg722pay", "rtpg722depay", "avenc_g722", "avdec_g722", "libgstlibav.so"}, */
+   {4, "G723", 8000, 1, "rtpg723pay", "rtpg723depay", "avenc_g723_1", "avdec_g723_1", "libgstlibav.so"}, // does not seem to work
+ };
+ 
+diff --git a/tests/test-media.c b/tests/test-media.c
+index 874d7df..888c60a 100644
+--- a/tests/test-media.c
++++ b/tests/test-media.c
+@@ -85,6 +85,7 @@ test_sip_media_manager_caps (void)
+   g_debug ("PCMA SRTP test OK");
+ 
+   /* G722 RTP */
++  /*
+   codecs = g_list_append (NULL, media_codec_by_name ("G722"));
+ 
+   sdp_message =
+@@ -102,9 +103,10 @@ test_sip_media_manager_caps (void)
+   g_free (sdp_message);
+ 
+   g_debug ("G722 RTP test OK");
++  */
+ 
+   /* G722 PCMU PCMA RTP (in this order) */
+-  codecs = g_list_append (NULL, media_codec_by_name ("G722"));
++  /* codecs = g_list_append (NULL, media_codec_by_name ("G722")); */
+   codecs = g_list_append (codecs, media_codec_by_name ("PCMU"));
+   codecs = g_list_append (codecs, media_codec_by_name ("PCMA"));
+ 
+@@ -113,9 +115,11 @@ test_sip_media_manager_caps (void)
+ 
+   g_assert_true (sdp_message);
+   g_assert_true (find_string_in_sdp_message (sdp_message,
+-                                             "m=audio 33340 RTP/AVP 9 0 8"));
++                                             "m=audio 33340 RTP/AVP 0 8"));
++  /*
+   g_assert_true (find_string_in_sdp_message (sdp_message,
+                                              "a=rtpmap:9 G722/8000"));
++  */
+   g_assert_true (find_string_in_sdp_message (sdp_message,
+                                              "a=rtpmap:0 PCMU/8000"));
+   g_assert_true (find_string_in_sdp_message (sdp_message,
+@@ -129,7 +133,9 @@ test_sip_media_manager_caps (void)
+   /* GSM PCMA G722 PCMU SRTP (in this order) */
+   codecs = g_list_append (NULL, media_codec_by_name ("GSM"));
+   codecs = g_list_append (codecs, media_codec_by_name ("PCMA"));
++  /*
+   codecs = g_list_append (codecs, media_codec_by_name ("G722"));
++  */
+   codecs = g_list_append (codecs, media_codec_by_name ("PCMU"));
+ 
+   sdp_message =
+@@ -137,7 +143,7 @@ test_sip_media_manager_caps (void)
+ 
+   g_assert_true (sdp_message);
+   g_assert_true (find_string_in_sdp_message (sdp_message,
+-                                             "m=audio 18098 RTP/SAVP 3 8 9 0"));
++                                             "m=audio 18098 RTP/SAVP 3 8 0"));
+ 
+   g_clear_pointer (&codecs, g_list_free);
+   g_free (sdp_message);

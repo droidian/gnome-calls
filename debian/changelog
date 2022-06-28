@@ -1,3 +1,12 @@
+gnome-calls (43~alpha.2-1) unstable; urgency=medium
+
+  * d/rules: Manpage now provided upstream
+  * Refresh patch
+  * Add patch disabling g722 to fix build issue with ffmpeg 5.0/gst-libav
+  * Install DBus service file
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Mon, 27 Jun 2022 08:19:20 +0200
+
 gnome-calls (43~alpha.1-1) unstable; urgency=medium
 
   * Add copyright helper script

@@ -1,1 +1,2 @@
 0001-Remove-SIP-call-test-to-fix-intermittent-build-failu.patch
+disable_gst_libav_g722_plugins.patch
