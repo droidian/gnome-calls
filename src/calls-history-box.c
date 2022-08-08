@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018, 2019 Purism SPC
+ * Copyright (C) 2018, 2019, 2022 Purism SPC
  *
  * This file is part of Calls.
  *
@@ -17,27 +17,40 @@
  * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Author: Adrien Plazas <adrien.plazas@puri.sm>
+ *         Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  */
+#define G_LOG_DOMAIN "CallsHistoryBox"
 
 #include "calls-history-box.h"
 #include "calls-call-record.h"
 #include "calls-call-record-row.h"
+#include "gtklistmodels/gtkmodels.h"
 #include "util.h"
 
 #include <glib/gi18n.h>
 #include <glib-object.h>
 
+#define CALLS_HISTORY_SIZE_INITIAL 75
+#define CALLS_HISTORY_SIZE_INCREMENTS 50
+#define CALLS_HISTORY_RESET_SIZE_POSITION_THRESHOLD 500
+#define CALLS_HISTORY_INCREASE_N_PAGES_THRESHOLD 2
 
 struct _CallsHistoryBox {
-  GtkStack    parent_instance;
+  GtkStack           parent_instance;
 
-  GtkListBox *history;
+  GtkListBox        *history;
+  GtkScrolledWindow *scrolled_window;
+  GtkAdjustment     *scroll_adjustment;
 
-  GListModel *model;
-  gulong      model_changed_handler_id;
+  GListModel        *model;
+  GtkSliceListModel *slice_model;
+
+  gsize              n_items;
+
+  gulong             model_changed_handler_id;
 
 };
 
@@ -53,20 +66,19 @@ static GParamSpec *props[PROP_LAST_PROP];
 
 
 static void
-update (CallsHistoryBox *self)
+on_model_changed (GListModel      *model,
+                  guint            position,
+                  guint            removed,
+                  guint            added,
+                  CallsHistoryBox *self)
 {
   gchar *child_name;
 
-  if (g_list_model_get_n_items (self->model) == 0) {
+  self->n_items = self->n_items + added - removed;
+  if (self->n_items == 0)
     child_name = "empty";
-  } else {
+  else
     child_name = "history";
-
-    /* Transition should only ever be from empty to non-empty */
-    if (self->model_changed_handler_id != 0)
-      calls_clear_signal (self->model,
-                          &self->model_changed_handler_id);
-  }
 
   gtk_stack_set_visible_child_name (GTK_STACK (self), child_name);
 }
@@ -98,8 +110,6 @@ delete_call_cb (CallsCallRecord *record,
   }
 
   g_list_store_remove ((GListStore *) self->model, position);
-
-  update (self);
 }
 
 
@@ -116,6 +126,48 @@ create_row_cb (CallsCallRecord *record,
                     G_CALLBACK (delete_call_cb),
                     self);
   return row_widget;
+}
+
+
+static void
+on_adjustment_position_changed (GtkAdjustment   *adjustment,
+                                CallsHistoryBox *self)
+{
+  double position;
+  double upper_limit;
+  double page_size;
+  guint old_size;
+
+  g_assert (CALLS_IS_HISTORY_BOX (self));
+
+  position = gtk_adjustment_get_value (adjustment);
+  page_size = gtk_adjustment_get_page_size (adjustment);
+  old_size = gtk_slice_list_model_get_size (self->slice_model);
+
+  if (position < CALLS_HISTORY_RESET_SIZE_POSITION_THRESHOLD) {
+    if (old_size == CALLS_HISTORY_SIZE_INITIAL)
+      return;
+
+    g_debug ("Resetting to initial size: %u",
+             CALLS_HISTORY_SIZE_INITIAL);
+    gtk_slice_list_model_set_size (self->slice_model, CALLS_HISTORY_SIZE_INITIAL);
+    return;
+  }
+
+  upper_limit = gtk_adjustment_get_upper (adjustment);
+
+  if (position > upper_limit - CALLS_HISTORY_INCREASE_N_PAGES_THRESHOLD * page_size) {
+    guint new_size = old_size + CALLS_HISTORY_SIZE_INCREMENTS;
+
+    new_size = MIN (new_size, self->n_items);
+
+    if (old_size == new_size)
+      return;
+
+    g_debug ("Increasing history slice from %u to %u",
+             old_size, new_size);
+    gtk_slice_list_model_set_size (self->slice_model, new_size);
+  }
 }
 
 
@@ -147,20 +199,26 @@ constructed (GObject *object)
 
   g_assert (self->model != NULL);
 
+  G_OBJECT_CLASS (calls_history_box_parent_class)->constructed (object);
+
+  self->slice_model = gtk_slice_list_model_new (self->model,
+                                                0,
+                                                CALLS_HISTORY_SIZE_INITIAL);
+
   self->model_changed_handler_id =
-    g_signal_connect_swapped
-      (self->model, "items-changed", G_CALLBACK (update), self);
+    g_signal_connect (self->model,
+                      "items-changed",
+                      G_CALLBACK (on_model_changed),
+                      self);
   g_assert (self->model_changed_handler_id != 0);
 
   gtk_list_box_bind_model (self->history,
-                           self->model,
+                           G_LIST_MODEL (self->slice_model),
                            (GtkListBoxCreateWidgetFunc) create_row_cb,
                            self,
                            NULL);
 
-  update (self);
-
-  G_OBJECT_CLASS (calls_history_box_parent_class)->constructed (object);
+  on_model_changed (self->model, 0, 0, g_list_model_get_n_items (self->model), self);
 }
 
 
@@ -169,7 +227,9 @@ dispose (GObject *object)
 {
   CallsHistoryBox *self = CALLS_HISTORY_BOX (object);
 
+  g_clear_object (&self->slice_model);
   g_clear_object (&self->model);
+  g_clear_signal_handler (&self->model_changed_handler_id, self->model);
 
   G_OBJECT_CLASS (calls_history_box_parent_class)->dispose (object);
 }
@@ -197,6 +257,7 @@ calls_history_box_class_init (CallsHistoryBoxClass *klass)
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/history-box.ui");
   gtk_widget_class_bind_template_child (widget_class, CallsHistoryBox, history);
+  gtk_widget_class_bind_template_child (widget_class, CallsHistoryBox, scrolled_window);
 }
 
 
@@ -204,6 +265,13 @@ static void
 calls_history_box_init (CallsHistoryBox *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
+
+  self->scroll_adjustment = gtk_scrolled_window_get_vadjustment (self->scrolled_window);
+
+  g_signal_connect (self->scroll_adjustment,
+                    "value-changed",
+                    G_CALLBACK (on_adjustment_position_changed),
+                    self);
 }
 
 

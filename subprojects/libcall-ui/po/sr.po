@@ -1,75 +1,24 @@
 # Serbian translation for libcall-ui.
 # Copyright © 2022 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
-# Мирослав Николић <miroslavnikolic@rocketmail.com>, 2022.
+# Мирослав Николић <miroslavnikolić@rocketmail.com>, 2022.
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: libcall-ui main\n"
-"Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/issues/\n"
-"POT-Creation-Date: 2022-03-05 03:16+0000\n"
-"PO-Revision-Date: 2022-03-12 13:28+0200\n"
-"Last-Translator: Мирослав Николић <miroslavnikolic@rocketmail.com>\n"
-"Language-Team: Serbian <(nothing)>\n"
+"Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
+"issues/\n"
+"POT-Creation-Date: 2022-06-22 10:28+0000\n"
+"PO-Revision-Date: 2022-07-03 02:58+0200\n"
+"Last-Translator: Мирослав Николић <miroslavnikolić@rocketmail.com>\n"
+"Language-Team: Serbian <српски <gnome-sr@googlegroups.org>>\n"
 "Language: sr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=4; plural=n==1? 3 : n%10==1 && n%100!=11 ? 0 : n"
-"%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2\n"
 "X-Project-Style: gnome\n"
-
-#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
-msgid "Call-UI Demo"
-msgstr "Демо КС-Позива"
-
-#: examples/cui-demo-window.ui:138
-msgid "Back"
-msgstr "Назад"
-
-#: examples/cui-demo-window.ui:190
-msgid "Welcome to Call-UI Demo"
-msgstr "Добро дошли у Демо КС-Позива"
-
-#: examples/cui-demo-window.ui:191
-msgid "This is a tour of the features the library has to offer."
-msgstr "Ово је преглед функција које библиотека има да понуди."
-
-#: examples/cui-demo-window.ui:195
-msgid "Welcome"
-msgstr "Добро дошли"
-
-#: examples/cui-demo-window.ui:210
-msgid "Call Display"
-msgstr "Приказ Позива"
-
-#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:294
-msgid "Dial Pad"
-msgstr "Бројчаник"
-
-#: examples/cui-demo-window.ui:224
-msgid "A simple dial pad to enter phone numbers."
-msgstr "Једноставан бројчаник за унос телефонских бројева."
-
-#: examples/cui-demo-window.ui:263
-msgid "Keypad"
-msgstr "Тастатура"
-
-#: examples/cui-demo-window.ui:264
-msgid "A number keypad."
-msgstr "Бројевна тастатура."
-
-#: examples/cui-demo-window.ui:288
-msgid "Show letters"
-msgstr "Прикажи слова"
-
-#: examples/cui-demo-window.ui:303
-msgid "Show symbols"
-msgstr "Прикажи симболе"
-
-#: examples/cui-demo-window.ui:365
-msgid "Key pad"
-msgstr "Тастатура"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -93,11 +42,21 @@ msgstr "Долазни позив"
 msgid "Call ended"
 msgstr "Позив је завршен"
 
-#: src/cui-call.c:323 src/cui-call-display.c:294
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "Непознато"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+#| msgid "Incoming call"
+msgid "Accepting call…"
+msgstr "Прихватам позив…"
+
+#: src/cui-call-display.c:115
+#| msgid "Hang up"
+msgid "Hanging up…"
+msgstr "Прекидам…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "Долазни телефонски позив"
 
@@ -117,19 +76,23 @@ msgstr "Додај позив"
 msgid "Hold"
 msgstr "Задржи"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:294
+msgid "Dial Pad"
+msgstr "Бројчаник"
+
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "Прекини"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "Одговори"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "Сакриј бројчаник"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Унеси број"
 
@@ -140,3 +103,39 @@ msgstr "Овај позив није шифрован"
 #: src/cui-encryption-indicator.ui:45
 msgid "This call is encrypted"
 msgstr "Овај позив је шифрован"
+
+#~ msgid "Call-UI Demo"
+#~ msgstr "Демо КС-Позива"
+
+#~ msgid "Back"
+#~ msgstr "Назад"
+
+#~ msgid "Welcome to Call-UI Demo"
+#~ msgstr "Добро дошли у Демо КС-Позива"
+
+#~ msgid "This is a tour of the features the library has to offer."
+#~ msgstr "Ово је преглед функција које библиотека има да понуди."
+
+#~ msgid "Welcome"
+#~ msgstr "Добро дошли"
+
+#~ msgid "Call Display"
+#~ msgstr "Приказ Позива"
+
+#~ msgid "A simple dial pad to enter phone numbers."
+#~ msgstr "Једноставан бројчаник за унос телефонских бројева."
+
+#~ msgid "Keypad"
+#~ msgstr "Тастатура"
+
+#~ msgid "A number keypad."
+#~ msgstr "Бројевна тастатура."
+
+#~ msgid "Show letters"
+#~ msgstr "Прикажи слова"
+
+#~ msgid "Show symbols"
+#~ msgstr "Прикажи симболе"
+
+#~ msgid "Key pad"
+#~ msgstr "Тастатура"

@@ -2,22 +2,24 @@
 # Copyright (C) 2022 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
 # Yaron Shahrabani <sh.yaron@gmail.com>, 2022.
+# Yosef Or Boczko <yoseforb@gmail.com>, 2022.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-03-12 17:39+0000\n"
-"PO-Revision-Date: 2022-03-14 17:46+0200\n"
-"Last-Translator: Yaron Shahrabani <sh.yaron@gmail.com>\n"
-"Language-Team: Hebrew <he@li.org>\n"
+"POT-Creation-Date: 2022-07-08 20:58+0000\n"
+"PO-Revision-Date: 2022-07-14 14:19+0300\n"
+"Last-Translator: Yosef Or Boczko <yoseforb@gmail.com>\n"
+"Language-Team: Hebrew <>\n"
 "Language: he\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.0.1\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : n==2 ? 1 : n>10 && n%10==0 ? "
+"2 : 3)\n"
+"X-Generator: Gtranslator 40.0\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -41,11 +43,21 @@ msgstr "שיחה נכנסת"
 msgid "Call ended"
 msgstr "השיחה הסתיימה"
 
-#: src/cui-call.c:323 src/cui-call-display.c:294
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "לא ידוע"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+#| msgid "Incoming call"
+msgid "Accepting call…"
+msgstr "קבלת שיחה…"
+
+#: src/cui-call-display.c:115
+#| msgid "Hang up"
+msgid "Hanging up…"
+msgstr "ניתוק…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "שיחת טלפון נכנסת"
 
@@ -69,19 +81,19 @@ msgstr "השהיה"
 msgid "Dial Pad"
 msgstr "לוח מקשים"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "ניתוק"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "מענה"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "הסתרת לוח המקשים"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "נא להקליד מספר"
 

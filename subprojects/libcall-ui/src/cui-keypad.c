@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2021 Purism SPC
  *
- * SPDX-License-Identifier: GPL-2.1-or-later
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * based HdyKeypad which is
  * Copyright (C) 2019 Purism SPC
@@ -38,7 +38,7 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 struct _CuiKeypad {
-  GtkBin               parent_instance;
+  GtkBin      parent_instance;
 
   GtkEntry   *entry;
   GtkGrid    *grid;
@@ -274,10 +274,10 @@ cui_keypad_class_init (CuiKeypadClass *klass)
    */
   props[PROP_LETTERS_VISIBLE] =
     g_param_spec_boolean ("letters-visible",
-			  "Letters visible",
-			  "Whether the letters below the digits should be visible",
-			  TRUE,
-			  G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+                          "Letters visible",
+                          "Whether the letters below the digits should be visible",
+                          TRUE,
+                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
   /**
    * CuiKeypad:symbols-visible:
@@ -323,8 +323,8 @@ cui_keypad_class_init (CuiKeypadClass *klass)
    */
   props[PROP_START_ACTION] =
     g_param_spec_object ("start-action",
-                        "Start action",
-                        "The start action widget",
+                         "Start action",
+                         "The start action widget",
                          GTK_TYPE_WIDGET,
                          G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
 
