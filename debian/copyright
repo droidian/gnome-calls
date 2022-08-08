@@ -11,6 +11,12 @@ Copyright:
 License: GPL-3+
 
 Files:
+ subprojects/libcall-ui/*
+Copyright:
+  2019-2022  Purism SPC
+License: LGPL-2.1+
+
+Files:
  data/org.gnome.Calls.metainfo.xml
 Copyright:
   2018-2022  Purism SPC
@@ -32,12 +38,6 @@ Copyright:
   2019  Purism SPC
   2019  GNOME Design Team
 License: CC-BY-SA-4.0
-
-Files:
- subprojects/libcall-ui/*
-Copyright:
-  2019-2022  Purism SPC
-License: LGPL-2.1+
 
 Files:
  debian/*
