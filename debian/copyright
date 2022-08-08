@@ -17,6 +17,34 @@ Copyright:
 License: LGPL-2.1+
 
 Files:
+ subprojects/libcall-ui/src/cui-dialpad.*
+Copyright:
+ 2018-2022  Purism SPC
+ 2021       Thomas Booker <tw.booker@outlook.com>
+License: LGPL-2.1+
+
+Files:
+ subprojects/libcall-ui/examples/images/cat.jpg
+Copyright: UNKNOWN
+License: CC0-1.0
+Comment:
+ From gnome-control-center,
+ see https://bugzilla.gnome.org/show_bug.cgi?id=792243
+
+Files:
+ src/gtklistmodels/*
+Copyright:
+ 2018-2019  Benjamin Otte
+ 2019       Matthias Clasen
+License: LGPL-2.1+
+
+Files:
+ src/gtklistmodels/gtkprivate.h
+Copyright:
+ 1995-1997  Peter Mattis, Spencer Kimball and Josh MacDonald
+License: LGPL-2+
+
+Files:
  data/org.gnome.Calls.metainfo.xml
 Copyright:
   2018-2022  Purism SPC
@@ -615,6 +643,24 @@ License: CC-BY-SA-4.0
  licenses.
  .
  Creative Commons may be contacted at creativecommons.org.
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Lesser General Public License as published by the
+ Free Software Foundation; either version 2 of the License, or (at your
+ option) any later version.
+ .
+ This library is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ 02110-1301  USA.
+ .
+ See /usr/share/common-licenses/LGPL-2 on your debian system.
 
 License: LGPL-2.1+
  This program is free software; you can redistribute it and/or modify
