@@ -8,69 +8,16 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-02-04 15:22+0000\n"
-"PO-Revision-Date: 2022-02-08 06:27+0100\n"
+"POT-Creation-Date: 2022-07-22 09:02+0000\n"
+"PO-Revision-Date: 2022-07-25 18:53+0200\n"
 "Last-Translator: Temuri Doghonadze <temuri.doghonadze@gmail.com>\n"
 "Language-Team: \n"
 "Language: ka\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.0.1\n"
-
-#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
-msgid "Call-UI Demo"
-msgstr "Call-UI Demo"
-
-#: examples/cui-demo-window.ui:138
-msgid "Back"
-msgstr "უკან"
-
-#: examples/cui-demo-window.ui:190
-msgid "Welcome to Call-UI Demo"
-msgstr "მოგესალმებით Call-UI Demo-ში"
-
-#: examples/cui-demo-window.ui:191
-msgid "This is a tour of the features the library has to offer."
-msgstr "ეს არის ტური იმ თვისებებში, რომელსაც ბიბლიოთეკა გვთავაზობს."
-
-#: examples/cui-demo-window.ui:195
-msgid "Welcome"
-msgstr "კეთილი იყოს თქვენი მობრძანება"
-
-#: examples/cui-demo-window.ui:210
-msgid "Call Display"
-msgstr "ზარის ჩვენება"
-
-#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:294
-msgid "Dial Pad"
-msgstr "ციფერბლატი"
-
-#: examples/cui-demo-window.ui:224
-msgid "A simple dial pad to enter phone numbers."
-msgstr "მარტივი ციფერბლატი ტელეფონის ნომრების შესაყვანად."
-
-#: examples/cui-demo-window.ui:263
-msgid "Keypad"
-msgstr "ციფრული კლავიატურა"
-
-#: examples/cui-demo-window.ui:264
-msgid "A number keypad."
-msgstr "რიცხვების ციფრული კლავიატურა"
-
-#: examples/cui-demo-window.ui:288
-msgid "Show letters"
-msgstr "ასოების ჩვენება"
-
-#: examples/cui-demo-window.ui:303
-msgid "Show symbols"
-msgstr "სიმბოლოების ჩვენება"
-
-#: examples/cui-demo-window.ui:365
-msgid "Key pad"
-msgstr "ციფრული კლავიატურა"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 3.1.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -83,7 +30,7 @@ msgstr "შეყოვნებული ზარი"
 #. Deprecated
 #: src/cui-call.c:315
 msgid "Calling…"
-msgstr "დარეკვა..."
+msgstr "დარეკვა…"
 
 #. Deprecated
 #: src/cui-call.c:318
@@ -94,11 +41,19 @@ msgstr "შემომავალი ზარი"
 msgid "Call ended"
 msgstr "ზარი დასრულდა"
 
-#: src/cui-call.c:323 src/cui-call-display.c:291
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "უცნობი"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+msgid "Accepting call…"
+msgstr "ზარზე პასუხი…"
+
+#: src/cui-call-display.c:115
+msgid "Hanging up…"
+msgstr "გათიშვა…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "შემომავალი სატელეფონო ზარი"
 
@@ -118,19 +73,23 @@ msgstr "ზარის დამატება"
 msgid "Hold"
 msgstr "შეყოვნება"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:294
+msgid "Dial Pad"
+msgstr "ციფერბლატი"
+
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "გათიშვა"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "პასუხი"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "ციფერბლატის დამალვა"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "შეიყვანეთ ნომერი"
 
@@ -141,3 +100,39 @@ msgstr "ეს ზარი არ იშიფრება"
 #: src/cui-encryption-indicator.ui:45
 msgid "This call is encrypted"
 msgstr "ეს ზარი იშიფრება"
+
+#~ msgid "Call-UI Demo"
+#~ msgstr "Call-UI Demo"
+
+#~ msgid "Back"
+#~ msgstr "უკან"
+
+#~ msgid "Welcome to Call-UI Demo"
+#~ msgstr "მოგესალმებით Call-UI Demo-ში"
+
+#~ msgid "This is a tour of the features the library has to offer."
+#~ msgstr "ეს არის ტური იმ თვისებებში, რომელსაც ბიბლიოთეკა გვთავაზობს."
+
+#~ msgid "Welcome"
+#~ msgstr "კეთილი იყოს თქვენი მობრძანება"
+
+#~ msgid "Call Display"
+#~ msgstr "ზარის ჩვენება"
+
+#~ msgid "A simple dial pad to enter phone numbers."
+#~ msgstr "მარტივი ციფერბლატი ტელეფონის ნომრების შესაყვანად."
+
+#~ msgid "Keypad"
+#~ msgstr "ციფრული კლავიატურა"
+
+#~ msgid "A number keypad."
+#~ msgstr "რიცხვების ციფრული კლავიატურა."
+
+#~ msgid "Show letters"
+#~ msgstr "ასოების ჩვენება"
+
+#~ msgid "Show symbols"
+#~ msgstr "სიმბოლოების ჩვენება"
+
+#~ msgid "Key pad"
+#~ msgstr "ციფრული კლავიატურა"

@@ -9,8 +9,8 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-03-12 15:30+0000\n"
-"PO-Revision-Date: 2022-03-25 19:20+0100\n"
+"POT-Creation-Date: 2022-06-22 10:28+0000\n"
+"PO-Revision-Date: 2022-07-08 22:57+0200\n"
 "Last-Translator: Nathan Follens <nfollens@gnome.org>\n"
 "Language-Team: Dutch <gnome-nl-list@gnome.org>\n"
 "Language: nl\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.0.1\n"
+"X-Generator: Poedit 3.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -42,11 +42,19 @@ msgstr "Inkomende oproep"
 msgid "Call ended"
 msgstr "Oproep beëindigd"
 
-#: src/cui-call.c:323 src/cui-call-display.c:294
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "Onbekend"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+msgid "Accepting call…"
+msgstr "Oproep opnemen…"
+
+#: src/cui-call-display.c:115
+msgid "Hanging up…"
+msgstr "Ophangen…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "Inkomende oproep"
 
@@ -70,19 +78,19 @@ msgstr "In de wacht zetten"
 msgid "Dial Pad"
 msgstr "Toetsenblok"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "Ophangen"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "Opnemen"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "Toetsenblok verbergen"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Voer een nummer in"
 

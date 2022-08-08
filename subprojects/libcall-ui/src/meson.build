@@ -71,7 +71,7 @@ if get_option('gtk_doc')
    ]
 
   libcall_ui_gir = gnome.generate_gir(call_ui_lib,
-                 sources: call_ui_enum_headers + call_ui_public_sources,
+                 sources: call_ui_sources,
                nsversion: '0',
                namespace: 'Cui',
          export_packages: 'call-ui-0',

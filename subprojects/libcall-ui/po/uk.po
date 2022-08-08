@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/issues/"
 "\n"
-"POT-Creation-Date: 2022-01-28 15:05+0000\n"
-"PO-Revision-Date: 2022-01-28 17:50+0200\n"
+"POT-Creation-Date: 2022-06-22 10:28+0000\n"
+"PO-Revision-Date: 2022-06-22 15:41+0300\n"
 "Last-Translator: Yuri Chornoivan <yurchor@ukr.net>\n"
 "Language-Team: Ukrainian <trans-uk@lists.fedoraproject.org>\n"
 "Language: uk\n"
@@ -20,65 +20,11 @@ msgstr ""
 "%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
 "X-Generator: Lokalize 20.12.0\n"
 
-#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
-msgid "Call-UI Demo"
-msgstr "Демонстрація Call-UI"
-
-#: examples/cui-demo-window.ui:138
-msgid "Back"
-msgstr "Назад"
-
-#: examples/cui-demo-window.ui:190
-msgid "Welcome to Call-UI Demo"
-msgstr "Вітаємо у демонстрації Call-UI"
-
-#: examples/cui-demo-window.ui:191
-msgid "This is a tour of the features the library has to offer."
-msgstr "Це путівник можливостями, які пропонує бібліотека."
-
-#: examples/cui-demo-window.ui:195
-msgid "Welcome"
-msgstr "Вітаємо"
-
-#: examples/cui-demo-window.ui:210
-msgid "Call Display"
-msgstr "Показ виклику"
-
-#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:294
-msgid "Dial Pad"
-msgstr "Панель набору"
-
-#: examples/cui-demo-window.ui:224
-msgid "A simple dial pad to enter phone numbers."
-msgstr "Проста клавіатура для введення номерів телефонів."
-
-#: examples/cui-demo-window.ui:263
-msgid "Keypad"
-msgstr "Цифрова клавіатура"
-
-#: examples/cui-demo-window.ui:264
-msgid "A number keypad."
-msgstr "Цифрова клавіатура."
-
-#: examples/cui-demo-window.ui:288
-msgid "Show letters"
-msgstr "Показати літери"
-
-#: examples/cui-demo-window.ui:303
-msgid "Show symbols"
-msgstr "Показати символи"
-
-#: examples/cui-demo-window.ui:365
-msgid "Key pad"
-msgstr "Клавіатура"
-
 #: src/cui-call.c:310
 msgid "Call active"
 msgstr "Виклик активний"
 
 #: src/cui-call.c:312
-#| msgid "Call ended"
 msgid "Call held"
 msgstr "Виклик призупинено"
 
@@ -89,7 +35,6 @@ msgstr "Виклик…"
 
 #. Deprecated
 #: src/cui-call.c:318
-#| msgid "Incoming phone call"
 msgid "Incoming call"
 msgstr "Вхідний виклик"
 
@@ -97,11 +42,21 @@ msgstr "Вхідний виклик"
 msgid "Call ended"
 msgstr "Виклик завершено"
 
-#: src/cui-call.c:323 src/cui-call-display.c:291
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "Невідомо"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+#| msgid "Incoming call"
+msgid "Accepting call…"
+msgstr "Приймаємо виклик…"
+
+#: src/cui-call-display.c:115
+#| msgid "Hang up"
+msgid "Hanging up…"
+msgstr "Завершуємо виклик…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "Вхідний телефонний дзвінок"
 
@@ -121,19 +76,23 @@ msgstr "Додати дзвінок"
 msgid "Hold"
 msgstr "Утримання"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:294
+msgid "Dial Pad"
+msgstr "Панель набору"
+
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "Покласти трубку"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "Відповісти"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "Приховати панель набору"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Введіть число"
 
@@ -144,3 +103,39 @@ msgstr "Цей дзвінок не зашифровано"
 #: src/cui-encryption-indicator.ui:45
 msgid "This call is encrypted"
 msgstr "Цей дзвінок зашифровано"
+
+#~ msgid "Call-UI Demo"
+#~ msgstr "Демонстрація Call-UI"
+
+#~ msgid "Back"
+#~ msgstr "Назад"
+
+#~ msgid "Welcome to Call-UI Demo"
+#~ msgstr "Вітаємо у демонстрації Call-UI"
+
+#~ msgid "This is a tour of the features the library has to offer."
+#~ msgstr "Це путівник можливостями, які пропонує бібліотека."
+
+#~ msgid "Welcome"
+#~ msgstr "Вітаємо"
+
+#~ msgid "Call Display"
+#~ msgstr "Показ виклику"
+
+#~ msgid "A simple dial pad to enter phone numbers."
+#~ msgstr "Проста клавіатура для введення номерів телефонів."
+
+#~ msgid "Keypad"
+#~ msgstr "Цифрова клавіатура"
+
+#~ msgid "A number keypad."
+#~ msgstr "Цифрова клавіатура."
+
+#~ msgid "Show letters"
+#~ msgstr "Показати літери"
+
+#~ msgid "Show symbols"
+#~ msgstr "Показати символи"
+
+#~ msgid "Key pad"
+#~ msgstr "Клавіатура"

@@ -1,3 +1,12 @@
+gnome-calls (43~beta.0-1) unstable; urgency=medium
+
+  * d/gbp.conf: Include upstream history
+  * Remove upstreamed patches
+  * d/copyright: Put globbing patterns in order
+  * Update copyright
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Mon, 08 Aug 2022 19:38:02 +0200
+
 gnome-calls (43~alpha.2-1) unstable; urgency=medium
 
   * d/rules: Manpage now provided upstream
