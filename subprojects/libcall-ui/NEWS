@@ -1,3 +1,30 @@
+libcall-ui 0.0.4
+----------------
+Released: June 2022
+* No breaking changes
+* UX improvement on the display: Acknowledge trying to accept/hang up a call
+* Minor display layout changes (f.e. larger avatar on incoming calls)
+* Demo can also be used to for outgoing Calls now
+* Demo switched to HdyStyleManager for theme toggle if libhandy is new enough
+* Contributors:
+	Evangelos Ribeiro Tzaras
+* UI translations:
+	Éloi Rivard (fr)
+	Aleksandr Melman (ru)
+	Yuri Chornoivan (uk)
+	Anders Jonsson (sv)
+	Piotr Drąg (pl)
+	Vittorio Monti (it)
+	Danial Behzadi (fa)
+	Мирослав Николић (sr)
+	Daniel Șerbănescu (ro)
+	Nathan Follens (nl)
+	Efstathios Iosifidis (el)
+	Yosef Or Boczko (he)
+	Jürgen Benvenuti (de)
+	Zurab Kargareteli (ka)
+
+
 libcall-ui 0.0.3
 ----------------
 Released: May 2022
@@ -25,6 +52,7 @@ Released: May 2022
 	Zurab Kargareteli (ka)
 	Jiri Grönroos (fi)
 
+
 libcall-ui 0.0.2
 ----------------
 Released: February 2022
@@ -40,6 +68,7 @@ Released: February 2022
 	Danial Behzadi (fa)
 	Rafael Fontenelle (pt_BR)
 	Vittorio Monti (it)
+
 
 libcall-ui 0.0.1
 ----------------

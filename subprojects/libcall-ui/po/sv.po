@@ -1,77 +1,24 @@
 # Swedish translation for libcall-ui.
-# Copyright © 2021 libcall-ui's COPYRIGHT HOLDER
+# Copyright © 2021, 2022 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
 # Luna Jernberg <droidbittin@gmail.com>, 2021, 2022.
-# Anders Jonsson <anders.jonsson@norsjovallen.se>, 2021.
+# Anders Jonsson <anders.jonsson@norsjovallen.se>, 2021, 2022.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-01-28 15:51+0000\n"
-"PO-Revision-Date: 2022-01-28 19:01+0100\n"
-"Last-Translator: Luna Jernberg <droidbittin@gmail.com>\n"
+"POT-Creation-Date: 2022-06-22 10:28+0000\n"
+"PO-Revision-Date: 2022-06-22 21:33+0200\n"
+"Last-Translator: Anders Jonsson <anders.jonsson@norsjovallen.se>\n"
 "Language-Team: Swedish <tp-sv@listor.tp-sv.se>\n"
 "Language: sv\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.0\n"
-
-#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
-msgid "Call-UI Demo"
-msgstr "Call-UI-demo"
-
-#: examples/cui-demo-window.ui:138
-msgid "Back"
-msgstr "Tillbaka"
-
-#: examples/cui-demo-window.ui:190
-msgid "Welcome to Call-UI Demo"
-msgstr "Välkommen till Call-UI-demo"
-
-#: examples/cui-demo-window.ui:191
-msgid "This is a tour of the features the library has to offer."
-msgstr "Detta är en rundtur i de funktioner som biblioteket har att erbjuda."
-
-#: examples/cui-demo-window.ui:195
-msgid "Welcome"
-msgstr "Välkommen"
-
-#: examples/cui-demo-window.ui:210
-msgid "Call Display"
-msgstr "Samtalsdisplay"
-
-#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:294
-msgid "Dial Pad"
-msgstr "Knappsats"
-
-#: examples/cui-demo-window.ui:224
-msgid "A simple dial pad to enter phone numbers."
-msgstr "En enkel knappsats för att mata in telefonnummer."
-
-#: examples/cui-demo-window.ui:263
-msgid "Keypad"
-msgstr "Numeriskt tangentbord"
-
-#: examples/cui-demo-window.ui:264
-msgid "A number keypad."
-msgstr "Ett numeriskt tangentbord."
-
-#: examples/cui-demo-window.ui:288
-msgid "Show letters"
-msgstr "Visa bokstäver"
-
-#: examples/cui-demo-window.ui:303
-msgid "Show symbols"
-msgstr "Visa symboler"
-
-#: examples/cui-demo-window.ui:365
-msgid "Key pad"
-msgstr "Numeriskt tangentbord"
+"X-Generator: Poedit 3.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -95,11 +42,19 @@ msgstr "Inkommande samtal"
 msgid "Call ended"
 msgstr "Samtal avslutat"
 
-#: src/cui-call.c:323 src/cui-call-display.c:291
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "Okänd"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+msgid "Accepting call…"
+msgstr "Accepterar samtal…"
+
+#: src/cui-call-display.c:115
+msgid "Hanging up…"
+msgstr "Lägger på…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "Inkommande telefonsamtal"
 
@@ -119,19 +74,23 @@ msgstr "Lägg till samtal"
 msgid "Hold"
 msgstr "Pausa"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:294
+msgid "Dial Pad"
+msgstr "Knappsats"
+
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "Lägg på"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "Svara"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "Dölj knappsatsen"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Mata in ett nummer"
 
@@ -142,3 +101,40 @@ msgstr "Detta samtal är inte krypterat"
 #: src/cui-encryption-indicator.ui:45
 msgid "This call is encrypted"
 msgstr "Detta samtal är krypterat"
+
+#~ msgid "Call-UI Demo"
+#~ msgstr "Call-UI-demo"
+
+#~ msgid "Back"
+#~ msgstr "Tillbaka"
+
+#~ msgid "Welcome to Call-UI Demo"
+#~ msgstr "Välkommen till Call-UI-demo"
+
+#~ msgid "This is a tour of the features the library has to offer."
+#~ msgstr ""
+#~ "Detta är en rundtur i de funktioner som biblioteket har att erbjuda."
+
+#~ msgid "Welcome"
+#~ msgstr "Välkommen"
+
+#~ msgid "Call Display"
+#~ msgstr "Samtalsdisplay"
+
+#~ msgid "A simple dial pad to enter phone numbers."
+#~ msgstr "En enkel knappsats för att mata in telefonnummer."
+
+#~ msgid "Keypad"
+#~ msgstr "Numeriskt tangentbord"
+
+#~ msgid "A number keypad."
+#~ msgstr "Ett numeriskt tangentbord."
+
+#~ msgid "Show letters"
+#~ msgstr "Visa bokstäver"
+
+#~ msgid "Show symbols"
+#~ msgstr "Visa symboler"
+
+#~ msgid "Key pad"
+#~ msgstr "Numeriskt tangentbord"

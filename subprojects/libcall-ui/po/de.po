@@ -2,119 +2,97 @@
 # Copyright (C) 2021 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
 # Lian Begett <gnome@bunbun.de>, 2021.
+# Jürgen Benvenuti <gastornis@posteo.org>, 2022.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2021-11-18 12:54+0000\n"
-"PO-Revision-Date: 2021-11-19 21:46+0100\n"
-"Last-Translator: Christian Kirbach <christian.kirbach@gmail.com>\n"
+"POT-Creation-Date: 2022-07-04 09:56+0000\n"
+"PO-Revision-Date: 2022-07-22 11:01+0200\n"
+"Last-Translator: Tim Sabsch <tim@sabsch.com>\n"
 "Language-Team: German <gnome-de@gnome.org>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.0\n"
+"X-Generator: Poedit 3.1\n"
 
-#: examples/cui-demo-window.ui:7 examples/cui-demo-window.ui:30
-msgid "Call-UI Demo"
-msgstr "Anruf-Demo"
+#: src/cui-call.c:310
+msgid "Call active"
+msgstr "Anruf aktiv"
 
-#: examples/cui-demo-window.ui:138
-msgid "Back"
-msgstr "Zurück"
+#: src/cui-call.c:312
+msgid "Call held"
+msgstr "Anruf gehalten"
 
-#: examples/cui-demo-window.ui:190
-msgid "Welcome to Call-UI Demo"
-msgstr "Willkommen zu Anruf-Demo"
-
-#: examples/cui-demo-window.ui:191
-msgid "This is a tour of the features the library has to offer."
-msgstr "Dies ist ein Rundgang durch den Funktionsumfang der Bibliothek."
-
-#: examples/cui-demo-window.ui:195
-msgid "Welcome"
-msgstr "Willkommen"
-
-#: examples/cui-demo-window.ui:210
-msgid "Call Display"
-msgstr "Anrufanzeige"
-
-#: examples/cui-demo-window.ui:223 examples/cui-demo-window.ui:249
-#: src/cui-call-display.ui:293
-msgid "Dial Pad"
-msgstr "Ziffernblock"
-
-#: examples/cui-demo-window.ui:224
-msgid "A simple dial pad to enter phone numbers."
-msgstr "Eine einfache Wählscheibe, um Telefonnummern einzugeben."
-
-#: examples/cui-demo-window.ui:263
-msgid "Keypad"
-msgstr "Nummernblock"
-
-#: examples/cui-demo-window.ui:264
-msgid "A number keypad."
-msgstr "Ein Ziffernblatt"
-
-#: examples/cui-demo-window.ui:288
-msgid "Show letters"
-msgstr "Buchstaben anzeigen"
-
-#: examples/cui-demo-window.ui:303
-msgid "Show symbols"
-msgstr "Sonderzeichen anzeigen"
-
-#: examples/cui-demo-window.ui:365
-msgid "Key pad"
-msgstr "Nummernblock"
-
-#: src/cui-call-display.c:294
+#. Deprecated
+#: src/cui-call.c:315
 msgid "Calling…"
 msgstr "Anrufen …"
 
-#: src/cui-call-display.c:308
+#. Deprecated
+#: src/cui-call.c:318
+msgid "Incoming call"
+msgstr "Eingehender Anruf"
+
+#: src/cui-call.c:320
 msgid "Call ended"
 msgstr "Anruf beendet"
 
-#: src/cui-call-display.c:339
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "Unbekannt"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+msgid "Accepting call…"
+msgstr "Anruf annehmen …"
+
+#: src/cui-call-display.c:115
+msgid "Hanging up…"
+msgstr "Auflegen …"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "Eingehender Anruf"
 
-#: src/cui-call-display.ui:139
+#: src/cui-call-display.ui:140
 msgid "Mute"
 msgstr "Stumm schalten"
 
-#: src/cui-call-display.ui:176
+#: src/cui-call-display.ui:177
 msgid "Speaker"
 msgstr "Lautsprecher"
 
-#: src/cui-call-display.ui:212
+#: src/cui-call-display.ui:213
 msgid "Add call"
 msgstr "Anruf hinzufügen"
 
-#: src/cui-call-display.ui:257
+#: src/cui-call-display.ui:258
 msgid "Hold"
 msgstr "Halten"
 
-#: src/cui-call-display.ui:349
+#: src/cui-call-display.ui:294
+msgid "Dial Pad"
+msgstr "Ziffernblock"
+
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "Auflegen"
 
-#: src/cui-call-display.ui:380
+#: src/cui-call-display.ui:377
 msgid "Answer"
-msgstr "Herangehen"
+msgstr "Annehmen"
 
-#: src/cui-call-display.ui:465
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "Den Ziffernblock verbergen"
+
+#: src/cui-dialpad.ui:24
+msgid "Enter a number"
+msgstr "Eine Nummer eingeben"
 
 #: src/cui-encryption-indicator.ui:23
 msgid "This call is not encrypted"
@@ -123,3 +101,39 @@ msgstr "Dieser Anruf ist nicht verschlüsselt"
 #: src/cui-encryption-indicator.ui:45
 msgid "This call is encrypted"
 msgstr "Dieser Anruf ist verschlüsselt"
+
+#~ msgid "Call-UI Demo"
+#~ msgstr "Anruf-Demo"
+
+#~ msgid "Back"
+#~ msgstr "Zurück"
+
+#~ msgid "Welcome to Call-UI Demo"
+#~ msgstr "Willkommen zu Anruf-Demo"
+
+#~ msgid "This is a tour of the features the library has to offer."
+#~ msgstr "Dies ist ein Rundgang durch den Funktionsumfang der Bibliothek."
+
+#~ msgid "Welcome"
+#~ msgstr "Willkommen"
+
+#~ msgid "Call Display"
+#~ msgstr "Anrufanzeige"
+
+#~ msgid "A simple dial pad to enter phone numbers."
+#~ msgstr "Eine einfache Wählscheibe, um Telefonnummern einzugeben."
+
+#~ msgid "Keypad"
+#~ msgstr "Nummernblock"
+
+#~ msgid "A number keypad."
+#~ msgstr "Ein Ziffernblatt"
+
+#~ msgid "Show letters"
+#~ msgstr "Buchstaben anzeigen"
+
+#~ msgid "Show symbols"
+#~ msgstr "Sonderzeichen anzeigen"
+
+#~ msgid "Key pad"
+#~ msgstr "Nummernblock"

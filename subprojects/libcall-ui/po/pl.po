@@ -9,8 +9,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-03-19 09:47+0000\n"
-"PO-Revision-Date: 2022-03-20 13:15+0100\n"
+"POT-Creation-Date: 2022-06-22 10:28+0000\n"
+"PO-Revision-Date: 2022-06-26 14:33+0200\n"
 "Last-Translator: Piotr Drąg <piotrdrag@gmail.com>\n"
 "Language-Team: Polish <community-poland@mozilla.org>\n"
 "Language: pl\n"
@@ -42,11 +42,19 @@ msgstr "Połączenie przychodzące"
 msgid "Call ended"
 msgstr "Połączenie zostało zakończone"
 
-#: src/cui-call.c:323 src/cui-call-display.c:294
+#: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
 msgstr "Nieznany"
 
-#: src/cui-call-display.ui:37
+#: src/cui-call-display.c:100
+msgid "Accepting call…"
+msgstr "Odbieranie połączenia…"
+
+#: src/cui-call-display.c:115
+msgid "Hanging up…"
+msgstr "Rozłączanie się…"
+
+#: src/cui-call-display.ui:39
 msgid "Incoming phone call"
 msgstr "Przychodzące połączenie telefoniczne"
 
@@ -70,19 +78,19 @@ msgstr "Zawieś"
 msgid "Dial Pad"
 msgstr "Klawiatura"
 
-#: src/cui-call-display.ui:350
+#: src/cui-call-display.ui:346
 msgid "Hang up"
 msgstr "Rozłącz się"
 
-#: src/cui-call-display.ui:381
+#: src/cui-call-display.ui:377
 msgid "Answer"
 msgstr "Odbierz"
 
-#: src/cui-call-display.ui:463
+#: src/cui-call-display.ui:459
 msgid "Hide the dial pad"
 msgstr "Ukryj klawiaturę"
 
-#: src/cui-dialpad.ui:19
+#: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Wpisz numer"
 

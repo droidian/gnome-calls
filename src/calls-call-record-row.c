@@ -291,19 +291,15 @@ on_notify_can_add_contacts (CallsCallRecordRow *self)
 
   contacts_provider = calls_manager_get_contacts_provider (calls_manager_get_default ());
 
-  if (!calls_contacts_provider_get_can_add_contacts (contacts_provider))
-    return;
-
-  g_signal_handlers_disconnect_by_data (contacts_provider, self);
-
-  /* The record has a NULL id */
-  if (!self->contact)
-    return;
-
-  g_object_bind_property (self->contact, "has-individual",
-                          action_new_contact, "enabled",
-                          G_BINDING_SYNC_CREATE |
-                          G_BINDING_INVERT_BOOLEAN);
+  if (calls_contacts_provider_get_can_add_contacts (contacts_provider) &&
+      self->contact) {
+    g_object_bind_property (self->contact, "has-individual",
+                            action_new_contact, "enabled",
+                            G_BINDING_SYNC_CREATE |
+                            G_BINDING_INVERT_BOOLEAN);
+  } else {
+    g_simple_action_set_enabled (G_SIMPLE_ACTION (action_new_contact), FALSE);
+  }
 }
 
 
@@ -311,30 +307,24 @@ static void
 setup_contact (CallsCallRecordRow *self)
 {
   GAction *action_copy = g_action_map_lookup_action (self->action_map, "copy-number");
-  GAction *action_new_contact = g_action_map_lookup_action (self->action_map, "new-contact");
   g_autofree gchar *target = NULL;
   CallsContactsProvider *contacts_provider;
 
   contacts_provider = calls_manager_get_contacts_provider (calls_manager_get_default ());
 
-  if (calls_contacts_provider_get_can_add_contacts (contacts_provider)) {
-    on_notify_can_add_contacts (self);
-  } else {
-    g_simple_action_set_enabled (G_SIMPLE_ACTION (action_new_contact), FALSE);
-    g_signal_connect_swapped (contacts_provider,
-                              "notify::can-add-contacts",
-                              G_CALLBACK (on_notify_can_add_contacts),
-                              self);
-  }
+  g_signal_connect_swapped (contacts_provider,
+                            "notify::can-add-contacts",
+                            G_CALLBACK (on_notify_can_add_contacts),
+                            self);
 
-
+  on_notify_can_add_contacts (self);
 
   // Get the target number
   g_object_get (G_OBJECT (self->record),
                 "target", &target,
                 NULL);
 
-  if (!target || target[0] == '\0') {
+  if (STR_IS_NULL_OR_EMPTY (target)) {
     gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), NULL);
     g_simple_action_set_enabled (G_SIMPLE_ACTION (action_copy), FALSE);
   } else {
@@ -394,10 +384,10 @@ calls_call_record_row_popup_menu (GtkWidget *self)
 
 
 static void
-long_pressed (GtkGestureLongPress *gesture,
-              gdouble              x,
-              gdouble              y,
-              GtkWidget           *self)
+on_long_pressed (GtkGestureLongPress *gesture,
+                 gdouble              x,
+                 gdouble              y,
+                 GtkWidget           *self)
 {
   context_menu (self, NULL);
 }
@@ -444,10 +434,13 @@ constructed (GObject *object)
   gboolean inbound;
   GDateTime *answered;
   GDateTime *end;
-  g_autofree char *target_name = NULL;
+  GAction *sms_action;
   g_autofree char *protocol = NULL;
   g_autofree char *action_name = NULL;
   g_autofree char *target = NULL;
+  gboolean sms_enabled = FALSE;
+
+  G_OBJECT_CLASS (calls_call_record_row_parent_class)->constructed (object);
 
   g_object_get (self->record,
                 "inbound", &inbound,
@@ -465,20 +458,26 @@ constructed (GObject *object)
 
   gtk_actionable_set_action_name (GTK_ACTIONABLE (self->button), action_name);
 
+  sms_action = g_action_map_lookup_action (self->action_map, "new-sms");
   /* TODO add origin ID to action target */
-  if (target && *target)
+  if (!STR_IS_NULL_OR_EMPTY (target)) {
     gtk_actionable_set_action_target (GTK_ACTIONABLE (self->button),
                                       "(ss)", target, "");
-  else
-    ;
+    if (g_strcmp0 (protocol, "tel") == 0) {
+      g_autoptr (GAppInfo) app_info_sms =
+        g_app_info_get_default_for_uri_scheme ("sms");
+
+      sms_enabled = !!app_info_sms;
+    }
+  }
+
+  g_simple_action_set_enabled (G_SIMPLE_ACTION (sms_action), sms_enabled);
 
   setup_time (self, inbound, answered, end);
   calls_date_time_unref (answered);
   calls_date_time_unref (end);
 
   setup_contact (self);
-
-  G_OBJECT_CLASS (calls_call_record_row_parent_class)->constructed (object);
 }
 
 
@@ -602,11 +601,39 @@ new_contact_activated (GSimpleAction *action,
 }
 
 
+static void
+new_sms_activated (GSimpleAction *action,
+                   GVariant      *parameter,
+                   gpointer       data)
+{
+  CallsCallRecordRow *self = CALLS_CALL_RECORD_ROW (data);
+  GdkDisplay *display;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GdkAppLaunchContext) launch_context = NULL;
+  g_autofree char *target = NULL;
+  g_autofree char *uri = NULL;
+
+  g_object_get (self->record,
+                "target", &target,
+                NULL);
+  uri = g_strdup_printf ("sms:%s", target);
+
+  display = gdk_display_get_default ();
+  launch_context = gdk_display_get_app_launch_context (display);
+
+  if (!g_app_info_launch_default_for_uri (uri,
+                                          G_APP_LAUNCH_CONTEXT (launch_context),
+                                          &error))
+    g_warning ("Could not launch sms URI handler: %s", error->message);
+}
+
+
 static GActionEntry entries[] =
 {
   { "delete-call", delete_call_activated, NULL, NULL, NULL},
   { "copy-number", copy_number_activated, NULL, NULL, NULL},
   { "new-contact", new_contact_activated, NULL, NULL, NULL},
+  { "new-sms", new_sms_activated, NULL, NULL, NULL},
 };
 
 
@@ -631,7 +658,7 @@ calls_call_record_row_init (CallsCallRecordRow *self)
 
   self->gesture = gtk_gesture_long_press_new (GTK_WIDGET (self->event_box));
   gtk_gesture_single_set_touch_only (GTK_GESTURE_SINGLE (self->gesture), TRUE);
-  g_signal_connect (self->gesture, "pressed", G_CALLBACK (long_pressed), self);
+  g_signal_connect (self->gesture, "pressed", G_CALLBACK (on_long_pressed), self);
 }
 
 

@@ -1,22 +1,11 @@
 /*
- * Copyright (C) 2021 Purism SPC
+ * Copyright (C) 2021, 2022 Purism SPC
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *
- * Calls is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Calls is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Calls.  If not, see <http://www.gnu.org/licenses/>.
- *
  * Author: Guido Günther <agx@sigxcpu.org>
+ *         Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+ *
  * Somewhat based on call's call-display by:
  * Author: Bob Ham <bob.ham@puri.sm>
  */
@@ -35,6 +24,9 @@
 
 #define IS_NULL_OR_EMPTY(x)  ((x) == NULL || (x)[0] == '\0')
 
+#define HDY_AVATAR_SIZE_BIG 160
+#define HDY_AVATAR_SIZE_DEFAULT 100
+
 /**
  * CuiCallDisplay:
  *
@@ -51,35 +43,36 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 struct _CuiCallDisplay {
-  GtkOverlay       parent_instance;
+  GtkOverlay              parent_instance;
 
-  CuiCall         *call;
+  CuiCall                *call;
 
-  GtkLabel        *incoming_phone_call;
-  HdyAvatar       *avatar;
-  GtkLabel        *primary_contact_info;
-  GtkLabel        *secondary_contact_info;
-  GtkLabel        *status;
+  GtkLabel               *incoming_phone_call;
+  HdyAvatar              *avatar;
+  GtkLabel               *primary_contact_info;
+  GtkLabel               *secondary_contact_info;
+  GtkLabel               *status;
 
-  GtkBox          *controls;
-  GtkBox          *gsm_controls;
-  GtkBox          *general_controls;
-  GtkToggleButton *speaker;
-  GtkToggleButton *mute;
-  GtkButton       *hang_up;
-  GtkButton       *answer;
+  GtkBox                 *controls;
+  GtkBox                 *gsm_controls;
+  GtkBox                 *general_controls;
+  GtkToggleButton        *speaker;
+  GtkToggleButton        *mute;
+  GtkButton              *hang_up;
+  GtkButton              *answer;
   CuiEncryptionIndicator *encryption_indicator;
 
-  GCancellable    *cancel;
-  GtkRevealer     *dial_pad_revealer;
-  GtkToggleButton *dial_pad;
-  GtkEntry        *keypad_entry;
+  GCancellable           *cancel;
+  GtkRevealer            *dial_pad_revealer;
+  GtkToggleButton        *dial_pad;
+  GtkEntry               *keypad_entry;
 
-  GBinding        *dtmf_bind;
-  GBinding        *avatar_icon_bind;
-  GBinding        *encryption_bind;
+  GBinding               *dtmf_bind;
+  GBinding               *avatar_icon_bind;
+  GBinding               *encryption_bind;
 
-  gboolean         needs_cam_reset; /* cam = Call Audio Mode */
+  gboolean                needs_cam_reset; /* cam = Call Audio Mode */
+  gboolean                update_status_time;
 };
 
 G_DEFINE_TYPE (CuiCallDisplay, cui_call_display, GTK_TYPE_OVERLAY);
@@ -102,6 +95,12 @@ on_answer_clicked (CuiCallDisplay *self)
 {
   g_return_if_fail (CUI_IS_CALL_DISPLAY (self));
 
+  self->update_status_time = FALSE;
+  gtk_label_set_label (self->status,
+                       _("Accepting call…"));
+
+  gtk_widget_set_sensitive (GTK_WIDGET (self->answer), FALSE);
+
   cui_call_accept (self->call);
 }
 
@@ -111,14 +110,22 @@ on_hang_up_clicked (CuiCallDisplay *self)
 {
   g_return_if_fail (CUI_IS_CALL_DISPLAY (self));
 
+  self->update_status_time = FALSE;
+  gtk_label_set_label (self->status,
+                       _("Hanging up…"));
+
+  gtk_widget_set_sensitive (GTK_WIDGET (self->hang_up), FALSE);
+
   cui_call_hang_up (self->call);
 }
+
 
 static void
 hold_toggled_cb (GtkToggleButton *togglebutton,
                  CuiCallDisplay  *self)
 {
 }
+
 
 static void
 mute_toggled_cb (GtkToggleButton *togglebutton,
@@ -174,16 +181,16 @@ set_pretty_time (CuiCallDisplay *self)
   str = g_string_new ("");
 
   if (elapsed > HOUR) {
-    guint hours = (guint)(elapsed / HOUR);
+    guint hours = (guint) (elapsed / HOUR);
     g_string_append_printf (str, "%u:", hours);
     elapsed -= (hours * HOUR);
   }
 
-  minutes = (guint)(elapsed / MINUTE);
+  minutes = (guint) (elapsed / MINUTE);
   seconds = elapsed - (minutes * MINUTE);
   g_string_append_printf (str, "%02u:%02u", minutes, seconds);
 
-  gtk_label_set_text (self->status, str->str);
+  gtk_label_set_label (self->status, str->str);
 
 #undef HOUR
 #undef MINUTE
@@ -203,8 +210,17 @@ on_call_state_changed (CuiCallDisplay *self,
 
   state = cui_call_get_state (call);
 
+  g_debug ("Call %p changed state to %s",
+           call,
+           cui_call_state_to_string (state));
+
   hang_up_style = gtk_widget_get_style_context
                     (GTK_WIDGET (self->hang_up));
+
+  /* if the state changed than the call must be responsive */
+  self->update_status_time = TRUE;
+  gtk_widget_set_sensitive (GTK_WIDGET (self->answer), TRUE);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->hang_up), TRUE);
 
   #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
@@ -212,8 +228,10 @@ on_call_state_changed (CuiCallDisplay *self,
   switch (state)
   {
   case CUI_CALL_STATE_INCOMING:
+    hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_BIG);
+    G_GNUC_FALLTHROUGH;
+
   case CUI_CALL_STATE_WAITING: /* Deprecated */
-    gtk_widget_hide (GTK_WIDGET (self->status));
     gtk_widget_hide (GTK_WIDGET (self->controls));
     gtk_widget_show (GTK_WIDGET (self->incoming_phone_call));
     gtk_widget_show (GTK_WIDGET (self->answer));
@@ -222,6 +240,7 @@ on_call_state_changed (CuiCallDisplay *self,
     break;
 
   case CUI_CALL_STATE_ACTIVE:
+    hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_DEFAULT);
     self->needs_cam_reset = TRUE;
     G_GNUC_FALLTHROUGH;
 
@@ -233,11 +252,10 @@ on_call_state_changed (CuiCallDisplay *self,
     gtk_widget_hide (GTK_WIDGET (self->answer));
     gtk_widget_hide (GTK_WIDGET (self->incoming_phone_call));
     gtk_widget_show (GTK_WIDGET (self->controls));
-    gtk_widget_show (GTK_WIDGET (self->status));
 
     gtk_widget_set_visible
       (GTK_WIDGET (self->gsm_controls),
-       state != CUI_CALL_STATE_CALLING);
+      state != CUI_CALL_STATE_CALLING);
 
     /* TODO Only switch to "call" audio mode for cellular calls */
     call_audio_select_mode_async (CALL_AUDIO_MODE_CALL,
@@ -274,7 +292,7 @@ on_call_state_changed (CuiCallDisplay *self,
   case CUI_CALL_STATE_ALERTING: /* Deprecated */
   case CUI_CALL_STATE_HELD:
   case CUI_CALL_STATE_DISCONNECTED:
-    gtk_label_set_text (self->status, cui_call_state_to_string (state));
+    gtk_label_set_label (self->status, cui_call_state_to_string (state));
     break;
 
   case CUI_CALL_STATE_UNKNOWN:
@@ -313,8 +331,8 @@ on_update_contact_information (CuiCallDisplay *self)
   hdy_avatar_set_text (self->avatar, display_name);
   hdy_avatar_set_show_initials (self->avatar, show_initials);
 
-  gtk_label_set_text (self->primary_contact_info, display_name);
-  gtk_label_set_text (number_label, number);
+  gtk_label_set_label (self->primary_contact_info, display_name);
+  gtk_label_set_label (number_label, number);
 }
 
 
@@ -333,6 +351,11 @@ on_time_updated (CuiCallDisplay *self)
     return;
   }
 
+  /* We don't want to overwrite the status text if there
+   * is an unfinished operation */
+  if (!self->update_status_time)
+    return;
+
   set_pretty_time (self);
 }
 
@@ -350,24 +373,35 @@ on_dialpad_revealed (CuiCallDisplay *self)
 static void
 reset_ui (CuiCallDisplay *self)
 {
+  g_assert (CUI_IS_CALL_DISPLAY (self));
+
+  g_debug ("Resetting UI");
+
+  self->update_status_time = TRUE;
   hdy_avatar_set_loadable_icon (self->avatar, NULL);
   hdy_avatar_set_text (self->avatar, "");
+  hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_DEFAULT);
   gtk_label_set_label (self->primary_contact_info, "");
   gtk_label_set_label (self->secondary_contact_info, "");
-  gtk_label_set_text (self->status, "");
+  gtk_label_set_label (self->status, "");
   gtk_widget_show (GTK_WIDGET (self->answer));
   gtk_widget_show (GTK_WIDGET (self->hang_up));
   gtk_widget_hide (GTK_WIDGET (self->incoming_phone_call));
   gtk_widget_show (GTK_WIDGET (self->controls));
-  gtk_widget_show (GTK_WIDGET (self->status));
   gtk_widget_show (GTK_WIDGET (self->gsm_controls));
+  gtk_widget_set_sensitive (GTK_WIDGET (self->answer), TRUE);
+  gtk_widget_set_sensitive (GTK_WIDGET (self->hang_up), TRUE);
 }
+
 
 static void
 on_call_unrefed (CuiCallDisplay *self,
                  CuiCall        *call)
 {
+  g_assert (CUI_IS_CALL_DISPLAY (self));
+
   g_debug ("Dropping call %p", call);
+
   self->call = NULL;
   self->dtmf_bind = NULL;
   self->avatar_icon_bind = NULL;
@@ -485,7 +519,7 @@ cui_call_display_class_init (CuiCallDisplayClass *klass)
   object_class->dispose = cui_call_display_dispose;
 
   /**
-   * CuiCallDisplay:call-handle:
+   * CuiCallDisplay:call:
    *
    * An opaque handle to a call
    */
@@ -597,10 +631,12 @@ cui_call_display_set_call (CuiCallDisplay *self, CuiCall *call)
     g_clear_pointer (&self->encryption_bind, g_binding_unbind);
   }
 
+  self->update_status_time = TRUE;
   self->needs_cam_reset = FALSE;
 
   self->call = call;
   gtk_widget_set_sensitive (GTK_WIDGET (self), !!self->call);
+
   if (self->call == NULL) {
     reset_ui (self);
     return;
@@ -635,10 +671,10 @@ cui_call_display_set_call (CuiCallDisplay *self, CuiCall *call)
                                             G_BINDING_SYNC_CREATE);
 
   self->avatar_icon_bind = g_object_bind_property (call,
-						   "avatar-icon",
-						   self->avatar,
-						   "loadable-icon",
-						   G_BINDING_SYNC_CREATE);
+                                                   "avatar-icon",
+                                                   self->avatar,
+                                                   "loadable-icon",
+                                                   G_BINDING_SYNC_CREATE);
   self->encryption_bind = g_object_bind_property (call,
                                                   "encrypted",
                                                   self->encryption_indicator,

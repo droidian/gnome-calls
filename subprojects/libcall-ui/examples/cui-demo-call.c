@@ -24,27 +24,28 @@ enum {
   PROP_ENCRYPTED,
   PROP_CAN_DTMF,
   PROP_ACTIVE_TIME,
+  PROP_INBOUND,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
 
-struct _CuiDemoCall
-{
-  GObject       parent_instance;
+struct _CuiDemoCall {
+  GObject        parent_instance;
 
   GLoadableIcon *avatar_icon;
-  gchar        *id;
-  gchar        *display_name;
-  CuiCallState  state;
-  gboolean      encrypted;
-  gboolean      can_dtmf;
+  gchar         *id;
+  gchar         *display_name;
+  CuiCallState   state;
+  gboolean       encrypted;
+  gboolean       can_dtmf;
+  gboolean       inbound;
 
-  guint accept_timeout_id;
-  guint hangup_timeout_id;
+  guint          accept_timeout_id;
+  guint          hangup_timeout_id;
 
-  GTimer       *timer;
-  gdouble       active_time;
-  guint         timer_id;
+  GTimer        *timer;
+  gdouble        active_time;
+  guint          timer_id;
 };
 
 static void cui_demo_cui_call_interface_init (CuiCallInterface *iface);
@@ -55,9 +56,9 @@ G_DEFINE_TYPE_WITH_CODE (CuiDemoCall, cui_demo_call, G_TYPE_OBJECT,
 
 static void
 cui_demo_call_get_property (GObject    *object,
-			    guint       prop_id,
-			    GValue     *value,
-			    GParamSpec *pspec)
+                            guint       prop_id,
+                            GValue     *value,
+                            GParamSpec *pspec)
 {
   CuiDemoCall *self = CUI_DEMO_CALL (object);
 
@@ -83,9 +84,45 @@ cui_demo_call_get_property (GObject    *object,
   case PROP_ACTIVE_TIME:
     g_value_set_double (value, self->active_time);
     break;
+  case PROP_INBOUND:
+    g_value_set_boolean (value, self->inbound);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
   }
+}
+
+
+static void
+cui_demo_call_set_property (GObject      *object,
+                            guint         prop_id,
+                            const GValue *value,
+                            GParamSpec   *pspec)
+{
+  CuiDemoCall *self = CUI_DEMO_CALL (object);
+
+  switch (prop_id) {
+  case PROP_INBOUND:
+    self->inbound = g_value_get_boolean (value);
+    break;
+
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+  }
+}
+
+
+static void
+cui_demo_call_constructed (GObject *object)
+{
+  CuiDemoCall *self = CUI_DEMO_CALL (object);
+
+  if (self->inbound)
+    self->state = CUI_CALL_STATE_INCOMING;
+  else
+    self->state = CUI_CALL_STATE_CALLING;
+
+  G_OBJECT_CLASS (cui_demo_call_parent_class)->constructed (object);
 }
 
 
@@ -110,8 +147,10 @@ cui_demo_call_class_init (CuiDemoCallClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+  object_class->constructed = cui_demo_call_constructed;
   object_class->finalize = cui_demo_call_finalize;
   object_class->get_property = cui_demo_call_get_property;
+  object_class->set_property = cui_demo_call_set_property;
 
   g_object_class_override_property (object_class,
                                     PROP_AVATAR_ICON,
@@ -128,6 +167,8 @@ cui_demo_call_class_init (CuiDemoCallClass *klass)
   g_object_class_override_property (object_class,
                                     PROP_STATE,
                                     "state");
+  props[PROP_STATE] =
+    g_object_class_find_property (object_class, "state");
 
   g_object_class_override_property (object_class,
                                     PROP_ENCRYPTED,
@@ -144,6 +185,14 @@ cui_demo_call_class_init (CuiDemoCallClass *klass)
                                     "active-time");
   props[PROP_ACTIVE_TIME] =
     g_object_class_find_property (object_class, "active-time");
+
+  props[PROP_INBOUND] =
+    g_param_spec_boolean ("inbound",
+                          "",
+                          "",
+                          TRUE,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+  g_object_class_install_property (object_class, PROP_INBOUND, props[PROP_INBOUND]);
 }
 
 
@@ -228,7 +277,7 @@ on_accept_timeout (CuiDemoCall *self)
   g_assert (CUI_IS_DEMO_CALL (self));
 
   self->state = CUI_CALL_STATE_ACTIVE;
-  g_object_notify (G_OBJECT (self), "state");
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_STATE]);
 
   self->accept_timeout_id = 0;
 
@@ -250,7 +299,7 @@ on_hang_up_timeout (CuiDemoCall *self)
   g_clear_pointer (&self->timer, g_timer_destroy);
 
   self->state = CUI_CALL_STATE_DISCONNECTED;
-  g_object_notify (G_OBJECT (self), "state");
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_STATE]);
 
   self->hangup_timeout_id = 0;
 
@@ -333,7 +382,6 @@ cui_demo_call_init (CuiDemoCall *self)
 
   self->display_name = "John Doe";
   self->id = "0800 1234";
-  self->state = CUI_CALL_STATE_INCOMING;
   self->can_dtmf = TRUE;
   self->avatar_icon = G_LOADABLE_ICON (g_file_icon_new (file));
 
@@ -342,9 +390,11 @@ cui_demo_call_init (CuiDemoCall *self)
 
 
 CuiDemoCall *
-cui_demo_call_new (void)
+cui_demo_call_new (gboolean inbound)
 {
-   return g_object_new (CUI_TYPE_DEMO_CALL, NULL);
+  return g_object_new (CUI_TYPE_DEMO_CALL,
+                       "inbound", inbound,
+                       NULL);
 }
 
 void

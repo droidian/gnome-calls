@@ -123,7 +123,7 @@ cui_dialpad_class_init (CuiDialpadClass *klass)
   object_class->get_property = cui_dialpad_get_property;
   object_class->set_property = cui_dialpad_set_property;
 
-  signals [DIALED] =
+  signals[DIALED] =
     g_signal_new ("dialed",
                   G_TYPE_FROM_CLASS (klass),
                   G_SIGNAL_RUN_LAST,
