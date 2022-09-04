@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/issues/"
 "\n"
-"POT-Creation-Date: 2022-06-22 10:28+0000\n"
-"PO-Revision-Date: 2022-06-22 15:41+0300\n"
+"POT-Creation-Date: 2022-09-02 10:56+0000\n"
+"PO-Revision-Date: 2022-09-02 15:04+0300\n"
 "Last-Translator: Yuri Chornoivan <yurchor@ukr.net>\n"
 "Language-Team: Ukrainian <trans-uk@lists.fedoraproject.org>\n"
 "Language: uk\n"
@@ -47,48 +47,46 @@ msgid "Unknown"
 msgstr "Невідомо"
 
 #: src/cui-call-display.c:100
-#| msgid "Incoming call"
 msgid "Accepting call…"
 msgstr "Приймаємо виклик…"
 
 #: src/cui-call-display.c:115
-#| msgid "Hang up"
 msgid "Hanging up…"
 msgstr "Завершуємо виклик…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:35
 msgid "Incoming phone call"
 msgstr "Вхідний телефонний дзвінок"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:126
 msgid "Mute"
 msgstr "Вимкнути звук"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:159
 msgid "Speaker"
 msgstr "Динамік"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:191
 msgid "Add call"
 msgstr "Додати дзвінок"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:231
 msgid "Hold"
 msgstr "Утримання"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:263
 msgid "Dial Pad"
 msgstr "Панель набору"
 
-#: src/cui-call-display.ui:346
+#: src/cui-call-display.ui:311
 msgid "Hang up"
 msgstr "Покласти трубку"
 
-#: src/cui-call-display.ui:377
+#: src/cui-call-display.ui:340
 msgid "Answer"
 msgstr "Відповісти"
 
-#: src/cui-call-display.ui:459
+#: src/cui-call-display.ui:415
 msgid "Hide the dial pad"
 msgstr "Приховати панель набору"
 
@@ -96,11 +94,20 @@ msgstr "Приховати панель набору"
 msgid "Enter a number"
 msgstr "Введіть число"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+#| msgid "Enter a number"
+msgid "Type a phone number"
+msgstr "Введіть номер телефону"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "Викликати цей номер телефону"
+
+#: src/cui-encryption-indicator.ui:20
 msgid "This call is not encrypted"
 msgstr "Цей дзвінок не зашифровано"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:40
 msgid "This call is encrypted"
 msgstr "Цей дзвінок зашифровано"
 

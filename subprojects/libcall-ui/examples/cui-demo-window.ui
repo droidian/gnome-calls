@@ -3,7 +3,6 @@
   <requires lib="gtk+" version="3.24"/>
   <requires lib="libhandy" version="1.0"/>
   <template class="CuiDemoWindow" parent="HdyApplicationWindow">
-    <property name="can_focus">False</property>
     <property name="title" translatable="yes">Call-UI Demo</property>
     <property name="default_width">800</property>
     <property name="default_height">576</property>
@@ -11,7 +10,6 @@
     <child>
       <object class="HdyLeaflet" id="content_box">
         <property name="visible">True</property>
-        <property name="can_focus">False</property>
         <property name="can-swipe-back">True</property>
         <property name="width-request">360</property>
         <child>
@@ -26,18 +24,16 @@
                 <child>
                   <object class="HdyHeaderBar" id="header_bar">
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
                     <property name="title" translatable="yes">Call-UI Demo</property>
                     <property name="show_close_button" bind-source="content_box" bind-property="folded"/>
                     <child>
                       <object class="GtkButton">
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <property name="tooltip-text">Switch between light and dark mode</property>
                         <signal name="clicked" handler="theme_variant_button_clicked_cb" swapped="yes"/>
                         <child>
                           <object class="GtkImage" id="theme_variant_image">
                             <property name="visible">True</property>
-                            <property name="can_focus">False</property>
                           </object>
                         </child>
                       </object>
@@ -51,7 +47,6 @@
                 <property name="width_request">270</property>
                 <property name="visible">True</property>
                 <property name="vexpand">True</property>
-                <property name="can_focus">False</property>
                 <property name="stack">stack</property>
               </object>
             </child>
@@ -75,7 +70,6 @@
                     <child>
                       <object class="GtkSeparator">
                         <property name="visible">True</property>
-                        <property name="can_focus">False</property>
                         <property name="orientation">vertical</property>
                         <style>
                           <class name="sidebar"/>
@@ -89,7 +83,6 @@
             <child>
               <object class="GtkSeparator">
                 <property name="visible">True</property>
-                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <property name="vexpand">True</property>
                 <style>
@@ -114,7 +107,6 @@
                 <child>
                   <object class="GtkStack" id="header_stack">
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
                     <property name="vexpand">False</property>
                     <property name="transition-type" bind-source="stack" bind-property="transition-type" bind-flags="sync-create"/>
                     <child>
@@ -124,8 +116,6 @@
                         <property name="show_close_button">True</property>
                         <child>
                           <object class="GtkButton" id="back">
-                            <property name="can_focus">False</property>
-                            <property name="receives_default">False</property>
                             <property name="valign">center</property>
                             <property name="use-underline">True</property>
                             <property name="visible" bind-source="content_box" bind-property="folded" bind-flags="sync-create"/>
@@ -141,7 +131,6 @@
                             <child>
                               <object class="GtkImage" id="back_image">
                                 <property name="visible">True</property>
-                                <property name="can_focus">False</property>
                                 <property name="icon_name">go-previous-symbolic</property>
                                 <property name="icon_size">1</property>
                               </object>
@@ -150,11 +139,10 @@
                         </child>
                         <child>
                           <object class="GtkButton" id="incoming_call">
-                            <property name="can_focus">False</property>
-                            <property name="receives_default">False</property>
                             <property name="valign">center</property>
                             <property name="use-underline">True</property>
                             <property name="visible">True</property>
+                            <property name="tooltip-text">Start an incoming mock call</property>
                             <signal name="clicked" handler="on_new_call_clicked" swapped="no"/>
                             <style>
                               <class name="image-button"/>
@@ -162,7 +150,6 @@
                             <child>
                               <object class="GtkImage">
                                 <property name="visible">True</property>
-                                <property name="can_focus">False</property>
                                 <property name="icon_name">call-arrow-incoming-symbolic</property>
                                 <property name="icon_size">1</property>
                               </object>
@@ -171,11 +158,10 @@
                         </child>
                         <child>
                           <object class="GtkButton" id="outgoing_call">
-                            <property name="can_focus">False</property>
-                            <property name="receives_default">False</property>
                             <property name="valign">center</property>
                             <property name="use-underline">True</property>
                             <property name="visible">True</property>
+                            <property name="tooltip-text">Start an outgoing mock call</property>
                             <signal name="clicked" handler="on_new_call_clicked" swapped="no"/>
                             <style>
                               <class name="image-button"/>
@@ -183,7 +169,6 @@
                             <child>
                               <object class="GtkImage">
                                 <property name="visible">True</property>
-                                <property name="can_focus">False</property>
                                 <property name="icon_name">call-arrow-outgoing-symbolic</property>
                                 <property name="icon_size">1</property>
                               </object>
@@ -202,7 +187,6 @@
             <child>
               <object class="GtkStack" id="stack">
                 <property name="visible">True</property>
-                <property name="can_focus">False</property>
                 <property name="vhomogeneous">False</property>
                 <signal name="notify::visible-child" handler="on_visible_child_changed" after="yes" swapped="no"/>
                 <child>

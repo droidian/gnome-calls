@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2021 Purism SPC
  *
- * SPDX-License-Identifier: GPL-2.1-or-later
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * based HdyKeypad which is
  * Copyright (C) 2019 Purism SPC

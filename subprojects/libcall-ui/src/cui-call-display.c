@@ -25,7 +25,7 @@
 #define IS_NULL_OR_EMPTY(x)  ((x) == NULL || (x)[0] == '\0')
 
 #define HDY_AVATAR_SIZE_BIG 160
-#define HDY_AVATAR_SIZE_DEFAULT 100
+#define HDY_AVATAR_SIZE_DEFAULT 80
 
 /**
  * CuiCallDisplay:
@@ -307,8 +307,8 @@ on_call_state_changed (CuiCallDisplay *self,
 static void
 on_update_contact_information (CuiCallDisplay *self)
 {
-  GtkLabel *number_label;
-  const char *number, *display_name;
+  const char *number;
+  const char *display_name;
   gboolean show_initials;
 
   g_assert (CUI_IS_CALL_DISPLAY (self));
@@ -322,17 +322,18 @@ on_update_contact_information (CuiCallDisplay *self)
   if (IS_NULL_OR_EMPTY (display_name) == FALSE &&
       g_strcmp0 (number, display_name) != 0) {
     show_initials = TRUE;
-    number_label = self->secondary_contact_info;
+
+    gtk_label_set_label (self->primary_contact_info, display_name);
+    gtk_label_set_label (self->secondary_contact_info, number);
   } else {
     show_initials = FALSE;
-    number_label = self->primary_contact_info;
+
+    gtk_label_set_label (self->primary_contact_info, number);
+    gtk_label_set_label (self->secondary_contact_info, "");
   }
 
   hdy_avatar_set_text (self->avatar, display_name);
   hdy_avatar_set_show_initials (self->avatar, show_initials);
-
-  gtk_label_set_label (self->primary_contact_info, display_name);
-  gtk_label_set_label (number_label, number);
 }
 
 

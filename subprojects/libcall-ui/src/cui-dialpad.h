@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * Author: Thomas Booker <tw.booker@outlook.com>
+ *
+ * Based on calls-new-call-box by
+ * Adrien Plazas <adrien.plazas@puri.sm>
  */
 
 #pragma once

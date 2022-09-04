@@ -1,3 +1,24 @@
+libcall-ui 0.0.5
+----------------
+Released: September 2022
+* No breaking changes
+* Rework and modernize CuiCallDisplay
+  Avoids overflow with longer translations on small displays
+* Modernize and simplify UI files
+* Contributors:
+	CoderThomasB
+	Evangelos Ribeiro Tzaras
+	Guido Günther
+	Sam Hewitt
+* UI translations:
+	Anders Jonsson (sv)
+	Danial Behzadi (fa)
+	Emin Tufan Çetin (tr)
+	Goran Vidović (hr)
+	Jiri Grönroos (fi)
+	Yuri Chornoivan (uk)
+	Zurab Kargareteli (ka)
+
 libcall-ui 0.0.4
 ----------------
 Released: June 2022

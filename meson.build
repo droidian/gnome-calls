@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '43.beta.0',
+  version: '43.rc.0',
   license: 'GPLv3+',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -132,9 +132,19 @@ add_project_arguments(
 
 subdir('po')
 subdir('src')
+subdir('tests')
 subdir('plugins')
 subdir('doc')
 subdir('data')
-subdir('tests')
 
-meson.add_install_script('build-aux/meson/postinstall.py')
+# gnome.post_install() is available since meson 0.59.0
+# Distributions use their own tooling (e.g. postinst, triggers, etc)
+# so it is okay if the post_install() is not run on distro builds
+m_ver = meson.version().split('.')
+if m_ver[0].to_int() > 0 or m_ver[1].to_int() > 58
+  gnome.post_install(
+    glib_compile_schemas: true,
+    gtk_update_icon_cache: true,
+    update_desktop_database: true,
+  )
+endif

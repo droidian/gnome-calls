@@ -22,6 +22,7 @@
                 <property name="hexpand">True</property>
                 <property name="xalign">0.5</property>
                 <property name="placeholder-text" translatable="yes">Enter a number</property>
+                <property name="tooltip-text" translatable="yes">Type a phone number</property>
                 <style>
                   <class name="phone-number-entry"/>
                 </style>
@@ -45,6 +46,7 @@
                   <object class="GtkButton" id="dial">
                     <property name="visible">True</property>
                     <property name="receives-default">True</property>
+                    <property name="tooltip-text" translatable="yes">Call that phone number</property>
                     <signal name="clicked" handler="dial_clicked_cb" swapped="yes"/>
                     <child>
                       <object class="GtkImage">
