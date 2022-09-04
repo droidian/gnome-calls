@@ -124,7 +124,6 @@ add_origin (CallsMMProvider *self,
   g_autoptr (CallsMMOrigin) origin = NULL;
   g_autoptr (MMModem3gpp) modem_3gpp = NULL;
   const gchar *path;
-  g_autofree char *imei = NULL;
 
   mm_obj = MM_OBJECT (object);
   path = g_dbus_object_get_object_path (object);
@@ -274,13 +273,14 @@ mm_manager_new_cb (GDBusConnection *connection,
                    GAsyncResult    *res,
                    CallsMMProvider *self)
 {
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   self->mm = mm_manager_new_finish (res, &error);
   if (!self->mm) {
-    g_error ("Error creating ModemManager Manager: %s",
-             error->message);
-    g_assert_not_reached ();
+    g_warning ("Error creating ModemManager Manager: %s",
+               error->message);
+    update_status (self);
+    return;
   }
 
 
@@ -324,6 +324,9 @@ mm_vanished_cb (GDBusConnection *connection,
                 CallsMMProvider *self)
 {
   g_debug ("ModemManager vanished from D-Bus");
+
+  g_clear_object (&self->mm);
+
   g_list_store_remove_all (self->origins);
   update_status (self);
 }
@@ -387,10 +390,9 @@ dispose (GObject *object)
 {
   CallsMMProvider *self = CALLS_MM_PROVIDER (object);
 
-  if (self->watch_id) {
-    g_bus_unwatch_name (self->watch_id);
-    self->watch_id = 0;
-  }
+  g_clear_object (&self->mm);
+
+  g_clear_handle_id (&self->watch_id, g_bus_unwatch_name);
 
   g_list_store_remove_all (self->origins);
 
@@ -403,8 +405,8 @@ finalize (GObject *object)
 {
   CallsMMProvider *self = CALLS_MM_PROVIDER (object);
 
-  g_object_unref (self->origins);
-  g_free (self->status);
+  g_clear_object (&self->origins);
+  g_clear_pointer (&self->status, g_free);
 
   G_OBJECT_CLASS (calls_mm_provider_parent_class)->finalize (object);
 }

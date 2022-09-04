@@ -31,13 +31,13 @@ Since IPv6 support is not yet fleshed out and will receive some love during the
 next development cycle upstream I believe it is acceptable to disable these
 tests for the moment.
 ---
- tests/test-sip.c | 28 ----------------------------
+ plugins/provider/tests/test-sip.c | 28 ----------------------------
  1 file changed, 28 deletions(-)
 
-diff --git a/tests/test-sip.c b/tests/test-sip.c
+diff --git a/plugins/provider/tests/test-sip.c b/plugins/provider/tests/test-sip.c
 index d16a036..f2aea94 100644
---- a/tests/test-sip.c
-+++ b/tests/test-sip.c
+--- a/plugins/provider/tests/test-sip.c
++++ b/plugins/provider/tests/test-sip.c
 @@ -326,34 +326,6 @@ test_sip_call_direct_calls (SipFixture   *fixture,
  
    g_signal_handler_disconnect (fixture->origin_alice, handler_alice);

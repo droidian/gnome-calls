@@ -1,3 +1,10 @@
+gnome-calls (43~rc.0-1) unstable; urgency=medium
+
+  * CC0-1.0 license is common: drop explicit license text
+  * Refresh patches
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 04 Sep 2022 13:03:48 +0200
+
 gnome-calls (43~beta.0-1) unstable; urgency=medium
 
   * d/gbp.conf: Include upstream history

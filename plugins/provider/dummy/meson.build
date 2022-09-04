@@ -21,37 +21,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-mm_install_dir = join_paths(full_calls_plugin_libdir, 'mm')
+dummy_include = include_directories('.')
 
-mm_plugin = configure_file(
-  input: 'mm.plugin.in',
-  output: 'mm.plugin',
+dummy_install_dir = join_paths(calls_provider_plugin_libdir, 'dummy')
+
+dummy_plugin = configure_file(
+  input: 'dummy.plugin.in',
+  output: 'dummy.plugin',
   configuration: config_data,
-  install_dir: mm_install_dir
+  install_dir: dummy_install_dir
 )
 
-mm_deps = [
+dummy_deps = [
   dependency('gobject-2.0'),
   dependency('gtk+-3.0'),
-  dependency('ModemManager'),
-  dependency('mm-glib', version: '>= 1.12.0'),
   dependency('libpeas-1.0'),
 ]
 
-mm_sources = files(
+dummy_sources = files(
   [
-    'calls-mm-call.c', 'calls-mm-call.h',
-    'calls-mm-origin.c', 'calls-mm-origin.h',
-    'calls-mm-provider.c', 'calls-mm-provider.h'
+    'calls-dummy-call.c', 'calls-dummy-call.h',
+    'calls-dummy-origin.c', 'calls-dummy-origin.h',
+    'calls-dummy-provider.c', 'calls-dummy-provider.h'
   ]
 )
 
-calls_mm = shared_module(
-  'mm',
-  mm_sources,
-  dependencies: mm_deps,
+calls_dummy = shared_module(
+  'dummy',
+  dummy_sources,
+  dependencies: dummy_deps,
   include_directories: src_include,
   link_with: libcalls,
   install: true,
-  install_dir: mm_install_dir
+  install_dir: dummy_install_dir
 )

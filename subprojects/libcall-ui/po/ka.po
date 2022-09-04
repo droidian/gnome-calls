@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-07-22 09:02+0000\n"
-"PO-Revision-Date: 2022-07-25 18:53+0200\n"
+"POT-Creation-Date: 2022-09-02 10:56+0000\n"
+"PO-Revision-Date: 2022-09-02 13:39+0200\n"
 "Last-Translator: Temuri Doghonadze <temuri.doghonadze@gmail.com>\n"
 "Language-Team: \n"
 "Language: ka\n"
@@ -53,39 +53,39 @@ msgstr "ზარზე პასუხი…"
 msgid "Hanging up…"
 msgstr "გათიშვა…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:35
 msgid "Incoming phone call"
 msgstr "შემომავალი სატელეფონო ზარი"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:126
 msgid "Mute"
 msgstr "დადუმება"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:159
 msgid "Speaker"
 msgstr "დინამიკი"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:191
 msgid "Add call"
 msgstr "ზარის დამატება"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:231
 msgid "Hold"
 msgstr "შეყოვნება"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:263
 msgid "Dial Pad"
 msgstr "ციფერბლატი"
 
-#: src/cui-call-display.ui:346
+#: src/cui-call-display.ui:311
 msgid "Hang up"
 msgstr "გათიშვა"
 
-#: src/cui-call-display.ui:377
+#: src/cui-call-display.ui:340
 msgid "Answer"
 msgstr "პასუხი"
 
-#: src/cui-call-display.ui:459
+#: src/cui-call-display.ui:415
 msgid "Hide the dial pad"
 msgstr "ციფერბლატის დამალვა"
 
@@ -93,11 +93,19 @@ msgstr "ციფერბლატის დამალვა"
 msgid "Enter a number"
 msgstr "შეიყვანეთ ნომერი"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "აკრიფეთ ტელეფონის ნომერი"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "ამ ნომერზე დარეკვა"
+
+#: src/cui-encryption-indicator.ui:20
 msgid "This call is not encrypted"
 msgstr "ეს ზარი არ იშიფრება"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:40
 msgid "This call is encrypted"
 msgstr "ეს ზარი იშიფრება"
 
