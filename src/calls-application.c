@@ -309,7 +309,7 @@ open_tel_uri (CallsApplication *self,
               const char       *uri)
 {
   const char *number = NULL;
-  g_autofree char* uri_str = g_uri_unescape_string(uri, NULL);
+  g_autofree char* uri_str = g_uri_unescape_string (uri, NULL);
 
   g_debug ("Opening tel URI `%s'", uri);
 
@@ -319,7 +319,7 @@ open_tel_uri (CallsApplication *self,
       g_strdup_printf (_("Tried dialing invalid tel URI `%s'"), uri);
 
     calls_message_source_emit_message (CALLS_MESSAGE_SOURCE (calls_manager_get_default ()),
-                                       "msg",
+                                       msg,
                                        GTK_MESSAGE_WARNING);
     g_warning ("Ignoring invalid tel URI `%s'", uri);
     return;
@@ -349,6 +349,7 @@ dial_action (GSimpleAction *action,
     call_number (self, number);
 }
 
+
 static void
 copy_number (GSimpleAction *action,
              GVariant      *parameter,
@@ -363,12 +364,13 @@ copy_number (GSimpleAction *action,
   g_debug ("Copied `%s' to clipboard", number);
 }
 
+
 static void
 show_accounts (GSimpleAction *action,
                GVariant      *parameter,
                gpointer       user_data)
 {
-  CallsApplication *app = CALLS_APPLICATION (g_application_get_default ());
+  CallsApplication *app = CALLS_APPLICATION (user_data);
 
   calls_main_window_show_accounts_overview (app->main_window);
 }
@@ -390,9 +392,9 @@ static const GActionEntry actions[] =
   { "set-default-providers", set_default_providers_action, NULL },
   { "set-daemon", set_daemon_action, NULL },
   { "dial", dial_action, "s" },
-  { "copy-number", copy_number, "s"},
+  { "copy-number", copy_number, "s" },
   /* TODO About dialog { "about", show_about, NULL}, */
-  { "accounts", show_accounts, NULL},
+  { "accounts", show_accounts, NULL },
 };
 
 

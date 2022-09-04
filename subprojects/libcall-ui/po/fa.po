@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-06-22 10:28+0000\n"
-"PO-Revision-Date: 2022-06-28 15:46+0430\n"
+"POT-Creation-Date: 2022-09-02 12:31+0000\n"
+"PO-Revision-Date: 2022-09-03 16:49+0430\n"
 "Last-Translator: Danial Behzadi <dani.behzi@ubuntu.com>\n"
 "Language-Team: Persian <fa@li.org>\n"
 "Language: fa\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.1\n"
+"X-Generator: Poedit 3.1.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -29,7 +29,7 @@ msgstr "تماس منتظر"
 #. Deprecated
 #: src/cui-call.c:315
 msgid "Calling…"
-msgstr "در حال تماس…"
+msgstr "تماس گرفتن…"
 
 #. Deprecated
 #: src/cui-call.c:318
@@ -52,53 +52,58 @@ msgstr "پذیرفتن تماس…"
 msgid "Hanging up…"
 msgstr "قطع کردن…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:28
 msgid "Incoming phone call"
 msgstr "تماس تلفنی ورودی"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:194
 msgid "Mute"
 msgstr "بی‌صدا"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:210
 msgid "Speaker"
 msgstr "بلندگو"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:226
 msgid "Add call"
 msgstr "افزودن تماس"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:276
 msgid "Hold"
 msgstr "انتظار"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:318
 msgid "Dial Pad"
 msgstr "صفحهٔ شماره‌گیری"
 
-#: src/cui-call-display.ui:346
-msgid "Hang up"
-msgstr "قطع تماس"
-
-#: src/cui-call-display.ui:377
-msgid "Answer"
-msgstr "پاسخ"
-
-#: src/cui-call-display.ui:459
-msgid "Hide the dial pad"
-msgstr "نهفتن صفحهٔ شماره‌گیری"
-
 #: src/cui-dialpad.ui:24
 msgid "Enter a number"
-msgstr "شماره‌ای وارد کنید"
+msgstr "ورود یک شماره"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "نوشتن یک شماره تلفن"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "تماس با این شماره تلفن"
+
+#: src/cui-encryption-indicator.ui:21
 msgid "This call is not encrypted"
-msgstr "تماس رمزنگاری نشده است"
+msgstr "این تماس رمزگذاری نشده"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:42
 msgid "This call is encrypted"
-msgstr "تماس رمزنگاری شده است"
+msgstr "این تماس رمزگذاری شده"
+
+#~ msgid "Hang up"
+#~ msgstr "قطع تماس"
+
+#~ msgid "Answer"
+#~ msgstr "پاسخ"
+
+#~ msgid "Hide the dial pad"
+#~ msgstr "نهفتن صفحهٔ شماره‌گیری"
 
 #~ msgid "Call-UI Demo"
 #~ msgstr "نمایش رابط کاربری تماس"
