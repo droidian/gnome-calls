@@ -9,8 +9,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-06-22 10:28+0000\n"
-"PO-Revision-Date: 2022-06-26 14:33+0200\n"
+"POT-Creation-Date: 2022-09-02 12:31+0000\n"
+"PO-Revision-Date: 2022-09-04 13:23+0200\n"
 "Last-Translator: Piotr Drąg <piotrdrag@gmail.com>\n"
 "Language-Team: Polish <community-poland@mozilla.org>\n"
 "Language: pl\n"
@@ -54,50 +54,46 @@ msgstr "Odbieranie połączenia…"
 msgid "Hanging up…"
 msgstr "Rozłączanie się…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:28
 msgid "Incoming phone call"
 msgstr "Przychodzące połączenie telefoniczne"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:194
 msgid "Mute"
 msgstr "Wycisz"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:210
 msgid "Speaker"
 msgstr "Głośnik"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:226
 msgid "Add call"
 msgstr "Dodaj połączenie"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:276
 msgid "Hold"
 msgstr "Zawieś"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:318
 msgid "Dial Pad"
 msgstr "Klawiatura"
-
-#: src/cui-call-display.ui:346
-msgid "Hang up"
-msgstr "Rozłącz się"
-
-#: src/cui-call-display.ui:377
-msgid "Answer"
-msgstr "Odbierz"
-
-#: src/cui-call-display.ui:459
-msgid "Hide the dial pad"
-msgstr "Ukryj klawiaturę"
 
 #: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Wpisz numer"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "Wpisz numer telefonu"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "Dzwoni na ten numer telefonu"
+
+#: src/cui-encryption-indicator.ui:21
 msgid "This call is not encrypted"
 msgstr "To połączenie nie jest zaszyfrowane"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:42
 msgid "This call is encrypted"
 msgstr "To połączenie jest zaszyfrowane"
