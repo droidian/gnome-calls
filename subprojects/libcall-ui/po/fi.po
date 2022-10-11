@@ -8,9 +8,9 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-07-08 20:58+0000\n"
-"PO-Revision-Date: 2022-08-30 19:51+0300\n"
-"Last-Translator: \n"
+"POT-Creation-Date: 2022-09-02 12:31+0000\n"
+"PO-Revision-Date: 2022-09-09 19:31+0300\n"
+"Last-Translator: Jiri Grönroos <jiri.gronroos+l10n@iki.fi>\n"
 "Language-Team: Finnish <lokalisointi-lista@googlegroups.com>\n"
 "Language: fi\n"
 "MIME-Version: 1.0\n"
@@ -46,59 +46,62 @@ msgid "Unknown"
 msgstr "Tuntematon"
 
 #: src/cui-call-display.c:100
-#| msgid "Incoming call"
 msgid "Accepting call…"
 msgstr "Hyväksytään puhelu…"
 
 #: src/cui-call-display.c:115
-#| msgid "Hang up"
 msgid "Hanging up…"
 msgstr "Lopetetaan puhelu…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:28
 msgid "Incoming phone call"
 msgstr "Saapuva puhelu"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:194
 msgid "Mute"
 msgstr "Mykistä"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:210
 msgid "Speaker"
 msgstr "Kaiutin"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:226
 msgid "Add call"
 msgstr "Lisää puhelu"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:276
 msgid "Hold"
 msgstr "Pitoon"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:318
 msgid "Dial Pad"
 msgstr "Numeronäppäimistö"
-
-#: src/cui-call-display.ui:346
-msgid "Hang up"
-msgstr "Lopeta"
-
-#: src/cui-call-display.ui:377
-msgid "Answer"
-msgstr "Vastaa"
-
-#: src/cui-call-display.ui:459
-msgid "Hide the dial pad"
-msgstr "Piilota numeronäppäimistö"
 
 #: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Anna numero"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "Kirjoita puhelinnumero"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "Soita puhelinnumeroon"
+
+#: src/cui-encryption-indicator.ui:21
 msgid "This call is not encrypted"
 msgstr "Tämä puhelu ei ole salattu"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:42
 msgid "This call is encrypted"
 msgstr "Tämä puhelu on salattu"
+
+#~ msgid "Hang up"
+#~ msgstr "Lopeta"
+
+#~ msgid "Answer"
+#~ msgstr "Vastaa"
+
+#~ msgid "Hide the dial pad"
+#~ msgstr "Piilota numeronäppäimistö"

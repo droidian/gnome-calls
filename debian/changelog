@@ -1,3 +1,9 @@
+gnome-calls (43.0-1) unstable; urgency=medium
+
+  * d/patches: Add patches to prevent app window from showing up
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Tue, 11 Oct 2022 10:38:57 +0200
+
 gnome-calls (43~rc.0-1) unstable; urgency=medium
 
   * CC0-1.0 license is common: drop explicit license text

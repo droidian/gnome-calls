@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-06-22 10:28+0000\n"
-"PO-Revision-Date: 2022-06-22 15:11+0300\n"
+"POT-Creation-Date: 2022-09-02 11:40+0000\n"
+"PO-Revision-Date: 2022-09-02 14:54+0300\n"
 "Last-Translator: Aleksandr Melman <Alexmelman88@gmail.com>\n"
 "Language-Team: Russian <gnome-cyr@gnome.org>\n"
 "Language: ru\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Poedit 3.0.1\n"
+"X-Generator: Poedit 3.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -54,39 +54,39 @@ msgstr "Прием вызова…"
 msgid "Hanging up…"
 msgstr "Отключение…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:35
 msgid "Incoming phone call"
 msgstr "Входящий телефонный вызов"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:126
 msgid "Mute"
 msgstr "Отключить звук"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:159
 msgid "Speaker"
 msgstr "Громкая связь"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:191
 msgid "Add call"
 msgstr "Добавить вызов"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:231
 msgid "Hold"
 msgstr "Удерживать"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:263
 msgid "Dial Pad"
 msgstr "Панель набора"
 
-#: src/cui-call-display.ui:346
+#: src/cui-call-display.ui:311
 msgid "Hang up"
 msgstr "Отключиться"
 
-#: src/cui-call-display.ui:377
+#: src/cui-call-display.ui:340
 msgid "Answer"
 msgstr "Ответить"
 
-#: src/cui-call-display.ui:459
+#: src/cui-call-display.ui:415
 msgid "Hide the dial pad"
 msgstr "Скрыть панель набора"
 
@@ -94,10 +94,18 @@ msgstr "Скрыть панель набора"
 msgid "Enter a number"
 msgstr "Ввести номер"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "Ввести номер телефона"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "Вызов на этот номер телефона"
+
+#: src/cui-encryption-indicator.ui:20
 msgid "This call is not encrypted"
 msgstr "Этот вызов не зашифрован"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:40
 msgid "This call is encrypted"
 msgstr "Этот вызов зашифрован"

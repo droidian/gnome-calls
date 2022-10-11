@@ -241,7 +241,6 @@ on_call_state_changed (CuiCallDisplay *self,
 
   case CUI_CALL_STATE_ACTIVE:
     hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_DEFAULT);
-    self->needs_cam_reset = TRUE;
     G_GNUC_FALLTHROUGH;
 
   case CUI_CALL_STATE_CALLING:
@@ -261,6 +260,7 @@ on_call_state_changed (CuiCallDisplay *self,
     call_audio_select_mode_async (CALL_AUDIO_MODE_CALL,
                                   on_libcallaudio_async_finished,
                                   NULL);
+    self->needs_cam_reset = TRUE;
     break;
 
   case CUI_CALL_STATE_DISCONNECTED:

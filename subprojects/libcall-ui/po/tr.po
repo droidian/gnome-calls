@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-07-08 20:58+0000\n"
-"PO-Revision-Date: 2022-08-11 22:54+0300\n"
+"POT-Creation-Date: 2022-09-02 12:31+0000\n"
+"PO-Revision-Date: 2022-09-04 13:20+0300\n"
 "Last-Translator: Emin Tufan Çetin <etcetin@gmail.com>\n"
 "Language-Team: Turkish <tr@li.org>\n"
 "Language: tr\n"
@@ -53,50 +53,46 @@ msgstr "Arama kabul ediliyor…"
 msgid "Hanging up…"
 msgstr "Kapatılıyor…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:28
 msgid "Incoming phone call"
 msgstr "Gelen telefon araması"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:194
 msgid "Mute"
 msgstr "Sessiz"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:210
 msgid "Speaker"
 msgstr "Hoparlör"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:226
 msgid "Add call"
 msgstr "Arama ekle"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:276
 msgid "Hold"
 msgstr "Beklet"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:318
 msgid "Dial Pad"
 msgstr "Tuş Takımı"
-
-#: src/cui-call-display.ui:346
-msgid "Hang up"
-msgstr "Kapat"
-
-#: src/cui-call-display.ui:377
-msgid "Answer"
-msgstr "Yanıtla"
-
-#: src/cui-call-display.ui:459
-msgid "Hide the dial pad"
-msgstr "Tuş takımını gizle"
 
 #: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Numara gir"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "Telefon numarası gir"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "Bu telefon numarasını ara"
+
+#: src/cui-encryption-indicator.ui:21
 msgid "This call is not encrypted"
 msgstr "Bu arama şifrelenmedi"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:42
 msgid "This call is encrypted"
 msgstr "Bu arama şifrelendi"
