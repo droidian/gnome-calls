@@ -1,3 +1,3 @@
-0001-Remove-SIP-call-test-to-fix-intermittent-build-failu.patch
 application-do-not-return-bool-start-proper.patch
 application-do-not-show-app-window-daemon.patch
+media_pipeline_bind_unspecified_ip6.patch
