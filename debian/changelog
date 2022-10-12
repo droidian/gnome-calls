@@ -1,3 +1,10 @@
+gnome-calls (43.0-2) unstable; urgency=medium
+
+  * d/patches: Fix build on IPv6 only buildd Closes: #1019292, thanks Adrian Bunk
+  * d/patches: Reenable g722 codecs
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Thu, 13 Oct 2022 00:36:08 +0200
+
 gnome-calls (43.0-1) unstable; urgency=medium
 
   * d/patches: Add patches to prevent app window from showing up

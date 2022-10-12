@@ -1,0 +1,35 @@
+From: Evangelos Ribeiro Tzaras <devrtz@fortysixandtwo.eu>
+Date: Tue, 11 Oct 2022 13:10:19 +0200
+Subject: media-pipeline: Bind to the unspecified IPv6 address
+
+IPv4 keeps working through the magic of IPv4 mapped IPv6 addresses.
+
+Without this change errors about invalid address family will be raised
+when trying to connect to a IPv6 host.
+
+Bail out! CallsSipMediaPipeline-FATAL-WARNING: Error on the message bus: Could not get/set settings from/on resource. (../gst/udp/gstmultiudpsink.c(1228): gst_multiudpsink_configure_client (): /GstPipeline:media-pipeline/GstUDPSink:rtcp-udp-sink:
+Invalid address family (got 10))
+
+See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1019292
+
+Can be dropped with the next upstream release.
+---
+ plugins/provider/sip/calls-sip-media-pipeline.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/plugins/provider/sip/calls-sip-media-pipeline.c b/plugins/provider/sip/calls-sip-media-pipeline.c
+index 47abc1b..e96cc68 100644
+--- a/plugins/provider/sip/calls-sip-media-pipeline.c
++++ b/plugins/provider/sip/calls-sip-media-pipeline.c
+@@ -690,9 +690,9 @@ pipeline_init (CallsSipMediaPipeline *self,
+   MAKE_ELEMENT (rtcp_sink, "udpsink", "rtcp-udp-sink");
+ 
+   /* port 0 means letting the OS allocate */
+-  g_object_set (self->rtp_src, "port", 0, NULL);
++  g_object_set (self->rtp_src, "port", 0, "address", "::", NULL);
+ 
+-  g_object_set (self->rtcp_src, "port", 0, NULL);
++  g_object_set (self->rtcp_src, "port", 0, "address", "::", NULL);
+ 
+   g_object_set (self->rtp_sink, "async", FALSE, "sync", FALSE, NULL);
+   g_object_set (self->rtcp_sink, "async", FALSE, "sync", FALSE, NULL);
