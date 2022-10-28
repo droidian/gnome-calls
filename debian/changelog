@@ -1,3 +1,9 @@
+gnome-calls (43.0-3) UNRELEASED; urgency=medium
+
+  * Update lintian override info to new format on line 2.
+
+ -- Debian Janitor <janitor@jelmer.uk>  Fri, 28 Oct 2022 05:18:20 -0000
+
 gnome-calls (43.0-2) unstable; urgency=medium
 
   * d/patches: Fix build on IPv6 only buildd Closes: #1019292, thanks Adrian Bunk
