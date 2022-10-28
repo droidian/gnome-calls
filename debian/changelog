@@ -1,6 +1,7 @@
 gnome-calls (43.0-3) UNRELEASED; urgency=medium
 
   * Update lintian override info to new format on line 2.
+  * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository-Browse.
 
  -- Debian Janitor <janitor@jelmer.uk>  Fri, 28 Oct 2022 05:18:20 -0000
 
