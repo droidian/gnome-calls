@@ -9,9 +9,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#define _GNU_SOURCE
+
 #include "calls-log.h"
 
-#define _GNU_SOURCE
 #include <string.h>
 #include <glib.h>
 #include <stdio.h>
@@ -20,7 +21,7 @@
 #define DEFAULT_DOMAIN_PREFIX "Calls"
 
 static char *domains;
-static int verbosity;
+static guint verbosity;
 static gboolean any_domain;
 static gboolean stderr_is_journal;
 
@@ -273,8 +274,22 @@ calls_log_increase_verbosity (void)
   verbosity++;
 }
 
-int
+guint
 calls_log_get_verbosity (void)
 {
   return verbosity;
+}
+
+
+int
+calls_log_set_verbosity (guint new_verbosity)
+{
+  int diff = new_verbosity - verbosity;
+
+  if (new_verbosity == verbosity)
+    return 0;
+
+  verbosity = new_verbosity;
+
+  return diff;
 }

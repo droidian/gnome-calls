@@ -23,8 +23,6 @@
 if get_option('tests')
 
 test_env = [
-  'G_TEST_SRCDIR=@0@'.format(meson.current_source_dir()),
-  'G_TEST_BUILDDIR=@0@'.format(meson.current_build_dir()),
   'G_DEBUG=gc-friendly,fatal-warnings',
   'GSETTINGS_BACKEND=memory',
   'PYTHONDONTWRITEBYTECODE=yes',
@@ -34,12 +32,12 @@ test_env = [
   'CALLS_AUDIOSRC=audiotestsrc',
   'CALLS_AUDIOSINK=fakesink',
   'GSETTINGS_SCHEMA_DIR=@0@/data'.format(meson.project_build_root()),
+  'CALLS_PLUGIN_DIR=@0@/plugins'.format(meson.project_build_root()),
 ]
 
 test_cflags = [
   '-DFOR_TESTING',
   '-Wno-error=deprecated-declarations',
-  '-DPLUGIN_BUILDDIR="@0@"'.format(full_calls_plugin_builddir),
 ]
 
 test_link_args = [

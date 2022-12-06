@@ -1,9 +1,14 @@
-gnome-calls (43.0-3) UNRELEASED; urgency=medium
+gnome-calls (44~alpha.0-1) unstable; urgency=medium
 
+  [ Debian Janitor ]
   * Update lintian override info to new format on line 2.
   * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository-Browse.
 
- -- Debian Janitor <janitor@jelmer.uk>  Fri, 28 Oct 2022 05:18:20 -0000
+  [ Evangelos Ribeiro Tzaras ]
+  * d/upstream/metadata: Add "Repository" field
+  * d/patches: Remove patches applied in new upstream release
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Tue, 06 Dec 2022 11:52:56 +0100
 
 gnome-calls (43.0-2) unstable; urgency=medium
 

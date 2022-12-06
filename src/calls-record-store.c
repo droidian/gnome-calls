@@ -53,12 +53,9 @@ typedef enum
 static CallsCallRecordState
 state_to_record_state (CuiCallState call_state)
 {
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   switch (call_state) {
   case CUI_CALL_STATE_CALLING:
-  case CUI_CALL_STATE_ALERTING:
   case CUI_CALL_STATE_INCOMING:
-  case CUI_CALL_STATE_WAITING:
     return STARTED;
 
   case CUI_CALL_STATE_ACTIVE:
@@ -71,7 +68,6 @@ state_to_record_state (CuiCallState call_state)
   default:
     g_assert_not_reached ();
   }
-#pragma GCC diagnostic warning "-Wdeprecated-declarations"
 }
 
 
@@ -670,7 +666,6 @@ dispose (GObject *object)
   g_list_store_remove_all (G_LIST_STORE (self));
 
   g_clear_object (&self->repository);
-  close_adapter (self);
 
   G_OBJECT_CLASS (calls_record_store_parent_class)->dispose (object);
 }
@@ -682,6 +677,7 @@ finalize (GObject *object)
   CallsRecordStore *self = CALLS_RECORD_STORE (object);
 
   g_free (self->filename);
+  close_adapter (self);
 
   G_OBJECT_CLASS (calls_record_store_parent_class)->finalize (object);
 }

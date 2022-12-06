@@ -24,75 +24,8 @@
 
 #include "util.h"
 
-
-void
-calls_object_unref (gpointer object)
-{
-  if (object) {
-    g_object_unref (object);
-  }
-}
-
-
-typedef struct {
-  gpointer     needle;
-  guint        needle_column;
-  GtkTreeIter *iter;
-  gboolean     found;
-} ListStoreFindData;
-
-static gboolean
-list_store_find_foreach_cb (GtkTreeModel *model,
-                            GtkTreePath  *path,
-                            GtkTreeIter  *iter,
-                            gpointer      data)
-{
-  ListStoreFindData *find_data = data;
-  gpointer value;
-
-  gtk_tree_model_get (model, iter, find_data->needle_column,
-                      &value, -1);
-
-  if (value == find_data->needle) {
-    *find_data->iter = *iter;
-    return (find_data->found = TRUE);
-  }
-
-  return FALSE;
-}
-
-gboolean
-calls_list_store_find (GtkListStore *store,
-                       gpointer      needle,
-                       gint          needle_column,
-                       GtkTreeIter  *iter)
-{
-  ListStoreFindData find_data
-    = { needle, needle_column, iter, FALSE };
-
-  gtk_tree_model_foreach (GTK_TREE_MODEL (store),
-                          list_store_find_foreach_cb,
-                          &find_data);
-
-  return find_data.found;
-}
-
-
-void
-calls_entry_append (GtkEntry *entry,
-                    gchar     character)
-{
-  const gchar str[] = {character, '\0'};
-  GtkEntryBuffer *buf;
-  guint len;
-
-  g_return_if_fail (GTK_IS_ENTRY (entry));
-
-  buf = gtk_entry_get_buffer (entry);
-  len = gtk_entry_buffer_get_length (buf);
-
-  gtk_entry_buffer_insert_text (buf, len, str, 1);
-}
+#include <sys/socket.h>
+#include <netdb.h>
 
 
 gboolean
@@ -164,16 +97,15 @@ calls_number_is_ussd (const char *number)
 }
 
 /**
- * calls_find_in_store:
+ * calls_find_in_model:
  * @list: A #GListModel
  * @item: The #gpointer to find
  * @position: (out) (optional): The first position of @item, if it was found.
  *
- * Returns: Whether @list contains @item. This is mainly a convenience function
- * until we no longer support older glib versions.
+ * Returns: %TRUE if @list contains @item, %FALSE otherwise.
  */
 gboolean
-calls_find_in_store (GListModel *list,
+calls_find_in_model (GListModel *list,
                      gpointer    item,
                      guint      *position)
 {
@@ -294,4 +226,53 @@ get_call_icon_symbolic_name (gboolean inbound,
   index = ((inbound) << 1) + missed;
 
   return type_icon_name[index];
+}
+
+/**
+ * get_address_family_for_ip:
+ * @ip: The IP address to check
+ * @only_configured_interfaces: Only consider address families of configured
+ * network interfaces
+ *
+ * Returns: #AF_INET for IPv4, #AF_INET6 for IPv6 and #AF_UNSPEC otherwise.
+ * If @only_configured_interfaces is #TRUE and the resulting address family of @ip
+ * is not configured on any network interface, it will also return #AF_UNSPEC
+ */
+int
+get_address_family_for_ip (const char *ip,
+                           gboolean    only_configured_interfaces)
+{
+  struct addrinfo hints = { 0 };
+  struct addrinfo *result;
+  int family = AF_UNSPEC;
+  int res_gai;
+
+  g_return_val_if_fail (!STR_IS_NULL_OR_EMPTY (ip), AF_UNSPEC);
+
+  hints.ai_flags = AI_V4MAPPED | AI_NUMERICHOST;
+  if (only_configured_interfaces)
+    hints.ai_flags |= AI_ADDRCONFIG;
+  hints.ai_family = AF_UNSPEC;
+
+
+  res_gai = getaddrinfo (ip, NULL, &hints, &result);
+  if (res_gai != 0) {
+    g_info ("Cannot get address information for host %s: %s",
+            ip,
+            gai_strerror (res_gai));
+
+    return AF_UNSPEC;
+  }
+
+  family = result->ai_family;
+
+  freeaddrinfo (result);
+
+  if (family != AF_INET && family != AF_INET6) {
+    g_warning ("Address information for host %s indicates non internet host", ip);
+
+    return AF_UNSPEC;
+  }
+
+  return family;
 }
