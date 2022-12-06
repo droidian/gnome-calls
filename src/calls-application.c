@@ -45,6 +45,7 @@
 
 #include <call-ui.h>
 #include <glib/gi18n.h>
+#include <glib-unix.h>
 #include <handy.h>
 #include <libcallaudio.h>
 
@@ -69,13 +70,24 @@ struct _CallsApplication {
   CallsDBusManager *dbus_manager;
 
   char             *uri;
+  guint             id_sigterm;
+  guint             id_sigint;
 };
 
 G_DEFINE_TYPE (CallsApplication, calls_application, GTK_TYPE_APPLICATION);
 
 
-static gboolean start_proper (CallsApplication *self);
+static void start_proper (CallsApplication *self);
 
+static gboolean
+on_int_or_term_signal (CallsApplication *self)
+{
+  g_debug ("Received SIGTERM/SIGINT, shutting down gracefully");
+
+  g_application_quit (G_APPLICATION (self));
+
+  return G_SOURCE_REMOVE;
+}
 
 static gboolean
 cmd_verbose_cb (const char *option_name,
@@ -186,16 +198,12 @@ set_daemon_action (GSimpleAction *action,
                    gpointer       user_data)
 {
   CallsApplication *self = CALLS_APPLICATION (user_data);
+  gboolean daemon = g_variant_get_boolean (parameter);
 
-  if (self->main_window) {
-    g_warning ("Cannot set application as a daemon"
-               " because application is already started");
-    return;
-  }
+  self->daemon = daemon;
 
-  self->daemon = TRUE;
-
-  g_debug ("Application marked as daemon");
+  g_debug ("Application %smarked as daemon",
+           daemon ? "" : "not ");
 }
 
 
@@ -390,7 +398,7 @@ static const GActionEntry actions[] =
 {
   { "set-provider-names", set_provider_names_action, "as" },
   { "set-default-providers", set_default_providers_action, NULL },
-  { "set-daemon", set_daemon_action, NULL },
+  { "set-daemon", set_daemon_action, "b" },
   { "dial", dial_action, "s" },
   { "copy-number", copy_number, "s" },
   /* TODO About dialog { "about", show_about, NULL}, */
@@ -402,11 +410,20 @@ static int
 calls_application_handle_local_options (GApplication *application,
                                         GVariantDict *options)
 {
+  guint verbosity = calls_log_get_verbosity ();
+
   if (g_variant_dict_contains (options, "version")) {
     g_print ("%s %s\n", APP_DATA_NAME, *VCS_TAG ? VCS_TAG : PACKAGE_VERSION);
 
     return 0;
   }
+
+  /* Propagate verbosity changes to the main instance */
+  if (verbosity > 0) {
+    g_variant_dict_insert_value (options, "verbosity", g_variant_new_uint32 (verbosity));
+    g_print ("Increasing verbosity to %u\n", verbosity);
+  }
+
 
   return -1;
 }
@@ -470,6 +487,7 @@ calls_application_command_line (GApplication            *application,
   g_autoptr (GVariant) providers = NULL;
   g_auto (GStrv) arguments = NULL;
   gint argc;
+  guint verbosity;
 
   options = g_application_command_line_get_options_dict (command_line);
 
@@ -484,13 +502,24 @@ calls_application_command_line (GApplication            *application,
                                     NULL);
   }
 
-  if (g_variant_dict_contains (options, "daemon"))
-    g_action_group_activate_action (G_ACTION_GROUP (application),
-                                    "set-daemon", NULL);
+  g_action_group_activate_action (G_ACTION_GROUP (application),
+                                  "set-daemon",
+                                  g_variant_new_boolean (g_variant_dict_contains (options, "daemon")));
 
   if (g_variant_dict_lookup (options, "dial", "&s", &arg))
     g_action_group_activate_action (G_ACTION_GROUP (application),
                                     "dial", g_variant_new_string (arg));
+
+  /* TODO make this a comma separated string of "CATEGORY:level" pairs */
+  if (g_variant_dict_lookup (options, "verbosity", "u", &verbosity)) {
+    gint delta = calls_log_set_verbosity (verbosity);
+    guint level = calls_log_get_verbosity ();
+    if (delta != 0)
+      g_print ("%s verbosity by %d to %u\n",
+               delta > 0 ? "Increased" : "Decreased",
+               delta < 0 ? -1 * delta : delta,
+               level);
+  }
 
   arguments = g_application_command_line_get_arguments (command_line, &argc);
 
@@ -534,13 +563,13 @@ notify_window_visible_cb (GtkWidget        *window,
 }
 
 
-static gboolean
+static void
 start_proper (CallsApplication *self)
 {
   GtkApplication *gtk_app;
 
   if (self->main_window) {
-    return TRUE;
+    return;
   }
 
   gtk_app = GTK_APPLICATION (self);
@@ -566,9 +595,8 @@ start_proper (CallsApplication *self)
                     "notify::visible",
                     G_CALLBACK (notify_window_visible_cb),
                     self);
-
-  return TRUE;
 }
+
 
 static void
 activate (GApplication *application)
@@ -578,15 +606,8 @@ activate (GApplication *application)
 
   g_debug ("Activated");
 
-  if (self->main_window) {
-    present = TRUE;
-  } else {
-    gboolean ok = start_proper (self);
-    if (!ok)
-      return;
-
-    present = !self->daemon;
-  }
+  start_proper (self);
+  present = !self->daemon;
 
   if (present || self->uri) {
     gtk_window_present (GTK_WINDOW (self->main_window));
@@ -603,6 +624,7 @@ activate (GApplication *application)
 
   g_clear_pointer (&self->uri, g_free);
 }
+
 
 static void
 app_open (GApplication *application,
@@ -648,6 +670,9 @@ static void
 finalize (GObject *object)
 {
   CallsApplication *self = (CallsApplication *) object;
+
+  g_clear_handle_id (&self->id_sigterm, g_source_remove);
+  g_clear_handle_id (&self->id_sigint, g_source_remove);
 
   g_clear_object (&self->call_window);
   g_clear_object (&self->main_window);
@@ -720,6 +745,12 @@ calls_application_init (CallsApplication *self)
       NULL
     }
   };
+
+  self->id_sigterm = g_unix_signal_add (SIGTERM, G_SOURCE_FUNC (on_int_or_term_signal), self);
+  g_source_set_name_by_id (self->id_sigterm, "signal: SIGTERM handler");
+
+  self->id_sigint = g_unix_signal_add (SIGINT, G_SOURCE_FUNC (on_int_or_term_signal), self);
+  g_source_set_name_by_id (self->id_sigint, "signal: SIGINT handler");
 
   g_application_add_main_option_entries (G_APPLICATION (self), options);
 }
