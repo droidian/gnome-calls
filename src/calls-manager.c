@@ -28,7 +28,6 @@
 #include "config.h"
 
 #include "calls-account.h"
-#include "calls-application.h"
 #include "calls-contacts-provider.h"
 #include "calls-manager.h"
 #include "calls-message-source.h"
@@ -519,7 +518,7 @@ origin_found_in_any_provider (CallsManager *self,
     CallsProvider *provider = CALLS_PROVIDER (value);
     GListModel *origins = calls_provider_get_origins (provider);
 
-    if (origins && calls_find_in_store (origins,
+    if (origins && calls_find_in_model (origins,
                                         origin,
                                         &position))
       return TRUE;
@@ -804,18 +803,22 @@ calls_manager_init (CallsManager *self)
   dir = g_getenv ("CALLS_PLUGIN_DIR");
   if (dir && dir[0] != '\0') {
     g_autofree char *plugin_dir_provider = NULL;
-    /** Add the directory to the search path. prepend_search_path() does not work
-     * as expected. see https://gitlab.gnome.org/GNOME/libpeas/-/issues/19
-     */
 
     plugin_dir_provider = g_build_filename (dir, "provider", NULL);
-    g_debug ("Adding %s to plugin search path", plugin_dir_provider);
-    peas_engine_add_search_path (peas, plugin_dir_provider, NULL);
+
+    if (g_file_test (plugin_dir_provider, G_FILE_TEST_EXISTS)) {
+      g_debug ("Adding %s to plugin search path", plugin_dir_provider);
+      peas_engine_prepend_search_path (peas, plugin_dir_provider, NULL);
+    } else {
+      g_warning ("Not adding %s to plugin search path, because the directory doesn't exist. Check if env CALLS_PLUGIN_DIR is set correctly", plugin_dir_provider);
+    }
   }
 
   default_plugin_dir_provider = g_build_filename(PLUGIN_LIBDIR, "provider", NULL);
   peas_engine_add_search_path (peas, default_plugin_dir_provider, NULL);
   g_debug ("Scanning for plugins in `%s'", default_plugin_dir_provider);
+
+  peas_engine_rescan_plugins (peas);
 }
 
 

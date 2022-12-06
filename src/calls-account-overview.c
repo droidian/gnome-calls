@@ -24,12 +24,16 @@
 
 #define G_LOG_DOMAIN "CallsAccountOverview"
 
+#include "config.h"
+
 #include "calls-account.h"
 #include "calls-account-overview.h"
 #include "calls-account-row.h"
 #include "calls-account-provider.h"
 #include "calls-manager.h"
 #include "calls-in-app-notification.h"
+
+#include <glib/gi18n-lib.h>
 
 
 /**
@@ -63,6 +67,8 @@ struct _CallsAccountOverview {
   GtkWidget                *current_account_widget;
 
   /* misc */
+  GtkEventController       *key_controller;
+  GtkEventController       *key_controller_account;
   CallsAccountOverviewState state;
   GList                    *providers;
   CallsInAppNotification   *in_app_notification;
@@ -167,10 +173,17 @@ on_account_row_activated (GtkListBox           *box,
 
   attach_account_widget (self, widget);
 
-  if (account)
+  if (account) {
+    g_autofree char *title = g_strdup_printf (_("Edit account: %s"),
+                                              calls_account_get_address (account));
+
     calls_account_provider_edit_account (provider, account);
-  else
+    gtk_window_set_title (self->account_window, title);
+  } else {
     calls_account_provider_add_new_account (provider);
+    gtk_window_set_title (self->account_window, _("Add new account"));
+
+  }
 
   gtk_window_present (self->account_window);
 }
@@ -277,10 +290,40 @@ on_providers_changed (CallsAccountOverview *self)
   gtk_widget_set_sensitive (self->add_btn, !!self->providers);
 }
 
+
+static gboolean
+on_key_pressed (GtkEventControllerKey *controller,
+                guint                  keyval,
+                guint                  keycode,
+                GdkModifierType        modifiers,
+                GtkWidget             *widget)
+{
+  if (keyval == GDK_KEY_Escape) {
+    gtk_widget_hide (widget);
+    return GDK_EVENT_STOP;
+  }
+
+  return GDK_EVENT_PROPAGATE;
+}
+
+static void
+calls_account_overview_dispose (GObject *object)
+{
+  CallsAccountOverview *self = CALLS_ACCOUNT_OVERVIEW (object);
+
+  g_clear_object (&self->key_controller);
+  g_clear_object (&self->key_controller_account);
+
+  G_OBJECT_CLASS (calls_account_overview_parent_class)->dispose (object);
+}
+
 static void
 calls_account_overview_class_init (CallsAccountOverviewClass *klass)
 {
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  object_class->dispose = calls_account_overview_dispose;
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/account-overview.ui");
 
@@ -317,6 +360,20 @@ calls_account_overview_init (CallsAccountOverview *self)
   gtk_window_set_transient_for (self->account_window, GTK_WINDOW (self));
 
   update_state (self);
+
+  self->key_controller = gtk_event_controller_key_new (GTK_WIDGET (self));
+  g_signal_connect (self->key_controller,
+                    "key-pressed",
+                    G_CALLBACK (on_key_pressed),
+                    self);
+
+  self->key_controller_account = gtk_event_controller_key_new (GTK_WIDGET (self->account_window));
+  g_signal_connect (self->key_controller_account,
+                    "key-pressed",
+                    G_CALLBACK (on_key_pressed),
+                    self->account_window);
+
+  gtk_window_set_title (GTK_WINDOW (self), _("Account overview"));
 }
 
 
