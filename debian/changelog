@@ -1,3 +1,9 @@
+gnome-calls (44~alpha.1-1) unstable; urgency=medium
+
+  * New upstream version 44~alpha.1
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Fri, 13 Jan 2023 10:30:15 +0100
+
 gnome-calls (44~alpha.0-1) unstable; urgency=medium
 
   [ Debian Janitor ]
