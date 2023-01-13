@@ -22,7 +22,7 @@
 project(
   'calls',
   'c', 'vala',
-  version: '44.alpha.0',
+  version: '44.alpha.1',
   license: 'GPLv3+',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -62,6 +62,10 @@ config_data.set_quoted('PLUGIN_LIBDIR', full_calls_plugin_libdir)
 config_data.set_quoted('PACKAGE_URL', calls_homepage)
 config_data.set_quoted('PACKAGE_VERSION', calls_version)
 config_data.set('PACKAGE_URL_RAW', calls_homepage)
+
+gst_debug = get_option('gst_debug')
+config_data.set('CALLS_GST_DEBUG', gst_debug, description: 'Use GStreamer debugging API')
+
 
 run_data = configuration_data()
 run_data.set('ABS_BUILDDIR', meson.current_build_dir())
@@ -138,8 +142,7 @@ subdir('data')
 # gnome.post_install() is available since meson 0.59.0
 # Distributions use their own tooling (e.g. postinst, triggers, etc)
 # so it is okay if the post_install() is not run on distro builds
-m_ver = meson.version().split('.')
-if m_ver[0].to_int() > 0 or m_ver[1].to_int() > 58
+if meson.version().version_compare('>=0.59.0')
   gnome.post_install(
     glib_compile_schemas: true,
     gtk_update_icon_cache: true,
