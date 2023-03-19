@@ -30,6 +30,7 @@
 #include "calls-contacts-provider.h"
 #include "calls-best-match.h"
 #include "calls-settings.h"
+#include "calls-util.h"
 
 #include <gee-0.8/gee.h>
 #include <folks/folks.h>
@@ -143,6 +144,7 @@ folks_add_contact (CallsContactsProvider *self,
   g_signal_emit (self, signals[SIGNAL_ADDED], 0, individual);
 }
 
+
 static void
 folks_remove_contact (CallsContactsProvider *self,
                       FolksIndividual       *individual)
@@ -202,7 +204,7 @@ set_can_add_contacts (CallsContactsProvider *self,
     return;
 
   self->can_add_contacts = can_add;
-  g_object_notify_by_pspec(G_OBJECT (self), props[PROP_CAN_ADD_CONTACTS]);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_CAN_ADD_CONTACTS]);
 }
 
 
@@ -419,7 +421,7 @@ calls_contacts_provider_lookup_id (CallsContactsProvider *self,
 
   g_return_val_if_fail (CALLS_IS_CONTACTS_PROVIDER (self), NULL);
 
-  if (!id || !*id)
+  if (STR_IS_NULL_OR_EMPTY (id))
     return NULL;
 
   best_match = g_hash_table_lookup (self->best_matches, id);
