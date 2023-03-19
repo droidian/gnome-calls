@@ -27,6 +27,8 @@
 #define SIP_ACCOUNT_FILE "sip-account.cfg"
 #define CALLS_PROTOCOL_SIP_STR "sip"
 
+#include "calls-config.h"
+
 #include "calls-account-provider.h"
 #include "calls-message-source.h"
 #include "calls-provider.h"
@@ -36,7 +38,7 @@
 #include "calls-sip-origin.h"
 #include "calls-sip-provider.h"
 #include "calls-sip-util.h"
-#include "calls-config.h"
+#include "calls-util.h"
 
 #include <libpeas/peas.h>
 #include <sofia-sip/nua.h>
@@ -170,16 +172,14 @@ on_origin_pw_looked_up (GObject      *source,
     return;
   }
 
-#define IS_NULL_OR_EMPTY(x)  ((x) == NULL || (x)[0] == '\0')
   if (!direct_mode &&
-      (IS_NULL_OR_EMPTY (host) ||
-       IS_NULL_OR_EMPTY (user) ||
-       IS_NULL_OR_EMPTY (password))) {
+      (STR_IS_NULL_OR_EMPTY (host) ||
+       STR_IS_NULL_OR_EMPTY (user) ||
+       STR_IS_NULL_OR_EMPTY (password))) {
     g_warning ("Host, user and password must not be empty");
 
     return;
   }
-#undef IS_NULL_OR_EMPTY
 
   calls_sip_provider_add_origin_full (data->provider,
                                       id,
@@ -489,12 +489,6 @@ calls_sip_provider_constructed (GObject *object)
   CallsSipProvider *self = CALLS_SIP_PROVIDER (object);
 
   g_autoptr (GError) error = NULL;
-  const gchar *env_sip_test;
-
-  env_sip_test = g_getenv ("CALLS_SIP_TEST");
-  if (env_sip_test && env_sip_test[0] != '\0')
-    self->use_memory_backend = TRUE;
-
   if (calls_sip_provider_init_sofia (self, &error)) {
     if (!self->use_memory_backend) {
       g_autoptr (GKeyFile) key_file = g_key_file_new ();
@@ -627,7 +621,7 @@ calls_sip_provider_init (CallsSipProvider *self)
 
   self->origins = g_list_store_new (CALLS_TYPE_ORIGIN);
 
-  if (filename_env && filename_env[0] != '\0')
+  if (!STR_IS_NULL_OR_EMPTY (filename_env))
     self->filename = g_strdup (filename_env);
   else
     self->filename = g_build_filename (g_get_user_config_dir (),
@@ -635,7 +629,7 @@ calls_sip_provider_init (CallsSipProvider *self)
                                        SIP_ACCOUNT_FILE,
                                        NULL);
 
-  if (!sip_test_env || sip_test_env[0] == '\0') {
+  if (STR_IS_NULL_OR_EMPTY (sip_test_env)) {
     directory = g_path_get_dirname (self->filename);
     if (g_mkdir_with_parents (directory, 0750) == -1) {
       int err_save = errno;
@@ -643,6 +637,8 @@ calls_sip_provider_init (CallsSipProvider *self)
                  "Can not store credentials persistently!",
                  directory, err_save);
     }
+  } else {
+    self->use_memory_backend = TRUE;
   }
 
 }

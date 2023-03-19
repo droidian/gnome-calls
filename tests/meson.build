@@ -1,7 +1,5 @@
 if get_option('tests')
 
-subdir('mock')
-
 test_env = [
   'G_DEBUG=gc-friendly,fatal-warnings',
   'GSETTINGS_BACKEND=memory',
@@ -10,6 +8,9 @@ test_env = [
   'NO_AT_BRIDGE=1',
   'GSETTINGS_SCHEMA_DIR=@0@/data'.format(meson.project_build_root()),
   'CALLS_PLUGIN_DIR=@0@/plugins'.format(meson.project_build_root()),
+  'FOLKS_BACKENDS_ALLOWED=key-file',
+  'FOLKS_PRIMARY_STORE=key-file',
+  'CALLS_RECORD_DIR=@0@/tests/record-db'.format(meson.project_build_root()),
 ]
 
 test_cflags = [
@@ -21,16 +22,25 @@ test_link_args = [
   '-fPIC',
 ]
 
-mock_link_args = [ test_link_args,
-                   '-Wl,--wrap=calls_contacts_provider_new',
-                 ]
+dbus_service_conf = configuration_data()
+dbus_service_conf.set('CALLS_BUILD_DIR', '@0@'.format(builddir))
+dbus_service_conf.set('CALLS_BUILD_DIR_STR', '"@0@"'.format(builddir))
+dbus_service_conf.set('CALLS_DBUS_NAME', '"org.gnome.Calls"')
+dbus_service_conf.set('CALLS_DBUS_OBJECT_PATH', '"/org/gnome/Calls"')
 
+dbus_config_h = configure_file(output        : 'calls-dbus-config.h',
+                               configuration : dbus_service_conf)
+
+test_includes = include_directories('.')
+
+subdir('mock')
+subdir('services')
 
 test_sources = [ 'test-manager.c' ]
 
 t = executable('manager', test_sources,
                  c_args : test_cflags,
-                 link_args: mock_link_args,
+                 link_args: test_link_args,
                  pie: true,
                  link_with : [calls_vala, libcalls],
                  dependencies: calls_deps,
@@ -71,7 +81,7 @@ test('util', t, env: test_env)
 test_sources = [ 'test-ui-call.c', 'mock-call.c', 'mock-call.h' ]
 t = executable('ui-call', test_sources,
                c_args : test_cflags,
-               link_args : mock_link_args,
+               link_args : test_link_args,
                pie: true,
                link_with : [calls_vala, libcalls],
                dependencies : calls_deps,
@@ -82,13 +92,13 @@ t = executable('ui-call', test_sources,
 test('ui-call', t, env: test_env)
 
 test_sources = [
-               'mock-call.c', 'mock-call.h', 'mock-libfeedback.h',
+               'mock-call.c', 'mock-call.h',
                'test-ringer.c'
 ]
 
 t = executable('ringer', test_sources,
                c_args : test_cflags,
-               link_args: mock_link_args,
+               link_args: test_link_args,
                pie: true,
                link_with : [calls_vala, libcalls, libfeedback],
                dependencies: calls_deps,
@@ -123,5 +133,40 @@ t = executable('settings', test_sources,
                  ]
                )
 test('settings', t, env: test_env)
+
+test_sources = ['test-dbus.c']
+t = executable('dbus', test_sources, generated_dbus_sources,
+               c_args : test_cflags,
+               link_args: test_link_args,
+               pie: true,
+               link_with : [calls_vala, libcalls],
+               dependencies: calls_deps,
+               include_directories : [
+                   calls_includes,
+                 ]
+               )
+test('dbus', t, env: test_env)
+
+dbus_run_session = find_program('dbus-run-session')
+
+if dbus_run_session.found ()
+  test_sources = [ 'test-application.c' ]
+  t = executable('application', test_sources, calls_resources,
+                 c_args : test_cflags,
+                 link_args: test_link_args,
+                 pie: true,
+                 link_with : [calls_vala, libcalls],
+                 dependencies: calls_deps,
+                 include_directories : [
+                     calls_includes,
+                   ]
+                 )
+  test('application',
+      dbus_run_session,
+      args: t.full_path(),
+      env: test_env,
+      timeout : 300
+      )
+endif
 
 endif

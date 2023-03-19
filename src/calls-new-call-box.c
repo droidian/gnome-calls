@@ -30,6 +30,7 @@
 #include "calls-new-call-box.h"
 #include "calls-settings.h"
 #include "calls-ussd.h"
+#include "calls-util.h"
 
 #include <call-ui.h>
 #include <glib/gi18n.h>
@@ -43,18 +44,18 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 struct _CallsNewCallBox {
-  GtkBox               parent_instance;
+  GtkBox        parent_instance;
 
-  GtkListBox          *origin_list_box;
-  HdyComboRow         *origin_list;
-  CuiDialpad          *dialpad;
-  GtkEntry            *address_entry;
-  HdyActionRow        *result;
-  GtkButton           *dial_result;
+  GtkListBox   *origin_list_box;
+  HdyComboRow  *origin_list;
+  CuiDialpad   *dialpad;
+  GtkEntry     *address_entry;
+  HdyActionRow *result;
+  GtkButton    *dial_result;
 
-  GList               *dial_queue;
+  GList        *dial_queue;
 
-  gboolean             numeric_input_only;
+  gboolean      numeric_input_only;
 };
 
 G_DEFINE_TYPE (CallsNewCallBox, calls_new_call_box, GTK_TYPE_BOX);
@@ -328,8 +329,11 @@ calls_new_call_box_init (CallsNewCallBox *self)
   hdy_combo_row_bind_name_model (self->origin_list, origins,
                                  get_origin_name, self, NULL);
 
-  g_signal_connect_swapped (origins, "items-changed",
-                            G_CALLBACK (origin_count_changed_cb), self);
+  g_signal_connect_object (origins,
+                           "items-changed",
+                           G_CALLBACK (origin_count_changed_cb),
+                           self,
+                           G_CONNECT_SWAPPED);
   origin_count_changed_cb (self);
 }
 

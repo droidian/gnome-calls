@@ -41,9 +41,13 @@
 #define RECORD_STORE_FILENAME "records.db"
 #define RECORD_STORE_VERSION  2
 
+enum {
+  SIGNAL_DB_DONE,
+  N_SIGNALS
+};
+static guint signals[N_SIGNALS];
 
-typedef enum
-{
+typedef enum {
   STARTED,
   ANSWERED,
   ENDED
@@ -67,6 +71,22 @@ state_to_record_state (CuiCallState call_state)
 
   default:
     g_assert_not_reached ();
+  }
+}
+
+
+static const char *
+record_state_to_string (CallsCallRecordState state)
+{
+  switch (state) {
+  case STARTED:
+    return "started";
+  case ANSWERED:
+    return "answered";
+  case ENDED:
+    return "ended";
+  default:
+    return "unknown";
   }
 }
 
@@ -144,6 +164,7 @@ load_calls_fetch_cb (GomResourceGroup *group,
   if (error) {
     g_debug ("Error fetching call records: %s",
              error->message);
+    goto exit;
     return;
   }
   g_assert (ok);
@@ -178,6 +199,8 @@ load_calls_fetch_cb (GomResourceGroup *group,
 
   g_free (records);
   g_object_unref (group);
+exit:
+  g_object_unref (self);
 }
 
 
@@ -196,7 +219,7 @@ load_calls_find_cb (GomRepository    *repository,
   if (error) {
     g_debug ("Error finding call records in database `%s': %s",
              self->filename, error->message);
-    return;
+    goto exit;
   }
   g_assert (group != NULL);
 
@@ -204,7 +227,7 @@ load_calls_find_cb (GomRepository    *repository,
   if (count == 0) {
     g_debug ("No call records found in database `%s'",
              self->filename);
-    return;
+    goto exit;
   }
 
   g_debug ("Found %u call records in database `%s', fetching",
@@ -213,7 +236,9 @@ load_calls_find_cb (GomRepository    *repository,
                                   0,
                                   count,
                                   (GAsyncReadyCallback) load_calls_fetch_cb,
-                                  self);
+                                  g_object_ref (self));
+exit:
+  g_object_unref (self);
 }
 
 
@@ -238,7 +263,7 @@ load_calls (CallsRecordStore *self)
                                     filter,
                                     sorting,
                                     (GAsyncReadyCallback) load_calls_find_cb,
-                                    self);
+                                    g_object_ref (self));
 
   g_object_unref (G_OBJECT (filter));
 }
@@ -263,12 +288,14 @@ set_up_repo_migrate_cb (GomRepository    *repo,
 
     g_clear_object (&self->repository);
     g_clear_object (&self->adapter);
-
   } else {
     g_debug ("Successfully migrated call record database `%s'",
              self->filename);
     load_calls (self);
   }
+
+  g_signal_emit (self, signals[SIGNAL_DB_DONE], 0, ok);
+  g_object_unref (self);
 }
 
 
@@ -296,7 +323,7 @@ set_up_repo (CallsRecordStore *self)
     RECORD_STORE_VERSION,
     types,
     (GAsyncReadyCallback) set_up_repo_migrate_cb,
-    self);
+    g_object_ref (self));
 
   self->repository = repo;
 }
@@ -344,12 +371,14 @@ open_repo_adapter_open_cb (GomAdapter       *adapter,
                  self->filename);
 
     close_adapter (self);
-
+    g_signal_emit (self, signals[SIGNAL_DB_DONE], 0, FALSE);
   } else {
     g_debug ("Successfully opened call record database `%s'",
              self->filename);
     set_up_repo (self);
   }
+
+  g_object_unref (self);
 }
 
 
@@ -379,7 +408,7 @@ open_repo (CallsRecordStore *self)
     (self->adapter,
     uri,
     (GAsyncReadyCallback) open_repo_adapter_open_cb,
-    self);
+    g_object_ref (self));
 
   g_free (uri);
 }
@@ -528,8 +557,9 @@ state_changed_cb (CallsRecordStore *self,
     g_object_get_data (call_obj, "calls-call-record");
   CallsCallRecordState new_rec_state, old_rec_state;
 
-  g_debug ("Call state changed from %d to %d",
-           old_state, new_state);
+  g_debug ("Call state changed from %s (%d) to %s (%d)",
+           cui_call_state_to_string (old_state), old_state,
+           cui_call_state_to_string (new_state), new_state);
 
   /* Check whether the call is recorded */
   if (!record) {
@@ -561,8 +591,7 @@ state_changed_cb (CallsRecordStore *self,
 
     case STARTED:
     default:
-      g_assert_not_reached ();
-      break;
+      goto critical_exit;
     }
     break;
 
@@ -575,16 +604,23 @@ state_changed_cb (CallsRecordStore *self,
     case STARTED:
     case ANSWERED:
     default:
-      g_assert_not_reached ();
-      break;
+      goto critical_exit;
     }
     break;
 
   case ENDED:
   default:
-    g_assert_not_reached ();
-    break;
+    goto critical_exit;
   }
+
+  return;
+
+critical_exit:
+  /* XXX Modem's may be buggy; let's print as much information as possible */
+  g_critical ("Unexpected state change occurred!\n"
+              "From %s (%s) to %s (%s)",
+              cui_call_state_to_string (old_state), record_state_to_string (old_rec_state),
+              cui_call_state_to_string (new_state), record_state_to_string (new_rec_state));
 }
 
 
@@ -691,26 +727,39 @@ calls_record_store_class_init (CallsRecordStoreClass *klass)
   object_class->constructed = constructed;
   object_class->dispose = dispose;
   object_class->finalize = finalize;
+
+  signals[SIGNAL_DB_DONE] = g_signal_new ("db-done",
+                                          G_TYPE_FROM_CLASS (klass),
+                                          G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                          NULL,
+                                          G_TYPE_NONE,
+                                          1,
+                                          G_TYPE_BOOLEAN);
 }
 
 
 static void
 calls_record_store_init (CallsRecordStore *self)
 {
-  gboolean exist_old, exist_new, new_is_dir;
-  g_autofree gchar *old_dir = g_build_filename (g_get_user_data_dir (),
-                                                "calls",
-                                                NULL);
-  g_autofree gchar *new_dir = g_build_filename (g_get_user_data_dir (),
-                                                APP_DATA_NAME,
-                                                NULL);
-  gchar *used_dir = NULL;
+  g_autofree char *old_dir = g_build_filename (g_get_user_data_dir (),
+                                               "calls",
+                                               NULL);
+  g_autofree char *new_dir = g_build_filename (g_get_user_data_dir (),
+                                               APP_DATA_NAME,
+                                               NULL);
+  const char *env_dir = g_getenv ("CALLS_RECORD_DIR");
+  char *used_dir = NULL;
+  gboolean exist_old;
+  gboolean exist_new;
+  gboolean new_is_dir;
 
   exist_old = g_file_test (old_dir, G_FILE_TEST_EXISTS);
   exist_new = g_file_test (new_dir, G_FILE_TEST_EXISTS);
   new_is_dir = g_file_test (new_dir, G_FILE_TEST_IS_DIR);
 
-  if (exist_old && !exist_new) {
+  if (env_dir) {
+    used_dir = (char *) env_dir;
+  } else if (exist_old && !exist_new) {
     g_debug ("Trying to move database from `%s' to `%s'", old_dir, new_dir);
 
     if (g_rename (old_dir, new_dir) == 0) {
@@ -720,10 +769,11 @@ calls_record_store_init (CallsRecordStore *self)
       g_debug ("Continuing to use old location");
       used_dir = old_dir;
     }
-  } else if (exist_new && new_is_dir)
+  } else if (exist_new && new_is_dir) {
     used_dir = new_dir;
-  else
+  } else {
     used_dir = old_dir;
+  }
 
   g_assert (used_dir);
 

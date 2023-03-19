@@ -72,6 +72,8 @@ struct _CallsApplication {
   char             *uri;
   guint             id_sigterm;
   guint             id_sigint;
+  gboolean          shutdown;
+  gboolean          db_done;
 };
 
 G_DEFINE_TYPE (CallsApplication, calls_application, GTK_TYPE_APPLICATION);
@@ -83,14 +85,22 @@ static void start_proper (CallsApplication *self);
 static void
 quit_calls (CallsApplication *self)
 {
+  g_assert (CALLS_IS_APPLICATION (self));
+
+  if (self->shutdown)
+    return;
+
   gtk_application_remove_window (GTK_APPLICATION (self), GTK_WINDOW (self->main_window));
   gtk_application_remove_window (GTK_APPLICATION (self), GTK_WINDOW (self->call_window));
-}
 
+  self->shutdown = TRUE;
+}
 
 static gboolean
 on_int_or_term_signal (CallsApplication *self)
 {
+  g_assert (CALLS_IS_APPLICATION (self));
+
   g_debug ("Received SIGTERM/SIGINT, shutting down gracefully");
 
   self->id_sigint = 0;
@@ -465,18 +475,22 @@ startup (GApplication *application)
 
   cui_init (TRUE);
 
-  g_set_prgname (APP_ID);
-  g_set_application_name (_("Calls"));
+  if (!g_get_prgname ())
+    g_set_prgname (APP_ID);
+
+  if (!g_get_application_name ())
+    g_set_application_name (_("Calls"));
 
   g_action_map_add_action_entries (G_ACTION_MAP (application),
                                    actions,
                                    G_N_ELEMENTS (actions),
                                    application);
 
-  g_signal_connect_swapped (calls_manager_get_default (),
-                            "notify::state",
-                            G_CALLBACK (manager_state_changed_cb),
-                            application);
+  g_signal_connect_object (calls_manager_get_default (),
+                           "notify::state",
+                           G_CALLBACK (manager_state_changed_cb),
+                           application,
+                           G_CONNECT_SWAPPED);
 
   manager_state_changed_cb (application);
 
@@ -553,6 +567,19 @@ calls_application_command_line (GApplication            *application,
 static void
 app_shutdown (GApplication *application)
 {
+  g_autoptr (GTimer) timer = g_timer_new ();
+  CallsApplication *self = CALLS_APPLICATION (application);
+  GMainContext *context = g_main_context_default ();
+
+  quit_calls (self);
+
+  while (self->record_store && !self->db_done) {
+    if (g_timer_elapsed (timer, NULL) > 10)
+      break;
+
+    g_main_context_iteration (context, TRUE);
+  }
+
   cui_uninit ();
 
   G_APPLICATION_CLASS (calls_application_parent_class)->shutdown (application);
@@ -576,6 +603,22 @@ notify_window_visible_cb (GtkWidget        *window,
 
 
 static void
+on_db_done (CallsRecordStore *store,
+            gboolean          success,
+            CallsApplication *self)
+{
+  g_assert (CALLS_IS_APPLICATION (self));
+
+  self->db_done = TRUE;
+  g_debug ("Database opened %ssuccesfully",
+           success ? "" : "un");
+
+  if (!success)
+    g_warning ("Database did not get opened");
+}
+
+
+static void
 start_proper (CallsApplication *self)
 {
   GtkApplication *gtk_app;
@@ -592,21 +635,26 @@ start_proper (CallsApplication *self)
   self->record_store = calls_record_store_new ();
   g_assert (self->record_store != NULL);
 
+  g_signal_connect (self->record_store, "db-done",
+                    G_CALLBACK (on_db_done),
+                    self);
+
   self->notifier = calls_notifier_new ();
   g_assert (CALLS_IS_NOTIFIER (self->notifier));
 
-  self->main_window = calls_main_window_new
-                        (gtk_app,
-                        G_LIST_MODEL (self->record_store));
+  self->main_window =
+    calls_main_window_new (gtk_app,
+                           G_LIST_MODEL (self->record_store));
   g_assert (self->main_window != NULL);
 
   self->call_window = calls_call_window_new (gtk_app);
   g_assert (self->call_window != NULL);
 
-  g_signal_connect (self->call_window,
-                    "notify::visible",
-                    G_CALLBACK (notify_window_visible_cb),
-                    self);
+  g_signal_connect_object (self->call_window,
+                           "notify::visible",
+                           G_CALLBACK (notify_window_visible_cb),
+                           self,
+                           G_CONNECT_AFTER);
 }
 
 
@@ -686,8 +734,10 @@ finalize (GObject *object)
   g_clear_handle_id (&self->id_sigterm, g_source_remove);
   g_clear_handle_id (&self->id_sigint, g_source_remove);
 
-  gtk_widget_destroy (GTK_WIDGET (self->main_window));
-  gtk_widget_destroy (GTK_WIDGET (self->call_window));
+  if (self->main_window)
+    gtk_widget_destroy (GTK_WIDGET (self->main_window));
+  if (self->call_window)
+    gtk_widget_destroy (GTK_WIDGET (self->call_window));
 
   g_clear_object (&self->record_store);
   g_clear_object (&self->ringer);
