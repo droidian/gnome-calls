@@ -42,8 +42,10 @@ Rules-Requires-Root: no
 
 Package: gnome-calls
 Architecture: any
-Breaks: phosh (<< 0.14.1-2~)
-Replaces: phosh (<< 0.14.1-2~)
+Breaks:
+ phosh (<< 0.14.1-2~),
+Replaces:
+ phosh (<< 0.14.1-2~),
 Depends:
  gstreamer1.0-plugins-bad,
  gstreamer1.0-plugins-good,
@@ -52,7 +54,7 @@ Depends:
  ${shlibs:Depends},
 Recommends:
  callaudiod,
- gnome-contacts
+ gnome-contacts,
 Description: Make and receive PSTN phone calls
  A GTK+ user interface for PSTN phone calls using ModemManager.
  .
