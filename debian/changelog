@@ -1,8 +1,10 @@
-gnome-calls (44.0-1) UNRELEASED; urgency=medium
+gnome-calls (44.0-1) experimental; urgency=medium
 
   * New upstream release
+  * d/control: Add svg pixbufloader
+  * Ran wrap-and-sort -ast
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 19 Mar 2023 09:37:46 +0100
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Fri, 31 Mar 2023 07:56:56 +0200
 
 gnome-calls (44~alpha.1-1) unstable; urgency=medium
 
