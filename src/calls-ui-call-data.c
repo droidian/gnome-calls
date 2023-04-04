@@ -86,7 +86,7 @@ calls_ui_call_data_get_display_name (CuiCall *call_data)
   g_return_val_if_fail (CALLS_IS_UI_CALL_DATA (self), NULL);
   g_return_val_if_fail (!!self->call, NULL);
 
-  if (self->best_match)
+  if (calls_best_match_has_individual (self->best_match))
     return calls_best_match_get_name (self->best_match);
   else
     return calls_call_get_name (self->call);
@@ -145,10 +145,7 @@ calls_ui_call_data_get_avatar_icon (CuiCall *call_data)
 
   g_return_val_if_fail (CALLS_UI_CALL_DATA (self), NULL);
 
-  if (self->best_match)
-    return calls_best_match_get_avatar (self->best_match);
-  else
-    return NULL;
+  return calls_best_match_get_avatar (self->best_match);
 }
 
 
@@ -358,16 +355,10 @@ set_call_data (CallsUiCallData *self,
   manager = calls_manager_get_default ();
   contacts_provider = calls_manager_get_contacts_provider (manager);
 
-  /* the contacts provider should only be NULL when running the test suite */
-  if (!contacts_provider)
-    return;
-
   self->best_match =
     calls_contacts_provider_lookup_id (contacts_provider,
                                        calls_call_get_id (call));
-
-  if (!self->best_match)
-    return;
+  g_assert (self->best_match);
 
   g_signal_connect_object (self->best_match,
                            "notify::name",

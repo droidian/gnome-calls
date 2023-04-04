@@ -29,6 +29,7 @@
 #include "calls-ussd.h"
 #include "calls-mm-call.h"
 #include "calls-message-source.h"
+#include "calls-util.h"
 #include "itu-e212-iso.h"
 
 #include <glib/gi18n.h>
@@ -74,6 +75,7 @@ enum {
   PROP_CALLS,
   PROP_MODEM,
   PROP_COUNTRY_CODE,
+  PROP_EMERGENCY_NUMBERS,
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
@@ -84,10 +86,9 @@ ussd_initiate_cb (GObject      *object,
                   GAsyncResult *result,
                   gpointer      user_data)
 {
-  MMModem3gppUssd *ussd = (MMModem3gppUssd *) object;
-
   g_autoptr (GTask) task = user_data;
-  CallsMMOrigin *self = user_data;
+  MMModem3gppUssd *ussd = MM_MODEM_3GPP_USSD (object);
+  CallsMMOrigin *self = CALLS_MM_ORIGIN (user_data);
   char *response = NULL;
   GError *error = NULL;
 
@@ -110,10 +111,9 @@ ussd_reinitiate_cb (GObject      *object,
                     GAsyncResult *result,
                     gpointer      user_data)
 {
-  CallsUssd *ussd = (CallsUssd *) object;
-
   g_autoptr (GTask) task = user_data;
-  CallsMMOrigin *self = user_data;
+  CallsUssd *ussd = CALLS_USSD (object);
+  CallsMMOrigin *self = CALLS_MM_ORIGIN (user_data);
   GCancellable *cancellable;
   GError *error = NULL;
   const char *command;
@@ -140,10 +140,9 @@ ussd_respond_cb (GObject      *object,
                  GAsyncResult *result,
                  gpointer      user_data)
 {
-  MMModem3gppUssd *ussd = (MMModem3gppUssd *) object;
-  CallsMMOrigin *self;
-
   g_autoptr (GTask) task = user_data;
+  MMModem3gppUssd *ussd = MM_MODEM_3GPP_USSD (object);
+  CallsMMOrigin *self;
   char *response = NULL;
   GError *error = NULL;
 
@@ -166,10 +165,9 @@ ussd_cancel_cb (GObject      *object,
                 GAsyncResult *result,
                 gpointer      user_data)
 {
-  MMModem3gppUssd *ussd = (MMModem3gppUssd *) object;
-  CallsMMOrigin *self;
-
   g_autoptr (GTask) task = user_data;
+  MMModem3gppUssd *ussd = MM_MODEM_3GPP_USSD (object);
+  CallsMMOrigin *self;
   GError *error = NULL;
   gboolean response;
 
@@ -195,7 +193,7 @@ calls_mm_ussd_get_state (CallsUssd *ussd)
   if (!self->ussd)
     return CALLS_USSD_STATE_UNKNOWN;
 
-  return mm_modem_3gpp_ussd_get_state (self->ussd);
+  return (CallsUssdState) mm_modem_3gpp_ussd_get_state (self->ussd);
 }
 
 static void
@@ -205,9 +203,8 @@ calls_mm_ussd_initiate_async (CallsUssd          *ussd,
                               GAsyncReadyCallback callback,
                               gpointer            user_data)
 {
-  CallsMMOrigin *self = CALLS_MM_ORIGIN (ussd);
-
   g_autoptr (GTask) task = NULL;
+  CallsMMOrigin *self = CALLS_MM_ORIGIN (ussd);
   CallsUssdState state;
 
   g_return_if_fail (CALLS_IS_USSD (ussd));
@@ -220,7 +217,7 @@ calls_mm_ussd_initiate_async (CallsUssd          *ussd,
     return;
   }
 
-  if (!command || !*command) {
+  if (STR_IS_NULL_OR_EMPTY (command)) {
     g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
                              "USSD command empty");
     return;
@@ -313,9 +310,8 @@ dial_cb (MMModemVoice  *voice,
          GAsyncResult  *res,
          CallsMMOrigin *self)
 {
-  MMCall *call;
-
   g_autoptr (GError) error = NULL;
+  MMCall *call;
 
   call = mm_modem_voice_create_call_finish (voice, res, &error);
   if (!call) {
@@ -327,24 +323,22 @@ dial_cb (MMModemVoice  *voice,
 
 
 static void
-dial (CallsOrigin *origin, const gchar *number)
+dial (CallsOrigin *origin,
+      const char  *number)
 {
   CallsMMOrigin *self = CALLS_MM_ORIGIN (origin);
-  MMCallProperties *call_props;
+  g_autoptr (MMCallProperties) call_props = NULL;
 
   g_assert (self->voice != NULL);
 
   call_props = mm_call_properties_new ();
   mm_call_properties_set_number (call_props, number);
 
-  mm_modem_voice_create_call
-    (self->voice,
-    call_props,
-    NULL,
-    (GAsyncReadyCallback) dial_cb,
-    self);
-
-  g_object_unref (call_props);
+  mm_modem_voice_create_call (self->voice,
+                              call_props,
+                              NULL,
+                              (GAsyncReadyCallback) dial_cb,
+                              self);
 }
 
 
@@ -360,14 +354,14 @@ supports_protocol (CallsOrigin *origin,
 
 
 static void
-remove_calls (CallsMMOrigin *self, const gchar *reason)
+remove_calls (CallsMMOrigin *self, const char *reason)
 {
-  GList *paths, *node;
+  GList *paths;
   gpointer call;
 
   paths = g_hash_table_get_keys (self->calls);
 
-  for (node = paths; node != NULL; node = node->next) {
+  for (GList *node = paths; node != NULL; node = node->next) {
     g_hash_table_steal_extended (self->calls, node->data, NULL, &call);
     g_signal_emit_by_name (self, "call-removed",
                            CALLS_CALL (call), reason);
@@ -380,7 +374,7 @@ remove_calls (CallsMMOrigin *self, const gchar *reason)
 
 struct CallsMMOriginDeleteCallData {
   CallsMMOrigin *self;
-  gchar         *path;
+  char          *path;
 };
 
 
@@ -389,9 +383,8 @@ delete_call_cb (MMModemVoice                       *voice,
                 GAsyncResult                       *res,
                 struct CallsMMOriginDeleteCallData *data)
 {
-  gboolean ok;
-
   g_autoptr (GError) error = NULL;
+  gboolean ok;
 
   ok = mm_modem_voice_delete_call_finish (voice, res, &error);
   if (!ok) {
@@ -401,6 +394,7 @@ delete_call_cb (MMModemVoice                       *voice,
   }
 
   g_free (data->path);
+  g_object_unref (data->self);
   g_free (data);
 }
 
@@ -409,21 +403,20 @@ static void
 delete_call (CallsMMOrigin *self,
              CallsMMCall   *call)
 {
-  const gchar *path;
+  const char *path;
   struct CallsMMOriginDeleteCallData *data;
 
   path = calls_mm_call_get_object_path (call);
 
   data = g_new0 (struct CallsMMOriginDeleteCallData, 1);
-  data->self = self;
+  data->self = g_object_ref (self);
   data->path = g_strdup (path);
 
-  mm_modem_voice_delete_call
-    (self->voice,
-    path,
-    NULL,
-    (GAsyncReadyCallback) delete_call_cb,
-    data);
+  mm_modem_voice_delete_call (self->voice,
+                              path,
+                              NULL,
+                              (GAsyncReadyCallback) delete_call_cb,
+                              data);
 }
 
 static void
@@ -446,7 +439,7 @@ add_call (CallsMMOrigin *self,
           MMCall        *mm_call)
 {
   CallsMMCall *call;
-  gchar *path;
+  char *path;
 
   call = calls_mm_call_new (mm_call);
 
@@ -477,7 +470,7 @@ add_call (CallsMMOrigin *self,
 
 struct CallsMMOriginCallAddedData {
   CallsMMOrigin *self;
-  gchar         *path;
+  char          *path;
 };
 
 
@@ -487,7 +480,6 @@ call_added_list_calls_cb (MMModemVoice                      *voice,
                           struct CallsMMOriginCallAddedData *data)
 {
   g_autoptr (GError) error = NULL;
-
   GList *calls;
 
   calls = mm_modem_voice_list_calls_finish (voice, res, &error);
@@ -526,13 +518,14 @@ call_added_list_calls_cb (MMModemVoice                      *voice,
   }
 
   g_free (data->path);
+  g_object_unref (data->self);
   g_free (data);
 }
 
 
 static void
 call_added_cb (MMModemVoice  *voice,
-               gchar         *path,
+               char          *path,
                CallsMMOrigin *self)
 {
   struct CallsMMOriginCallAddedData *data;
@@ -544,26 +537,28 @@ call_added_cb (MMModemVoice  *voice,
   }
 
   data = g_new0 (struct CallsMMOriginCallAddedData, 1);
-  data->self = self;
+  data->self = g_object_ref (self);
   data->path = g_strdup (path);
 
-  mm_modem_voice_list_calls
-    (voice,
-    NULL,
-    (GAsyncReadyCallback) call_added_list_calls_cb,
-    data);
+  mm_modem_voice_list_calls (voice,
+                             NULL,
+                             (GAsyncReadyCallback) call_added_list_calls_cb,
+                             data);
 }
 
 
 static void
-call_deleted_cb (MMModemVoice  *voice,
-                 const gchar   *path,
-                 CallsMMOrigin *self)
+call_deleted_cb (MMModemVoice *voice,
+                 const char   *path,
+                 gpointer      user_data)
 {
+  g_autoptr (CallsMMOrigin) self = NULL;
   gpointer call;
   gpointer key;
-  GString *reason;
-  const gchar *mm_reason;
+  const char *mm_reason;
+
+  g_assert (CALLS_IS_MM_ORIGIN (user_data));
+  self = CALLS_MM_ORIGIN (user_data);
 
   g_debug ("Removing call `%s'", path);
 
@@ -576,30 +571,29 @@ call_deleted_cb (MMModemVoice  *voice,
     return;
   }
 
-  reason = g_string_new ("Call removed");
-
   mm_reason = calls_mm_call_get_disconnect_reason (CALLS_MM_CALL (call));
-  if (mm_reason) {
-    g_string_assign (reason, mm_reason);
-  }
-
-  g_signal_emit_by_name (self, "call-removed", call, reason);
+  g_signal_emit_by_name (self,
+                         "call-removed",
+                         call,
+                         mm_reason ?: "Call removed");
 
   g_object_unref (call);
-  g_string_free (reason, TRUE);
 
   g_debug ("Removed call `%s'", path);
 }
 
 
 static void
-list_calls_cb (MMModemVoice  *voice,
-               GAsyncResult  *res,
-               CallsMMOrigin *self)
+list_calls_cb (MMModemVoice *voice,
+               GAsyncResult *res,
+               gpointer      user_data)
 {
-  GList *calls, *node;
-
   g_autoptr (GError) error = NULL;
+  g_autoptr (CallsMMOrigin) self = NULL;
+  GList *calls;
+
+  g_assert (CALLS_IS_MM_ORIGIN (user_data));
+  self = CALLS_MM_ORIGIN (user_data);
 
   calls = mm_modem_voice_list_calls_finish (voice, res, &error);
   if (!calls) {
@@ -611,7 +605,7 @@ list_calls_cb (MMModemVoice  *voice,
     return;
   }
 
-  for (node = calls; node; node = node->next) {
+  for (GList *node = calls; node; node = node->next) {
     add_call (self, MM_CALL (node->data));
   }
 
@@ -668,6 +662,10 @@ get_property (GObject    *object,
     g_value_set_string (value, self->country_code);
     break;
 
+  case PROP_EMERGENCY_NUMBERS:
+    g_value_set_boxed (value, NULL);
+    break;
+
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     break;
@@ -675,7 +673,7 @@ get_property (GObject    *object,
 }
 
 
-static gchar *
+static char *
 modem_get_name (MMModem *modem)
 {
   char *name = NULL;
@@ -729,10 +727,10 @@ ussd_properties_changed_cb (CallsMMOrigin *self,
       (value = g_variant_lookup_value (properties, "NetworkRequest", NULL))) {
     response = mm_modem_3gpp_ussd_get_network_request (self->ussd);
 
-    if (response && *response && response != self->last_ussd_request)
+    if (!STR_IS_NULL_OR_EMPTY (response) && response != self->last_ussd_request)
       g_signal_emit_by_name (self, "ussd-added", response);
 
-    if (response && *response)
+    if (!STR_IS_NULL_OR_EMPTY (response))
       self->last_ussd_request = (char *) response;
     g_clear_pointer (&value, g_variant_unref);
   }
@@ -741,14 +739,15 @@ ussd_properties_changed_cb (CallsMMOrigin *self,
       (value = g_variant_lookup_value (properties, "NetworkNotification", NULL))) {
     response = mm_modem_3gpp_ussd_get_network_notification (self->ussd);
 
-    if (response && *response && response != self->last_ussd_response)
+    if (!STR_IS_NULL_OR_EMPTY (response) && response != self->last_ussd_response)
       g_signal_emit_by_name (self, "ussd-added", response);
 
-    if (response && *response)
+    if (!STR_IS_NULL_OR_EMPTY (response))
       self->last_ussd_response = (char *) response;
     g_clear_pointer (&value, g_variant_unref);
   }
 }
+
 
 static void
 call_mm_ussd_changed_cb (CallsMMOrigin *self)
@@ -770,13 +769,17 @@ call_mm_ussd_changed_cb (CallsMMOrigin *self)
                                                     G_CONNECT_SWAPPED);
 }
 
+
 static void
 get_sim_ready_cb (MMModem      *modem,
                   GAsyncResult *res,
                   gpointer      user_data)
 {
+  g_autoptr (CallsMMOrigin) self = NULL;
   const char *code;
-  CallsMMOrigin *self = CALLS_MM_ORIGIN (user_data);
+
+  g_assert (CALLS_IS_MM_ORIGIN (user_data));
+  self = CALLS_MM_ORIGIN (user_data);
 
   self->sim = mm_modem_get_sim_finish (modem, res, NULL);
 
@@ -792,18 +795,76 @@ get_sim_ready_cb (MMModem      *modem,
   }
 }
 
+
+static void
+call_waiting_setup_cb (GObject      *obj,
+                       GAsyncResult *res,
+                       gpointer      user_data)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (CallsMMOrigin) self = NULL;
+  MMModemVoice *voice = MM_MODEM_VOICE (obj);
+
+  g_assert (CALLS_IS_MM_ORIGIN (user_data));
+  self = CALLS_MM_ORIGIN (user_data);
+  g_assert (voice == self->voice);
+
+  if (!mm_modem_voice_call_waiting_setup_finish (voice, res, &error)) {
+    g_warning ("Could not disable call waiting: %s", error->message);
+    return;
+  }
+
+  g_info ("Disabled call waiting on modem '%s'", self->name);
+}
+
+
+static void
+call_waiting_query_cb (GObject      *obj,
+                       GAsyncResult *res,
+                       gpointer      user_data)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (CallsMMOrigin) self = NULL;
+  MMModemVoice *voice = MM_MODEM_VOICE (obj);
+  gboolean waiting;
+
+  g_assert (CALLS_IS_MM_ORIGIN (user_data));
+  self = CALLS_MM_ORIGIN (user_data);
+  g_assert (voice == self->voice);
+
+  if (!mm_modem_voice_call_waiting_query_finish (voice, res, &waiting, &error)) {
+    g_warning ("Could not query call waiting status: %s", error->message);
+    return;
+  }
+
+  g_debug ("Call waiting is %sabled", waiting ? "en" : "dis");
+  if (waiting) {
+    g_info ("Disabling call waiting: Not implemented");
+
+    mm_modem_voice_call_waiting_setup (voice,
+                                       FALSE,
+                                       NULL,
+                                       call_waiting_setup_cb,
+                                       g_steal_pointer (&self));
+  }
+}
+
+
 static void
 constructed (GObject *object)
 {
+  g_autoptr (MMModem) modem = NULL;
   CallsMMOrigin *self = CALLS_MM_ORIGIN (object);
-  MmGdbusModemVoice *gdbus_voice;
 
-  self->name = modem_get_name (mm_object_get_modem (self->mm_obj));
+  G_OBJECT_CLASS (calls_mm_origin_parent_class)->constructed (object);
 
-  mm_modem_get_sim (mm_object_get_modem (self->mm_obj),
+  modem = mm_object_get_modem (self->mm_obj);
+  self->name = modem_get_name (modem);
+
+  mm_modem_get_sim (modem,
                     NULL,
                     (GAsyncReadyCallback) get_sim_ready_cb,
-                    self);
+                    g_object_ref (self));
 
   g_signal_connect_object (self->mm_obj, "notify::modem3gpp-ussd",
                            G_CALLBACK (call_mm_ussd_changed_cb), self,
@@ -813,18 +874,20 @@ constructed (GObject *object)
   self->voice = mm_object_get_modem_voice (self->mm_obj);
   g_assert (self->voice != NULL);
 
-  gdbus_voice = MM_GDBUS_MODEM_VOICE (self->voice);
-  g_signal_connect (gdbus_voice, "call-added",
+  mm_modem_voice_call_waiting_query (self->voice,
+                                     NULL,
+                                     call_waiting_query_cb,
+                                     g_object_ref (self));
+
+  g_signal_connect (self->voice, "call-added",
                     G_CALLBACK (call_added_cb), self);
-  g_signal_connect (gdbus_voice, "call-deleted",
+  g_signal_connect (self->voice, "call-deleted",
                     G_CALLBACK (call_deleted_cb), self);
 
-  mm_modem_voice_list_calls
-    (self->voice,
-    NULL,
-    (GAsyncReadyCallback) list_calls_cb,
-    self);
-  G_OBJECT_CLASS (calls_mm_origin_parent_class)->constructed (object);
+  mm_modem_voice_list_calls (self->voice,
+                             NULL,
+                             (GAsyncReadyCallback) list_calls_cb,
+                             g_object_ref (self));
 }
 
 
@@ -834,10 +897,12 @@ dispose (GObject *object)
   CallsMMOrigin *self = CALLS_MM_ORIGIN (object);
 
   remove_calls (self, NULL);
+  g_clear_object (&self->voice);
   g_clear_object (&self->mm_obj);
   g_clear_object (&self->ussd);
   g_clear_object (&self->sim);
   g_clear_pointer (&self->country_code, g_free);
+  g_clear_pointer (&self->id, g_free);
 
   G_OBJECT_CLASS (calls_mm_origin_parent_class)->dispose (object);
 }
@@ -882,6 +947,7 @@ calls_mm_origin_class_init (CallsMMOriginClass *klass)
   IMPLEMENTS (PROP_NAME, "name");
   IMPLEMENTS (PROP_CALLS, "calls");
   IMPLEMENTS (PROP_COUNTRY_CODE, "country-code");
+  IMPLEMENTS (PROP_EMERGENCY_NUMBERS, "emergency-numbers");
 
 #undef IMPLEMENTS
 

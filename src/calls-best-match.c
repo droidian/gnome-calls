@@ -26,7 +26,7 @@
 #include "calls-contacts-provider.h"
 #include "calls-manager.h"
 #include "calls-vala.h"
-#include "util.h"
+#include "calls-util.h"
 
 #include <glib/gi18n.h>
 
@@ -323,6 +323,29 @@ calls_best_match_has_individual (CallsBestMatch *self)
   g_return_val_if_fail (CALLS_IS_BEST_MATCH (self), FALSE);
 
   return !!self->matched_individual;
+}
+
+
+/**
+ * calls_best_match_is_favourite:
+ * @self: A #CallsBestMatch
+ *
+ * Returns: %TRUE if there's a matched individual and the individual is
+ * marked as a favourite, %FALSE otherwise.
+ */
+gboolean
+calls_best_match_is_favourite (CallsBestMatch *self)
+{
+  gboolean fav;
+
+  g_return_val_if_fail (CALLS_IS_BEST_MATCH (self), FALSE);
+
+  if (!self->matched_individual)
+    return FALSE;
+
+  g_object_get (G_OBJECT (self->matched_individual), "favourite", &fav, NULL);
+
+  return fav;
 }
 
 

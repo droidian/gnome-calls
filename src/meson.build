@@ -101,6 +101,7 @@ calls_sources = files([
   'calls-contacts-provider.c', 'calls-contacts-provider.h',
   'calls-contacts-row.c', 'calls-contacts-row.h',
   'calls-dbus-manager.c', 'calls-dbus-manager.h',
+  'calls-emergency-calls-manager.c', 'calls-emergency-calls-manager.h',
   'calls-history-box.c', 'calls-history-box.h',
   'calls-in-app-notification.c', 'calls-in-app-notification.h',
   'calls-log.c', 'calls-log.h',
@@ -118,7 +119,7 @@ calls_sources = files([
   'calls-settings.c', 'calls-settings.h',
   'calls-ui-call-data.c', 'calls-ui-call-data.h',
   'calls-ussd.c', 'calls-ussd.h',
-  'util.c', 'util.h',
+  'calls-util.c', 'calls-util.h',
 ]) + calls_generated_sources + gtklistmodel_sources
 
 calls_config_data = config_data
