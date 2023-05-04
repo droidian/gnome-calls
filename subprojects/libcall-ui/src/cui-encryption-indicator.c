@@ -7,7 +7,7 @@
  * Adrien Plazas <adrien.plazas@puri.sm>
  */
 
-#include "config.h"
+#include "cui-config.h"
 
 #include "cui-encryption-indicator-priv.h"
 

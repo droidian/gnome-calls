@@ -3,6 +3,8 @@ if get_option('tests')
 test_env = [
   'G_DEBUG=gc-friendly,fatal-warnings',
   'GSETTINGS_BACKEND=memory',
+  'LANGUAGE=C',
+  'LC_ALL=C',
   'PYTHONDONTWRITEBYTECODE=yes',
   'MALLOC_CHECK_=2',
   'NO_AT_BRIDGE=1',
@@ -11,6 +13,7 @@ test_env = [
   'FOLKS_BACKENDS_ALLOWED=key-file',
   'FOLKS_PRIMARY_STORE=key-file',
   'CALLS_RECORD_DIR=@0@/tests/record-db'.format(meson.project_build_root()),
+  'CALLS_SIP_ACCOUNT_FILE=@0@/tests/sip-account.cfg'.format(meson.project_build_root()),
 ]
 
 test_cflags = [
@@ -35,6 +38,20 @@ test_includes = include_directories('.')
 
 subdir('mock')
 subdir('services')
+
+test_sources = [ 'test-emergency-call-types.c' ]
+t = executable('emergency-call-types', test_sources,
+               c_args : test_cflags,
+               link_args: test_link_args,
+               pie: true,
+               link_with : [calls_vala, libcalls],
+               dependencies: calls_deps,
+               include_directories : [
+                   calls_includes,
+                 ]
+               )
+test('emergency-call-types', t, env: test_env)
+
 
 test_sources = [ 'test-manager.c' ]
 

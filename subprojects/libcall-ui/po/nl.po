@@ -3,14 +3,15 @@
 # This file is distributed under the same license as the PACKAGE package.
 # Erik Nijenhuis <erik@xerdi.com>, 2021.
 # Nathan Follens <nfollens@gnome.org>, 2021-2022.
+# Jan Jasper de Kroon <jajadekroon@gmail.com>, 2022.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-06-22 10:28+0000\n"
-"PO-Revision-Date: 2022-07-08 22:57+0200\n"
+"POT-Creation-Date: 2022-09-18 10:00+0000\n"
+"PO-Revision-Date: 2022-09-19 07:11+0200\n"
 "Last-Translator: Nathan Follens <nfollens@gnome.org>\n"
 "Language-Team: Dutch <gnome-nl-list@gnome.org>\n"
 "Language: nl\n"
@@ -18,7 +19,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.1\n"
+"X-Generator: Poedit 3.0.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
@@ -54,53 +55,58 @@ msgstr "Oproep opnemen…"
 msgid "Hanging up…"
 msgstr "Ophangen…"
 
-#: src/cui-call-display.ui:39
+#: src/cui-call-display.ui:28
 msgid "Incoming phone call"
 msgstr "Inkomende oproep"
 
-#: src/cui-call-display.ui:140
+#: src/cui-call-display.ui:194
 msgid "Mute"
 msgstr "Dempen"
 
-#: src/cui-call-display.ui:177
+#: src/cui-call-display.ui:210
 msgid "Speaker"
 msgstr "Luidspreker"
 
-#: src/cui-call-display.ui:213
+#: src/cui-call-display.ui:226
 msgid "Add call"
 msgstr "Oproep toevoegen"
 
-#: src/cui-call-display.ui:258
+#: src/cui-call-display.ui:276
 msgid "Hold"
 msgstr "In de wacht zetten"
 
-#: src/cui-call-display.ui:294
+#: src/cui-call-display.ui:318
 msgid "Dial Pad"
 msgstr "Toetsenblok"
-
-#: src/cui-call-display.ui:346
-msgid "Hang up"
-msgstr "Ophangen"
-
-#: src/cui-call-display.ui:377
-msgid "Answer"
-msgstr "Opnemen"
-
-#: src/cui-call-display.ui:459
-msgid "Hide the dial pad"
-msgstr "Toetsenblok verbergen"
 
 #: src/cui-dialpad.ui:24
 msgid "Enter a number"
 msgstr "Voer een nummer in"
 
-#: src/cui-encryption-indicator.ui:23
+#: src/cui-dialpad.ui:25
+msgid "Type a phone number"
+msgstr "Typ een telefoonnummer"
+
+#: src/cui-dialpad.ui:49
+msgid "Call that phone number"
+msgstr "Bel dat telefoonnummer"
+
+#: src/cui-encryption-indicator.ui:21
 msgid "This call is not encrypted"
 msgstr "Dit gesprek is niet versleuteld"
 
-#: src/cui-encryption-indicator.ui:45
+#: src/cui-encryption-indicator.ui:42
 msgid "This call is encrypted"
 msgstr "Dit gesprek is versleuteld"
+
+#~ msgid "Hang up"
+#~ msgstr "Ophangen"
+
+#~ msgid "Answer"
+#~ msgstr "Opnemen"
+
+#~ msgid "Hide the dial pad"
+#~ msgstr "Toetsenblok verbergen"
 
 #~ msgid "Call-UI Demo"
 #~ msgstr "Oproep-UI-demo"
