@@ -9,6 +9,7 @@
 #define G_LOG_DOMAIN "CallsEmergencyCallsManger"
 
 #include "calls-emergency-calls-manager.h"
+#include "calls-emergency-call-types.h"
 #include "calls-origin.h"
 #include "calls-manager.h"
 
@@ -21,15 +22,13 @@
  * and makes them available for initiating emergency calls.
  */
 
-typedef struct _CallsEmergencyCallsManager
-{
+typedef struct _CallsEmergencyCallsManager {
   CallsDBusEmergencyCallsSkeleton parent;
 
-  GListModel *origins;
+  GListModel                     *origins;
 } CallsEmergencyCallsManger;
 
 static void calls_emergency_calls_iface_init (CallsDBusEmergencyCallsIface *iface);
-
 G_DEFINE_TYPE_WITH_CODE (CallsEmergencyCallsManager,
                          calls_emergency_calls_manager,
                          CALLS_DBUS_TYPE_EMERGENCY_CALLS_SKELETON,
@@ -38,9 +37,28 @@ G_DEFINE_TYPE_WITH_CODE (CallsEmergencyCallsManager,
                            calls_emergency_calls_iface_init));
 
 static void
-on_origins_changed (CallsEmergencyCallsManger *self)
+on_emergency_numbers_changed (CallsEmergencyCallsManger *self)
+{
+  g_signal_emit_by_name (self, "emergency-numbers-changed", 0);
+}
+
+
+static void
+on_origins_changed (CallsEmergencyCallsManger *self,
+                    guint                      position,
+                    guint                      removed,
+                    guint                      added)
 {
   g_assert (CALLS_IS_EMERGENCY_CALLS_MANAGER (self));
+
+  for (int i = 0; i < added; i++) {
+    g_autoptr (CallsOrigin) origin = g_list_model_get_item (self->origins, position - i);
+
+    g_signal_connect_object (origin, "notify::emergency-numbers",
+                             G_CALLBACK (on_emergency_numbers_changed),
+                             self,
+                             G_CONNECT_SWAPPED);
+  }
 
   g_signal_emit_by_name (self, "emergency-numbers-changed", 0);
 }
@@ -48,12 +66,37 @@ on_origins_changed (CallsEmergencyCallsManger *self)
 
 static gboolean
 handle_call_emergency_contact (CallsDBusEmergencyCalls *object,
-                               GDBusMethodInvocation *invocation,
-                               const gchar *arg_id)
+                               GDBusMethodInvocation   *invocation,
+                               const gchar             *arg_id)
 {
-  g_debug ("Calling %s", arg_id);
+  CallsEmergencyCallsManger *self = CALLS_EMERGENCY_CALLS_MANAGER (object);
+  g_debug ("Looking for emergency number %s", arg_id);
 
-  calls_dbus_emergency_calls_complete_call_emergency_contact (object, invocation);
+  g_return_val_if_fail (CALLS_IS_EMERGENCY_CALLS_MANAGER (self), FALSE);
+
+  /* Pick the first origin that supports the given emergency number */
+  for (int i = 0; i < g_list_model_get_n_items (self->origins); i++) {
+    g_autoptr (CallsOrigin) origin = g_list_model_get_item (self->origins, i);
+    g_auto (GStrv) emergency_numbers = NULL;
+
+    emergency_numbers = calls_origin_get_emergency_numbers (origin);
+    if (!emergency_numbers)
+      continue;
+
+    for (int j = 0; j < g_strv_length (emergency_numbers); j++) {
+      if (g_strcmp0 (arg_id, emergency_numbers[j]) == 0) {
+        g_debug ("Dialing %s via %s", arg_id, calls_origin_get_name (origin));
+        calls_origin_dial (origin, arg_id);
+        calls_dbus_emergency_calls_complete_call_emergency_contact (object, invocation);
+        goto done;
+      }
+    }
+  }
+
+  g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR,
+                                         G_DBUS_ERROR_NOT_SUPPORTED,
+                                         "%s not a known emergency number", arg_id);
+ done:
   return TRUE;
 }
 
@@ -72,20 +115,28 @@ handle_get_emergency_contacts (CallsDBusEmergencyCalls *object,
   g_variant_builder_init (&contacts_builder, G_VARIANT_TYPE (CONTACTS_FORMAT));
 
   for (int i = 0; i < g_list_model_get_n_items (self->origins); i++) {
-    CallsOrigin *origin = g_list_model_get_item (self->origins, i);
+    g_autoptr (CallsOrigin) origin = g_list_model_get_item (self->origins, i);
     g_auto (GStrv) emergency_numbers = NULL;
+    const char *country_code;
 
     emergency_numbers = calls_origin_get_emergency_numbers (origin);
     if (!emergency_numbers)
       continue;
 
+    country_code = calls_origin_get_country_code (origin);
     for (int j = 0; j < g_strv_length (emergency_numbers); j++) {
+      g_autofree char *contact = NULL;
+
       g_variant_builder_open (&contacts_builder, G_VARIANT_TYPE (CONTACT_FORMAT));
       g_variant_builder_add (&contacts_builder, "s", emergency_numbers[j]);
-      /* For non-addressbook numbers we just use the number itself as contact */
-      g_variant_builder_add (&contacts_builder, "s", emergency_numbers[j]);
+
+      contact = calls_emergency_call_type_get_name (emergency_numbers[j], country_code);
+      if (contact == NULL)
+        contact = g_strdup (emergency_numbers[j]);
+      g_variant_builder_add (&contacts_builder, "s", contact);
       /* Currently unused */
-      g_variant_builder_add (&contacts_builder, "i", 0);
+      g_variant_builder_add (&contacts_builder, "i",
+                             CALLS_EMERGENCY_CONTACT_SOURCE_UNKNOWN);
       /* Currently no hints */
       g_variant_builder_add (&contacts_builder, "a{sv}", NULL);
       g_variant_builder_close (&contacts_builder);

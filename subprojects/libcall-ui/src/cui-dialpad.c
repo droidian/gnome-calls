@@ -9,7 +9,7 @@
  * Adrien Plazas <adrien.plazas@puri.sm>
  */
 
-#include "config.h"
+#include "cui-config.h"
 
 #include "cui-dialpad.h"
 #include "cui-keypad.h"
@@ -90,9 +90,9 @@ cui_dialpad_set_property (GObject      *object,
   }
 }
 
-
+/* this handler is used both when the dial button is clicked or "enter" pressed on the entry */
 static void
-dial_clicked_cb (CuiDialpad *self)
+dial_clicked_or_activated_cb (CuiDialpad *self)
 {
   GtkEntry *entry = cui_keypad_get_entry (self->keypad);
   const char *text = gtk_entry_get_text (entry);
@@ -152,7 +152,7 @@ cui_dialpad_class_init (CuiDialpadClass *klass)
   gtk_widget_class_bind_template_child (widget_class, CuiDialpad, dial);
   gtk_widget_class_bind_template_child (widget_class, CuiDialpad, backspace);
   gtk_widget_class_bind_template_child (widget_class, CuiDialpad, long_press_backspace_gesture);
-  gtk_widget_class_bind_template_callback (widget_class, dial_clicked_cb);
+  gtk_widget_class_bind_template_callback (widget_class, dial_clicked_or_activated_cb);
   gtk_widget_class_bind_template_callback (widget_class, backspace_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, long_press_backspace_cb);
 

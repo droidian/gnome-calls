@@ -54,6 +54,7 @@ struct _CallsMMOrigin {
   char            *name;
   GHashTable      *calls;
   char            *country_code;
+  GStrv            emergency_numbers;
 };
 
 static void calls_mm_origin_message_source_interface_init (CallsOriginInterface *iface);
@@ -350,6 +351,17 @@ supports_protocol (CallsOrigin *origin,
   g_assert (CALLS_IS_MM_ORIGIN (origin));
 
   return g_strcmp0 (protocol, "tel") == 0;
+}
+
+
+static const char *
+get_country_code (CallsOrigin *origin)
+{
+  CallsMMOrigin *self = CALLS_MM_ORIGIN (origin);
+
+  g_assert (CALLS_IS_MM_ORIGIN (origin));
+
+  return self->country_code;
 }
 
 
@@ -663,7 +675,7 @@ get_property (GObject    *object,
     break;
 
   case PROP_EMERGENCY_NUMBERS:
-    g_value_set_boxed (value, NULL);
+    g_value_set_boxed (value, self->emergency_numbers);
     break;
 
   default:
@@ -784,15 +796,16 @@ get_sim_ready_cb (MMModem      *modem,
   self->sim = mm_modem_get_sim_finish (modem, res, NULL);
 
   code = get_country_iso_for_mcc (mm_sim_get_imsi (self->sim));
-  if (code) {
-    if (g_strcmp0 (self->country_code, code) == 0)
-      return;
-
+  if (code && g_strcmp0 (self->country_code, code)) {
     g_debug ("Setting the country code to `%s'", code);
 
     self->country_code = g_strdup (code);
     g_object_notify_by_pspec (G_OBJECT (self), props[PROP_COUNTRY_CODE]);
   }
+
+  g_strfreev (self->emergency_numbers);
+  self->emergency_numbers = mm_sim_dup_emergency_numbers (self->sim);
+  g_object_notify_by_pspec (G_OBJECT (self), props[PROP_EMERGENCY_NUMBERS]);
 }
 
 
@@ -915,6 +928,7 @@ finalize (GObject *object)
 
   g_hash_table_unref (self->calls);
   g_free (self->name);
+  g_strfreev (self->emergency_numbers);
 
   G_OBJECT_CLASS (calls_mm_origin_parent_class)->finalize (object);
 }
@@ -978,6 +992,7 @@ calls_mm_origin_origin_interface_init (CallsOriginInterface *iface)
 {
   iface->dial = dial;
   iface->supports_protocol = supports_protocol;
+  iface->get_country_code = get_country_code;
 }
 
 

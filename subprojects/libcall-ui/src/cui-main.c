@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
-#include "config.h"
+#include "cui-config.h"
 
 #include "call-ui.h"
 #include "cui-encryption-indicator-priv.h"

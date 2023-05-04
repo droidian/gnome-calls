@@ -61,12 +61,15 @@ calls_vala = static_library (
 )
 
 
-calls_enum_headers = files(['calls-call.h',
-                            'calls-ussd.h',
-                            'calls-manager.h',
-                            'calls-account.h',
-                            'calls-ringer.h',
-                            ])
+calls_enum_headers = files(
+  [
+    'calls-account.h',
+    'calls-call.h',
+    'calls-manager.h',
+    'calls-ringer.h',
+    'calls-ussd.h',
+  ]
+)
 calls_enum_sources = gnome.mkenums_simple('enum-types',
                                           sources : calls_enum_headers)
 
@@ -102,6 +105,7 @@ calls_sources = files([
   'calls-contacts-row.c', 'calls-contacts-row.h',
   'calls-dbus-manager.c', 'calls-dbus-manager.h',
   'calls-emergency-calls-manager.c', 'calls-emergency-calls-manager.h',
+  'calls-emergency-call-types.c', 'calls-emergency-call-types.h',
   'calls-history-box.c', 'calls-history-box.h',
   'calls-in-app-notification.c', 'calls-in-app-notification.h',
   'calls-log.c', 'calls-log.h',

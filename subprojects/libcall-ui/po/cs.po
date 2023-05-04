@@ -1,108 +1,99 @@
-# Spanish translation for libcall-ui.
+# Czech translation for libcall-ui.
 # Copyright (C) 2022 libcall-ui's COPYRIGHT HOLDER
 # This file is distributed under the same license as the libcall-ui package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-# Pablo Correa Gómez <ablocorrea@hotmail.com>, 2022.
+# Daniel Rusek <mail@asciiwolf.com>, 2022.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: libcall-ui main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/World/Phosh/libcall-ui/"
 "issues/\n"
-"POT-Creation-Date: 2022-09-02 12:31+0000\n"
-"PO-Revision-Date: 2022-09-12 12:22+0200\n"
-"Last-Translator: Pablo Correa Gómez <ablocorrea@hotmail.com>\n"
-"Language-Team: Spanish; Castilian <gnome-es-list@gnome.org>\n"
-"Language: es\n"
+"POT-Creation-Date: 2022-10-05 19:19+0000\n"
+"PO-Revision-Date: 2022-10-19 15:22+0200\n"
+"Last-Translator: Daniel Rusek <mail@asciiwolf.com>\n"
+"Language-Team: Czech <gnome-cs-list@gnome.org>\n"
+"Language: cs\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"X-Generator: Gtranslator 3.36.0\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : "
+"2;\n"
+"X-Generator: Poedit 3.1.1\n"
 
 #: src/cui-call.c:310
 msgid "Call active"
-msgstr "Llamada activa"
+msgstr "Hovor aktivní"
 
 #: src/cui-call.c:312
 msgid "Call held"
-msgstr "Llamada en espera"
+msgstr "Hovor přidržen"
 
 #. Deprecated
 #: src/cui-call.c:315
 msgid "Calling…"
-msgstr "Llamando..."
+msgstr "Volání…"
 
 #. Deprecated
 #: src/cui-call.c:318
 msgid "Incoming call"
-msgstr "Llamada entrante"
+msgstr "Příchozí hovor"
 
 #: src/cui-call.c:320
 msgid "Call ended"
-msgstr "Llamada finalizada"
+msgstr "Hovor skončil"
 
 #: src/cui-call.c:323 src/cui-call-display.c:319
 msgid "Unknown"
-msgstr "Desconocido"
+msgstr "Neznámé"
 
 #: src/cui-call-display.c:100
-#| msgid "Incoming call"
 msgid "Accepting call…"
-msgstr "Aceptando llamada…"
+msgstr "Přijímání hovoru…"
 
 #: src/cui-call-display.c:115
-#| msgid "Hang up"
 msgid "Hanging up…"
-msgstr "Colgando…"
+msgstr "Zavěšování…"
 
 #: src/cui-call-display.ui:28
 msgid "Incoming phone call"
-msgstr "Llamada entrante"
+msgstr "Příchozí telefonní hovor"
 
 #: src/cui-call-display.ui:194
 msgid "Mute"
-msgstr "Silenciar"
+msgstr "Ztlumit"
 
 #: src/cui-call-display.ui:210
 msgid "Speaker"
-msgstr "Altavoz"
+msgstr "Reproduktor"
 
 #: src/cui-call-display.ui:226
 msgid "Add call"
-msgstr "Añadir llamada"
+msgstr "Přidat hovor"
 
 #: src/cui-call-display.ui:276
 msgid "Hold"
-msgstr "Espera"
+msgstr "Přidržet"
 
 #: src/cui-call-display.ui:318
 msgid "Dial Pad"
-msgstr "Teclado"
+msgstr "Číselník"
 
 #: src/cui-dialpad.ui:24
 msgid "Enter a number"
-msgstr "Introduzca un número"
+msgstr "Zadejte číslo"
 
 #: src/cui-dialpad.ui:25
-#| msgid "Enter a number"
 msgid "Type a phone number"
-msgstr "Teclee un número de teléfono"
+msgstr "Zadejte telefonní číslo"
 
 #: src/cui-dialpad.ui:49
 msgid "Call that phone number"
-msgstr "Llame al número de teléfono"
+msgstr "Volat toto telefonní číslo"
 
 #: src/cui-encryption-indicator.ui:21
 msgid "This call is not encrypted"
-msgstr "Esta llamada no está cifrada"
+msgstr "Tento hovor není zašifrován"
 
 #: src/cui-encryption-indicator.ui:42
 msgid "This call is encrypted"
-msgstr "Esta llamada está cifrada"
-
-#~ msgid "Answer"
-#~ msgstr "Responder"
-
-#~ msgid "Hide the dial pad"
-#~ msgstr "Esconder teclado"
+msgstr "Tento hovor je zašifrován"

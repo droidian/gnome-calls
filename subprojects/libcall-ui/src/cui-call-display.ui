@@ -21,18 +21,6 @@
         <property name="orientation">vertical</property>
         <property name="spacing">24</property>
         <child>
-          <object class="GtkLabel" id="incoming_phone_call">
-            <property name="visible">False</property>
-            <property name="margin-top">12</property>
-            <property name="margin-bottom">12</property>
-            <property name="label" translatable="yes">Incoming phone call</property>
-            <property name="ellipsize">middle</property>
-            <style>
-              <class name="dim-label"/>
-            </style>
-          </object>
-        </child>
-        <child>
           <object class="GtkBox" id="call_info">
             <property name="visible">True</property>
             <property name="hexpand">True</property>

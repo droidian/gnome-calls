@@ -56,8 +56,6 @@
  * @include: "calls-application.h"
  */
 
-#define DEFAULT_PROVIDER_PLUGIN "mm"
-
 struct _CallsApplication {
   GtkApplication    parent_instance;
 
@@ -68,6 +66,7 @@ struct _CallsApplication {
   CallsMainWindow  *main_window;
   CallsCallWindow  *call_window;
   CallsDBusManager *dbus_manager;
+  CallsManager     *manager;
 
   char             *uri;
   guint             id_sigterm;
@@ -517,6 +516,19 @@ calls_application_command_line (GApplication            *application,
 
   options = g_application_command_line_get_options_dict (command_line);
 
+  /* TODO make this a comma separated string of "CATEGORY:level" pairs */
+  if (g_variant_dict_lookup (options, "verbosity", "u", &verbosity)) {
+    gint delta = calls_log_set_verbosity (verbosity);
+    guint level = calls_log_get_verbosity ();
+    if (delta != 0)
+      g_print ("%s verbosity by %d to %u\n",
+               delta > 0 ? "Increased" : "Decreased",
+               delta < 0 ? -1 * delta : delta,
+               level);
+  }
+
+  start_proper (self);
+
   providers = g_variant_dict_lookup_value (options, "provider", G_VARIANT_TYPE_STRING_ARRAY);
   if (providers) {
     g_action_group_activate_action (G_ACTION_GROUP (application),
@@ -535,18 +547,6 @@ calls_application_command_line (GApplication            *application,
   if (g_variant_dict_lookup (options, "dial", "&s", &arg))
     g_action_group_activate_action (G_ACTION_GROUP (application),
                                     "dial", g_variant_new_string (arg));
-
-  /* TODO make this a comma separated string of "CATEGORY:level" pairs */
-  if (g_variant_dict_lookup (options, "verbosity", "u", &verbosity)) {
-    gint delta = calls_log_set_verbosity (verbosity);
-    guint level = calls_log_get_verbosity ();
-    if (delta != 0)
-      g_print ("%s verbosity by %d to %u\n",
-               delta > 0 ? "Increased" : "Decreased",
-               delta < 0 ? -1 * delta : delta,
-               level);
-  }
-
   arguments = g_application_command_line_get_arguments (command_line, &argc);
 
   /* Keep only the first URI, if there are many */
@@ -628,6 +628,9 @@ start_proper (CallsApplication *self)
   }
 
   gtk_app = GTK_APPLICATION (self);
+
+  self->manager = calls_manager_get_default ();
+  g_assert (self->manager);
 
   self->ringer = calls_ringer_new ();
   g_assert (self->ringer != NULL);
@@ -742,6 +745,8 @@ finalize (GObject *object)
   g_clear_object (&self->record_store);
   g_clear_object (&self->ringer);
   g_clear_object (&self->notifier);
+  g_clear_object (&self->manager);
+
   g_free (self->uri);
 
   G_OBJECT_CLASS (calls_application_parent_class)->finalize (object);

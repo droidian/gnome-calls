@@ -23,6 +23,7 @@
                 <property name="xalign">0.5</property>
                 <property name="placeholder-text" translatable="yes">Enter a number</property>
                 <property name="tooltip-text" translatable="yes">Type a phone number</property>
+                <signal name="activate" handler="dial_clicked_or_activated_cb" swapped="yes"/>
                 <style>
                   <class name="phone-number-entry"/>
                 </style>
@@ -40,14 +41,14 @@
               </object>
             </child>
             <child>
-              <object class="GtkBox">
+              <object class="GtkBox" id="control_box">
                 <property name="visible">True</property>
                 <child type="center">
                   <object class="GtkButton" id="dial">
                     <property name="visible">True</property>
                     <property name="receives-default">True</property>
                     <property name="tooltip-text" translatable="yes">Call that phone number</property>
-                    <signal name="clicked" handler="dial_clicked_cb" swapped="yes"/>
+                    <signal name="clicked" handler="dial_clicked_or_activated_cb" swapped="yes"/>
                     <child>
                       <object class="GtkImage">
                         <property name="visible">True</property>
@@ -86,6 +87,11 @@
                 </child>
               </object>
             </child>
+            <focus-chain>
+              <widget name="keypad_entry"/>
+              <widget name="control_box"/>
+              <widget name="keypad"/>
+            </focus-chain>
           </object>
         </child>
       </object>

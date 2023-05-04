@@ -278,6 +278,9 @@ calls_contacts_provider_finalize (GObject *object)
 {
   CallsContactsProvider *self = CALLS_CONTACTS_PROVIDER (object);
 
+  if (self->contacts_action_group)
+    g_signal_handlers_disconnect_by_data (self->contacts_action_group, self);
+
   g_clear_handle_id (&self->bus_watch_id, g_bus_unwatch_name);
   g_clear_object (&self->contacts_action_group);
   g_clear_object (&self->folks_aggregator);
@@ -417,20 +420,17 @@ CallsBestMatch *
 calls_contacts_provider_lookup_id (CallsContactsProvider *self,
                                    const char            *id)
 {
-  g_autoptr (CallsBestMatch) best_match = NULL;
+  CallsBestMatch *best_match;
 
   g_return_val_if_fail (CALLS_IS_CONTACTS_PROVIDER (self), NULL);
 
   if (STR_IS_NULL_OR_EMPTY (id))
-    return NULL;
+    best_match = g_hash_table_lookup (self->best_matches, "");
+  else
+    best_match = g_hash_table_lookup (self->best_matches, id);
 
-  best_match = g_hash_table_lookup (self->best_matches, id);
-
-  if (best_match) {
-    g_object_ref (best_match);
-
-    return g_steal_pointer (&best_match);
-  }
+  if (best_match)
+    return g_object_ref (best_match);
 
   best_match = calls_best_match_new (id);
 
@@ -438,9 +438,9 @@ calls_contacts_provider_lookup_id (CallsContactsProvider *self,
                           best_match, "country-code",
                           G_BINDING_SYNC_CREATE);
 
-  g_hash_table_insert (self->best_matches, g_strdup (id), g_object_ref (best_match));
+  g_hash_table_insert (self->best_matches, g_strdup (id ?: ""), best_match);
 
-  return g_steal_pointer (&best_match);
+  return g_object_ref (best_match);
 }
 
 /**
