@@ -7,7 +7,7 @@
  * Copyright (C) 2019 Purism SPC
  */
 
-#include "config.h"
+#include "cui-config.h"
 
 #include <glib.h>
 #include <glib/gi18n-lib.h>

@@ -1,4 +1,4 @@
-#include "config.h"
+#include "cui-config.h"
 
 #include <gtk/gtk.h>
 #include <call-ui.h>

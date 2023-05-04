@@ -365,23 +365,24 @@ add_origin (CallsManager *self, CallsOrigin *origin)
 
   g_list_store_append (self->origins, origin);
 
-  g_signal_connect (origin,
-                    "message",
-                    G_CALLBACK (on_message),
-                    self);
+  g_signal_connect_object (origin,
+                           "message",
+                           G_CALLBACK (on_message),
+                           self,
+                           G_CONNECT_AFTER);
 
   g_signal_connect_object (origin,
                            "notify::country-code",
                            G_CALLBACK (update_country_code_cb),
                            self,
                            G_CONNECT_AFTER);
-  g_signal_connect_swapped (origin, "call-added", G_CALLBACK (add_call), self);
-  g_signal_connect_swapped (origin, "call-removed", G_CALLBACK (remove_call), self);
+  g_signal_connect_object (origin, "call-added", G_CALLBACK (add_call), self, G_CONNECT_SWAPPED);
+  g_signal_connect_object (origin, "call-removed", G_CALLBACK (remove_call), self, G_CONNECT_SWAPPED);
 
   if (CALLS_IS_USSD (origin)) {
-    g_signal_connect_swapped (origin, "ussd-added", G_CALLBACK (ussd_added_cb), self);
-    g_signal_connect_swapped (origin, "ussd-cancelled", G_CALLBACK (ussd_cancelled_cb), self);
-    g_signal_connect_swapped (origin, "ussd-state-changed", G_CALLBACK (ussd_state_changed_cb), self);
+    g_signal_connect_object (origin, "ussd-added", G_CALLBACK (ussd_added_cb), self, G_CONNECT_SWAPPED);
+    g_signal_connect_object (origin, "ussd-cancelled", G_CALLBACK (ussd_cancelled_cb), self, G_CONNECT_SWAPPED);
+    g_signal_connect_object (origin, "ussd-state-changed", G_CALLBACK (ussd_state_changed_cb), self, G_CONNECT_SWAPPED);
   }
 
   calls_origin_foreach_call (origin, (CallsOriginForeachCallFunc) add_call, self);
@@ -647,8 +648,8 @@ calls_manager_finalize (GObject *object)
   g_clear_object (&self->origins);
   g_clear_object (&self->contacts_provider);
 
-  g_clear_pointer (&self->providers, g_hash_table_unref);
   g_clear_pointer (&self->origins_by_protocol, g_hash_table_unref);
+  g_clear_pointer (&self->providers, g_hash_table_unref);
   g_clear_pointer (&self->dial_actions_by_protocol, g_hash_table_unref);
 
   G_OBJECT_CLASS (calls_manager_parent_class)->finalize (object);
@@ -1072,7 +1073,7 @@ calls_manager_get_origin_by_id (CallsManager *self,
   g_return_val_if_fail (CALLS_IS_MANAGER (self), NULL);
 
   /* TODO Turn this into a critical once https://gitlab.gnome.org/GNOME/calls/-/merge_requests/505 is in */
-  if (origin_id && *origin_id)
+  if (STR_IS_NULL_OR_EMPTY (origin_id))
     return NULL;
 
   n_origins = g_list_model_get_n_items (G_LIST_MODEL (self->origins));

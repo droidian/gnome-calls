@@ -19,9 +19,7 @@ G_DECLARE_INTERFACE (CuiCall, cui_call, CUI, CALL, GObject)
  * @CUI_CALL_STATE_ACTIVE: Call is active
  * @CUI_CALL_STATE_HELD: Call is held
  * @CUI_CALL_STATE_CALLING: Call is being placed
- * @CUI_CALL_STATE_ALERTING: Remote party is being alerted (deprecated)
  * @CUI_CALL_STATE_INCOMING: Call is incoming
- * @CUI_CALL_STATE_WAITING: Incoming call is waiting (deprecated)
  * @CUI_CALL_STATE_DISCONNECTED: Call has ended
  *
  * The call state of a [iface@Cui.Call]
@@ -32,9 +30,7 @@ typedef enum
   CUI_CALL_STATE_ACTIVE = 1,
   CUI_CALL_STATE_HELD = 2,
   CUI_CALL_STATE_CALLING = 3,
-  CUI_CALL_STATE_ALERTING G_DEPRECATED = 4,
   CUI_CALL_STATE_INCOMING = 5,
-  CUI_CALL_STATE_WAITING G_DEPRECATED = 6,
   CUI_CALL_STATE_DISCONNECTED = 7
 } CuiCallState;
 

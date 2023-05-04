@@ -22,16 +22,17 @@
  *
  */
 
-#include "calls-main-window.h"
+#include "calls-config.h"
+
 #include "calls-account-overview.h"
+#include "calls-contacts-box.h"
+#include "calls-in-app-notification.h"
+#include "calls-history-box.h"
+#include "calls-main-window.h"
+#include "calls-manager.h"
+#include "calls-new-call-box.h"
 #include "calls-origin.h"
 #include "calls-ussd.h"
-#include "calls-new-call-box.h"
-#include "calls-contacts-box.h"
-#include "calls-history-box.h"
-#include "calls-in-app-notification.h"
-#include "calls-manager.h"
-#include "calls-config.h"
 #include "calls-util.h"
 #include "version.h"
 
@@ -412,7 +413,10 @@ dispose (GObject *object)
   CallsMainWindow *self = CALLS_MAIN_WINDOW (object);
 
   g_clear_object (&self->record_store);
-  g_clear_object (&self->account_overview);
+  if (self->account_overview) {
+    gtk_widget_destroy (GTK_WIDGET (self->account_overview));
+    self->account_overview = NULL;
+  }
 
   G_OBJECT_CLASS (calls_main_window_parent_class)->dispose (object);
 }
@@ -521,7 +525,7 @@ calls_main_window_show_accounts_overview (CallsMainWindow *self)
 {
   g_return_if_fail (CALLS_IS_MAIN_WINDOW (self));
 
-  if (self->account_overview == NULL) {
+  if (!self->account_overview) {
     self->account_overview = calls_account_overview_new ();
     gtk_window_set_transient_for (GTK_WINDOW (self->account_overview),
                                   GTK_WINDOW (self));

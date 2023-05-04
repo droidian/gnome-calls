@@ -6,7 +6,7 @@
  * Author: Guido Günther <agx@sigxcpu.org>
  */
 
-#include "config.h"
+#include "cui-config.h"
 
 #include "cui-demo-call.h"
 
@@ -281,10 +281,28 @@ on_accept_timeout (CuiDemoCall *self)
 
   self->accept_timeout_id = 0;
 
-  self->timer = g_timer_new ();
-  self->timer_id = g_timeout_add (500,
-                                  G_SOURCE_FUNC (on_timer_ticked),
-                                  self);
+  /* Note: The timer should keep ticking when call is placed on hold
+   * and only be stopped when the call disconnects (or otherwise vanishes).
+   *
+   * While not strictly necessary in this demo, we guard against starting
+   * the timer multiple times.
+   * calls and phosh start this timer when the call state becomes "active".
+   * And if done in the "notify::state" callback care must be taken
+   * to not start the timer multiple times.
+   *
+   * As this demo might be the source for others to copy from
+   * this warrants this comment about the need to guard against it.
+   * See  https://gitlab.gnome.org/GNOME/calls/-/issues/502
+   * https://gitlab.gnome.org/GNOME/calls/-/merge_requests/625 and
+   * https://gitlab.gnome.org/World/Phosh/phosh/-/merge_requests/1161
+   * */
+  if (!self->timer) {
+    self->timer = g_timer_new ();
+    self->timer_id = g_timeout_add (500,
+                                    G_SOURCE_FUNC (on_timer_ticked),
+                                    self);
+    g_source_set_name_by_id (self->timer_id, "[cui-call] active_time_timer");
+  }
 
   return G_SOURCE_REMOVE;
 }

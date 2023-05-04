@@ -119,7 +119,6 @@ on_origin_pw_looked_up (GObject      *source,
 
   g_autoptr (GError) error = NULL;
   g_autofree char *id = NULL;
-  g_autofree char *name = NULL;
   g_autofree char *host = NULL;
   g_autofree char *user = NULL;
   g_autofree char *password = NULL;
@@ -164,6 +163,8 @@ on_origin_pw_looked_up (GObject      *source,
   if (g_key_file_has_key (data->key_file, data->name, "MediaEncryption", NULL))
     media_encryption =
       (SipMediaEncryption) g_key_file_get_integer (data->key_file, data->name, "MediaEncryption", NULL);
+
+  g_key_file_unref (data->key_file);
 
   /* PW */
   password = secret_password_lookup_finish (result, &error);
@@ -219,8 +220,7 @@ new_origin_from_keyfile_secret (CallsSipProvider *self,
 
   data = g_new0 (SipOriginLoadData, 1);
   data->provider = self;
-  g_key_file_ref (key_file);
-  data->key_file = key_file;
+  data->key_file = g_key_file_ref (key_file);
   data->name = g_strdup (name);
 
   secret_password_lookup (calls_secret_get_schema (), NULL,
@@ -487,25 +487,30 @@ static void
 calls_sip_provider_constructed (GObject *object)
 {
   CallsSipProvider *self = CALLS_SIP_PROVIDER (object);
-
   g_autoptr (GError) error = NULL;
+
+  G_OBJECT_CLASS (calls_sip_provider_parent_class)->constructed (object);
+
   if (calls_sip_provider_init_sofia (self, &error)) {
     if (!self->use_memory_backend) {
       g_autoptr (GKeyFile) key_file = g_key_file_new ();
 
       if (!g_key_file_load_from_file (key_file, self->filename, G_KEY_FILE_NONE, &error)) {
-        g_debug ("Error loading key file: %s", error->message);
-        goto out;
+        if (error->domain == G_FILE_ERROR &&
+            error->code == G_FILE_ERROR_NOENT)
+          g_debug ("Not loading SIP accounts: No such file '%s'", self->filename);
+        else
+          g_warning ("Error loading keyfile '%s': %s", self->filename, error->message);
+
+        return;
       }
+
       calls_sip_provider_load_accounts (self, key_file);
     }
   } else {
     g_warning ("Could not initialize sofia stack: %s", error->message);
   }
 
-out:
-
-  G_OBJECT_CLASS (calls_sip_provider_parent_class)->constructed (object);
 }
 
 
@@ -805,13 +810,16 @@ void
 calls_sip_provider_load_accounts (CallsSipProvider *self,
                                   GKeyFile         *key_file)
 {
-  g_autoptr (GError) error = NULL;
   g_auto (GStrv) groups = NULL;
 
   g_return_if_fail (CALLS_IS_SIP_PROVIDER (self));
   g_return_if_fail (key_file);
 
   groups = g_key_file_get_groups (key_file, NULL);
+
+  g_debug ("Found %u accounts in keyfile '%s'",
+           g_strv_length (groups),
+           self->filename);
 
   for (gsize i = 0; groups[i] != NULL; i++) {
     new_origin_from_keyfile_secret (self, key_file, groups[i]);
