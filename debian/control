@@ -6,6 +6,7 @@ Uploaders:
  Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>,
  Henry-Nicolas Tourneur <debian@nilux.be>,
 Build-Depends:
+ dbus-daemon,
  debhelper-compat (= 13),
  desktop-file-utils,
  gstreamer1.0-plugins-bad,
