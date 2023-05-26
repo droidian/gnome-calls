@@ -1,3 +1,9 @@
+gnome-calls (45~alpha.0-3) experimental; urgency=medium
+
+  * d/control: Add dbus-daemon
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Fri, 26 May 2023 03:45:48 +0200
+
 gnome-calls (45~alpha.0-2) experimental; urgency=medium
 
   * d/patches: Don't unref CallsMMOrigin in call_deleted_cb
