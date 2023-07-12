@@ -1,3 +1,10 @@
+gnome-calls (45~alpha.0-4) unstable; urgency=medium
+
+  * Team upload
+  * Upload to unstable
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 12 Jul 2023 12:04:58 +0200
+
 gnome-calls (45~alpha.0-3) experimental; urgency=medium
 
   * d/control: Add dbus-daemon
